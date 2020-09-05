@@ -15,8 +15,8 @@ class TestSource(unittest.TestCase):
         self.assertEqual(relations.SOURCES, {"a": source})
 
     @unittest.mock.patch("relations.SOURCES", {})
-    def test_access(self):
+    def test_source(self):
 
         source = relations.Source("a")
 
-        self.assertEqual(relations.a, source)
+        self.assertEqual(relations.source("a"), source)

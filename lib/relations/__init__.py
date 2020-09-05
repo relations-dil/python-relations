@@ -18,14 +18,7 @@ class Source:
 
         SOURCES[self.name] = self
 
-def __getattr__(name):
-    """
-    Used to get a source
-    """
-
-    return SOURCES[name]
-
-def __getitem__(name):
+def source(name):
     """
     Used to get a source
     """
