@@ -14,10 +14,11 @@ class Field:
     strict = True     # Whether or not to cast on set
     store = None      # Name to use when reading and writing
     value = None      # Value of the field
+    search = None   # Values for searching
     default = None    # Default value
     changed = False   # Whether the values be set since read
     readonly = False  # Whether this field is readonly
-    criteria = None   # Values for searching
+
     definition = None # Definition for storage creation
 
     # Operators supported and whether allwo multiple values
@@ -124,30 +125,30 @@ class Field:
         if operator not in self.OPERATORS:
             raise ValueError(f"unknown operator '{operator}'")
 
-        if self.criteria is None:
-            self.criteria = {}
+        if self.search is None:
+            self.search = {}
 
         if self.OPERATORS[operator]:
 
-            self.criteria.setdefault(operator, [])
+            self.search.setdefault(operator, [])
 
             if not isinstance(match, list):
                 match = [match]
 
-            self.criteria[operator].extend([self.cast(item) for item in match])
+            self.search[operator].extend([self.cast(item) for item in match])
 
         else:
 
-            self.criteria[operator] = self.cast(match)
+            self.search[operator] = self.cast(match)
 
     def match(self, values):
         """
-        Check if this value matches our criteria
+        Check if this value matches our search
         """
 
         value = self.cast(values.get(self.store))
 
-        for operator, match in (self.criteria or {}).items():
+        for operator, match in (self.search or {}).items():
             if (
                 (operator == "in" and value not in match) or
                 (operator in "ne" and value in match) or
@@ -326,7 +327,7 @@ class Record:
 
     def match(self, values):
         """
-        Sees if a record matches criteria in a dict
+        Sees if a record matches search in a dict
         """
 
         for field in self._order:
@@ -364,9 +365,9 @@ class Model:
     RECORD = Record  # Default record clas
 
     _fields = None   # Base record to create other records with
-    _record = None   # The current loaded single record (from get)
-    _records = None  # The current loaded multiple reocrds (from list)
-    _criteria = None # The current criteria record to search with
+    _record = None   # The current loaded single record (from get/create)
+    _models = None   # The current loaded multiple models (from list/create)
+    _search = None   # The current record to search with
 
     def __init__(self, *args, **kwargs):
         """
@@ -398,8 +399,6 @@ class Model:
 
         _action = self._extract(kwargs, '_action', "create")
 
-        # If we're creating
-
         if _action == "create":
 
             if not args or not isinstance(args[0], list):
@@ -410,18 +409,21 @@ class Model:
 
             else:
 
-                self._records = []
+                self._models = []
 
                 for single in args[0]:
 
                     args = single if isinstance(single, list) else []
                     kwargs = single if isinstance(single, dict) else {}
 
-                    self._records.append(self._build("create", *args, **kwargs))
+                    model = copy.copy(self)
+                    model._record = model._build("create", *args, **kwargs)
+
+                    self._models.append(model)
 
         elif _action in ["get", "list"]:
 
-            self._criteria = self._build(_action, _defaults=False)
+            self._search = self._build(_action, _defaults=False)
             self.filter(*args, **kwargs)
 
     def __setattr__(self, name, value):
@@ -435,9 +437,9 @@ class Model:
 
             if self._record is not None:
                 self._record[name] = value
-            elif self._records is not None:
-                for record in self._records:
-                    record[name] = value
+            elif self._models is not None:
+                for model in self._models:
+                    model[name] = value
             else:
                 raise ValueError("no records")
 
@@ -457,8 +459,8 @@ class Model:
             if self._record is not None:
                 return self._record[name]
 
-            if self._records is not None:
-                return [record[name] for record in self._records]
+            if self._models is not None:
+                return [model[name] for model in self._models]
 
             raise ValueError("no records")
 
@@ -476,8 +478,8 @@ class Model:
         if self._record is not None:
             return len(self._record)
 
-        if self._records is not None:
-            return len(self._records)
+        if self._models is not None:
+            return len(self._models)
 
         raise ValueError("no records")
 
@@ -491,8 +493,8 @@ class Model:
         if self._record is not None:
             return iter(self._record)
 
-        if self._records is not None:
-            return iter(self._records)
+        if self._models is not None:
+            return iter(self._models)
 
         raise ValueError("no records")
 
@@ -506,10 +508,32 @@ class Model:
         if self._record is not None:
             return key in self._record
 
-        if self._records is not None:
+        if self._models is not None:
             return key in self._fields
 
         raise ValueError("no records")
+
+    def __setitem__(self, key, value):
+        """
+        Access numerically or by name
+        """
+
+        self._ensure()
+
+        if self._record is not None:
+
+            self._record[key] = value
+
+        elif self._models is not None:
+
+            if isinstance(key, int):
+                raise ValueError("no override")
+            else:
+                for model in self._models:
+                    model[key] = value
+
+        else:
+            raise ValueError("no records")
 
     def __getitem__(self, key):
         """
@@ -521,12 +545,12 @@ class Model:
         if self._record is not None:
             return self._record[key]
 
-        if self._records is not None:
+        if self._models is not None:
 
             if isinstance(key, int):
-                return self._records[key]
+                return self._models[key]
 
-            return [record[key] for record in self._records]
+            return [model[key] for model in self._models]
 
         raise ValueError("no records")
 
@@ -579,26 +603,26 @@ class Model:
 
     def _ensure(self):
         """
-        Makes sure there's records if there's criteria
+        Makes sure there's records if there's search
         """
 
-        if self._criteria:
+        if self._search:
 
             if self._record:
                 self.update(True)
             else:
                 self.retrieve()
 
-    def _all(self, action=None):
+    def _records(self, action=None):
         """
-        Converts to all records, whether _record or _records
+        Converts to all records, whether _record or _models
         """
 
         if self._record and (action is None or self._record.action() == action):
             return [self._record]
 
-        if self._records:
-            return [record for record in self._records if action is None or record.action() == action]
+        if self._models:
+            return [model._record for model in self._models if action is None or model._record.action() == action]
 
         return []
 
@@ -608,10 +632,10 @@ class Model:
         """
 
         for index, value in enumerate(args):
-            self._criteria.filter(index, value)
+            self._search.filter(index, value)
 
         for name, value in kwargs.items():
-            self._criteria.filter(name, value)
+            self._search.filter(name, value)
 
         return self
 
@@ -636,12 +660,12 @@ class Model:
         Sets a single or multiple records or prepares to
         """
 
-        # If we have criteria, build values to set later
+        # If we have search, build values to set later
 
-        if self._criteria:
+        if self._search:
             self._record = self._record or self._build("update", _defaults=False)
 
-        for record in self._all():
+        for record in self._records():
             self._input(record, *args, **kwargs)
 
         return self
@@ -652,13 +676,15 @@ class Model:
         """
 
         if self._record:
-            self._records = [self._record]
+            self._models = [copy.copy(self)]
             self._record = None
 
         _count = self._extract(kwargs, '_count', 1)
 
         for record in range(_count):
-            self._records.append(self._build("create", *args, **kwargs))
+            model = copy.copy(self)
+            model._record = self._build("create", *args, **kwargs)
+            self._models.append(model)
 
         return self
 

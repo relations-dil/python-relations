@@ -63,29 +63,29 @@ class TestField(unittest.TestCase):
         field = relations.model.Field("id", int)
 
         field.filter("1", "in")
-        self.assertEqual(field.criteria["in"], [1])
+        self.assertEqual(field.search["in"], [1])
         field.filter(2.0, "in")
-        self.assertEqual(field.criteria["in"], [1, 2])
+        self.assertEqual(field.search["in"], [1, 2])
 
         field.filter("1", "ne")
-        self.assertEqual(field.criteria["ne"], [1])
+        self.assertEqual(field.search["ne"], [1])
         field.filter(2.0, "ne")
-        self.assertEqual(field.criteria["ne"], [1, 2])
+        self.assertEqual(field.search["ne"], [1, 2])
 
         field.filter("1")
-        self.assertEqual(field.criteria["eq"], 1)
+        self.assertEqual(field.search["eq"], 1)
 
         field.filter("1", "gt")
-        self.assertEqual(field.criteria["gt"], 1)
+        self.assertEqual(field.search["gt"], 1)
 
         field.filter("1", "ge")
-        self.assertEqual(field.criteria["ge"], 1)
+        self.assertEqual(field.search["ge"], 1)
 
         field.filter("1", "lt")
-        self.assertEqual(field.criteria["lt"], 1)
+        self.assertEqual(field.search["lt"], 1)
 
         field.filter("1", "le")
-        self.assertEqual(field.criteria["le"], 1)
+        self.assertEqual(field.search["le"], 1)
 
         self.assertRaisesRegex(ValueError, "unknown operator 'nope'", field.filter, 0, "nope")
 
@@ -260,13 +260,13 @@ class TestRecord(unittest.TestCase):
     def test_filter(self):
 
         self.record.filter(0, "0")
-        self.assertEqual(self.id.criteria["eq"], 0)
+        self.assertEqual(self.id.search["eq"], 0)
 
         self.record.filter("id", "1")
-        self.assertEqual(self.id.criteria["eq"], 1)
+        self.assertEqual(self.id.search["eq"], 1)
 
         self.record.filter("id__ne", "2")
-        self.assertEqual(self.id.criteria["ne"], [2])
+        self.assertEqual(self.id.search["ne"], [2])
 
         self.assertRaisesRegex(ValueError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 
@@ -315,7 +315,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model.name, "unit")
 
         models = UnitTest([["1", "unit"]])
-        self.assertEqual(models.id, [1])
+        self.assertEqual(models._models[0]._record.id, 1)
         self.assertEqual(models.name, ["unit"])
 
         models = UnitTest([{"id": "1", "name": "unit"}])
@@ -323,10 +323,10 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models.name, ["unit"])
 
         models = UnitTest(_action="list", id="1")
-        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
+        self.assertEqual(models._search._names["id"].search["eq"], 1)
 
         models = UnitTest(_action="get", name="unit")
-        self.assertEqual(models._criteria._names["name"].criteria["eq"], "unit")
+        self.assertEqual(models._search._names["name"].search["eq"], "unit")
 
     @unittest.mock.patch("relations.model.Model.retrieve")
     def test___setattr__(self,  mock_retrieve):
@@ -448,6 +448,36 @@ class TestModel(unittest.TestCase):
         self.assertRaisesRegex(ValueError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
+    @unittest.mock.patch("relations.model.Model.retrieve")
+    def test___setitem__(self,  mock_retrieve):
+
+        model = UnitTest("1", "unit")
+
+        model[0] = 2
+        model["name"] = "test"
+
+        self.assertEqual(model[0], 2)
+        self.assertEqual(model["name"], "test")
+
+        models = UnitTest([{"id": "1", "name": "unit"}])
+
+        models["name"] = "test"
+
+        self.assertEqual(models["name"], ["test"])
+
+        def nope():
+            models[0] = 1
+
+        self.assertRaisesRegex(ValueError, "no override", nope)
+
+        models = UnitTest(_action="list", id="1")
+
+        def nope():
+            models[0] = 1
+
+        self.assertRaisesRegex(ValueError, "no records", nope)
+        mock_retrieve.assert_called_once_with()
+
     def test___extract(self):
 
         kwargs = {
@@ -496,43 +526,44 @@ class TestModel(unittest.TestCase):
         mock_update.assert_called_once_with(True)
         mock_retrieve.assert_called_once_with()
 
-    def test__all(self,):
+    def test__records(self,):
 
         model = UnitTest("1", "unit")
-        self.assertEqual(model._all()[0].id, 1)
-        self.assertEqual(model._all("create")[0].id, 1)
-        self.assertEqual(model._all("ignore"), [])
+        self.assertEqual(model._records()[0].id, 1)
+        self.assertEqual(model._records("create")[0].id, 1)
+        self.assertEqual(model._records("ignore"), [])
 
         models = UnitTest([{"id": "1", "name": "unit"}, {"id": "2", "name": "test"}])
-        self.assertEqual(models._all()[1].id, 2)
-        self.assertEqual(models._all("create")[1].id, 2)
-        self.assertEqual(models._all("ignore"), [])
+
+        self.assertEqual(models._records()[1].id, 2)
+        self.assertEqual(models._records("create")[1].id, 2)
+        self.assertEqual(models._records("ignore"), [])
 
         models = UnitTest(_action="list", id="1")
-        self.assertEqual(models._all(), [])
+        self.assertEqual(models._records(), [])
 
     def test_filter(self):
 
         models = UnitTest(_action="list").filter(1).filter(name__ne="unittest")
 
-        self.assertEqual(models._criteria._action, "list")
-        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._criteria._names["name"].criteria["ne"], ["unittest"])
+        self.assertEqual(models._search._action, "list")
+        self.assertEqual(models._search._names["id"].search["eq"], 1)
+        self.assertEqual(models._search._names["name"].search["ne"], ["unittest"])
 
     def test_list(self):
 
         models = UnitTest.list(1, name__ne="unittest")
 
-        self.assertEqual(models._criteria._action, "list")
-        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._criteria._names["name"].criteria["ne"], ["unittest"])
+        self.assertEqual(models._search._action, "list")
+        self.assertEqual(models._search._names["id"].search["eq"], 1)
+        self.assertEqual(models._search._names["name"].search["ne"], ["unittest"])
 
     def test_get(self):
 
         models = UnitTest.get(1)
 
-        self.assertEqual(models._criteria._action, "get")
-        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
+        self.assertEqual(models._search._action, "get")
+        self.assertEqual(models._search._names["id"].search["eq"], 1)
 
     def test_set(self):
 
