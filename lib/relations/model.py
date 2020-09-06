@@ -2,6 +2,7 @@
 Base Model module
 """
 
+import sys
 import copy
 
 class Field:
@@ -9,16 +10,15 @@ class Field:
     Base field class
     """
 
-    cls = None        # Data class to cast values as
     name = None       # Name used in models
+    kind = None       # Data class to cast values as or validate
     strict = True     # Whether or not to cast on set
     store = None      # Name to use when reading and writing
     value = None      # Value of the field
-    search = None   # Values for searching
+    search = None     # Values for searching
     default = None    # Default value
     changed = False   # Whether the values be set since read
     readonly = False  # Whether this field is readonly
-
     definition = None # Definition for storage creation
 
     # Operators supported and whether allwo multiple values
@@ -54,48 +54,113 @@ class Field:
         'execute'
     ]
 
-    def __init__(self, name, cls, **kwargs):
+    def __init__(self, kind, **kwargs):
         """
         Set the name and what to cast it as and everything else be free form
         """
 
-        error = None
-
-        if name in self.RESERVED:
-            error = "is reserved"
-
-        if "__" in name:
-            error = "cannot contain '__'"
-
-        if name[0] == '_':
-            error = "cannot start with '_'"
-
-        if error:
-            raise ValueError(f"field name '{name}' {error} - use the store attribute for this name")
-
-        self.name = name
-        self.cls = cls
+        self.kind = kind
 
         # Just set what as sent
 
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
 
-        # If store wasn't set, set it with name
-
-        if self.store is None:
-            self.store = self.name
-
     def __setattr__(self, name, value):
         """
         Use to set field values so everything is cost correctly
         """
 
+        if name == "name":
+
+            error = None
+
+            if value in self.RESERVED:
+                error = "is reserved"
+
+            if "__" in value:
+                error = "cannot contain '__'"
+
+            if value[0] == '_':
+                error = "cannot start with '_'"
+
+            if error:
+                raise ValueError(f"field name '{value}' {error} - use the store attribute for this name")
+
+            if self.store is None:
+                self.store = value
+
         if name == "value":
-            value = self.cast(value)
             self.changed = True
+            value = self.set(value)
 
         object.__setattr__(self, name, value)
+
+    def __getattribute__(self, name):
+        """
+        Use to set field values so everything is cost correctly
+        """
+
+        if name == "value":
+            return self.get(object.__getattribute__(self, "value"))
+
+        return object.__getattribute__(self, name)
+
+    def set(self, value):
+        """
+        Returns the value to set
+        """
+
+        if value is None or not self.strict:
+
+            return value
+
+        elif isinstance(self.kind, list):
+
+            for option in self.kind:
+                if option == value:
+                    return option
+
+            raise ValueError(f"{value} not in {self.kind} for {self.name}")
+
+        elif isinstance(self.kind, dict):
+
+            for option, label in self.kind.items():
+                if label == value:
+                    return option
+
+            raise ValueError(f"{value} not in {list(self.kind.values())} for {self.name}")
+
+        else:
+
+            return self.kind(value)
+
+    def get(self, value):
+        """
+        Gets the value
+        """
+
+        if value is None or not self.strict:
+
+            return value
+
+        elif isinstance(self.kind, list):
+
+            for option in self.kind:
+                if option == value:
+                    return option
+
+            raise ValueError(f"{value} not in {self.kind} for {self.name}")
+
+        if isinstance(self.kind, dict):
+
+            for option, label in self.kind.items():
+                if option == value:
+                    return label
+
+            raise ValueError(f"{value} not in {list(self.kind.keys())} for {self.name}")
+
+        return value
 
     def define(self):
         """
@@ -111,11 +176,6 @@ class Field:
         """
         Get the proper value as it's supposed to be
         """
-
-        if value is None or not self.strict:
-            return value
-        else:
-            return self.cls(value)
 
     def filter(self, match, operator="eq"):
         """
@@ -135,18 +195,18 @@ class Field:
             if not isinstance(match, list):
                 match = [match]
 
-            self.search[operator].extend([self.cast(item) for item in match])
+            self.search[operator].extend([self.set(item) for item in match])
 
         else:
 
-            self.search[operator] = self.cast(match)
+            self.search[operator] = self.set(match)
 
     def match(self, values):
         """
         Check if this value matches our search
         """
 
-        value = self.cast(values.get(self.store))
+        value = self.set(values.get(self.store))
 
         for operator, match in (self.search or {}).items():
             if (
@@ -185,8 +245,8 @@ class Record:
     Stores record for a Model
     """
 
-    _order = None # Access in order
-    _names = None # Access by name
+    _order = None  # Access in order
+    _names = None  # Access by name
     _action = None # What to do with this record
 
     ACTIONS = [
@@ -364,6 +424,11 @@ class Model:
     FIELD = Field    # Default field class
     RECORD = Record  # Default record clas
 
+    PARENTS = {}     # Parent relationships
+    CHILDREN = {}    # Child relationships
+    SISTERS = {}     # Sister relationships
+    BROTHERS = {}    # Brother relationships
+
     _fields = None   # Base record to create other records with
     _record = None   # The current loaded single record (from get/create)
     _models = None   # The current loaded multiple models (from list/create)
@@ -389,9 +454,10 @@ class Model:
                 continue # pragma: no cover
 
             if attribute in [int, float, str, dict , list]:
-                field = self.FIELD(name, attribute)
+                field = self.FIELD(attribute, name=name)
             elif isinstance(attribute, self.FIELD):
                 field = attribute
+                field.name = name
             else:
                 continue # pragma: no cover
 
@@ -554,6 +620,38 @@ class Model:
 
         raise ValueError("no records")
 
+    @classmethod
+    def _parent(cls, parent):
+        """
+        Adds a parent to the class
+        """
+
+        cls.PARENTS[parent.child_parent] = parent
+
+    @classmethod
+    def _child(cls, child):
+        """
+        Adds a child to the class
+        """
+
+        cls.CHILDREN[child.parent_child] = child
+
+    @classmethod
+    def _sister(cls, sister):
+        """
+        Adds a sister to the class
+        """
+
+        cls.SISTERS[sister.brother_sister] = sister
+
+    @classmethod
+    def _brother(cls, brother):
+        """
+        Adds a brother to the class
+        """
+
+        cls.BROTHERS[brother.sister_brother] = brother
+
     @staticmethod
     def _extract(kwargs, name, default=None):
         """
@@ -573,8 +671,13 @@ class Model:
         Fills in field values from args, kwargs
         """
 
-        for index, value in enumerate(args):
-            record[index] = value
+        field = 0
+
+        for value in args:
+            while record._order[field].readonly:
+                field += 1
+            record[field] = value
+            field += 1
 
         for name, value in kwargs.items():
             record[name] = value
@@ -726,3 +829,108 @@ class Model:
         self.create(verify)
         self.update(verify)
         self.delete()
+
+
+class Relation:
+    """
+    Base Relation class
+    """
+
+    @staticmethod
+    def field_name(field, model):
+        """
+        Returns the name of the field, whether index or name
+        """
+
+        if field not in model._fields:
+            raise ValueError(f"cannot find field {field} in {model.NAME}")
+
+        if isinstance(field, str):
+            return field
+
+        return model._fields._order[field].name
+
+    @classmethod
+    def relative_field(cls, model, relative, same=False):
+        """
+        Returns the name of the relative field, based on the relative name
+        """
+
+        # Check for the standard convention
+
+        standard = f"{model.NAME}_id"
+
+        if standard in relative._fields:
+            return standard
+
+        # Check to see if we're using the relative.ID, model.ID, model.relative_ID convention (diffent name for ID)
+
+        model_id = cls.field_name(model.ID, model)
+
+        simple = f"{model.NAME}_{model_id}"
+
+        if simple in relative._fields:
+            return simple
+
+        # Check to see if we're using the relative.relative_id, model.model_id, model.relative_id patten
+
+        if model_id in relative._fields and (same or model_id != cls.field_name(relative.ID, relative)):
+            return model_id
+
+        raise ValueError(f"cannot determine field for {model.NAME} in {relative.NAME}")
+
+class OneToMany(Relation):
+    """
+    Class that specific one to many relationships
+    """
+
+    Parent = None       # Model having one record
+    parent_field = None # The id field of the parent to connect to the child
+    parent_child = None # The name of the attribute on the parent model to reference children
+    Child = None        # Model having many reocrds
+    child_field = None  # The if field in the child to connect to the parent field
+    child_parent = None # The name of the attribute on the child to reference the parent
+
+    def __init__(self, Parent, Child, parent_child=None, child_parent=None, parent_field=None, child_field=None):
+
+        self.Parent = Parent
+        self.Child = Child
+
+        parent = self.Parent()
+        child = self.Child()
+
+        self.parent_child = parent_child if parent_child is not None else child.NAME
+        self.child_parent = child_parent if child_parent is not None else parent.NAME
+        self.parent_field = self.field_name(parent_field if parent_field is not None else parent.ID, parent)
+        self.child_field = self.field_name(child_field, child) if child_field is not None else self.relative_field(parent, child)
+
+        self.Parent._child(self)
+        self.Child._parent(self)
+
+class OneToOne(Relation):
+    """
+    Class that specific one to one relationships, with the sister being the primary (if there is one)
+    """
+
+    Sister = None         # Model having one record
+    sister_field = None   # The id field of the sister to connect to the brother
+    sister_brother = None # The name of the attribute on the sister model to reference brotherren
+    Brother = None        # Model having many reocrds
+    brother_field = None  # The if field in the brother to connect to the sister
+    brother_sister = None # The name of the attribute on the brother to reference the sister
+
+    def __init__(self, Sister, Brother, sister_brother=None, brother_sister=None, sister_field=None, brother_field=None):
+
+        self.Sister = Sister
+        self.Brother = Brother
+
+        sister = self.Sister()
+        brother = self.Brother()
+
+        self.sister_brother = sister_brother if sister_brother is not None else brother.NAME
+        self.brother_sister = brother_sister if brother_sister is not None else sister.NAME
+        self.sister_field = self.field_name(sister_field if sister_field is not None else sister.ID, sister)
+        self.brother_field = self.field_name(brother_field, brother) if brother_field is not None else self.relative_field(sister, brother, same=True)
+
+        self.Sister._brother(self)
+        self.Brother._sister(self)

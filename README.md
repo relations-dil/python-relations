@@ -120,6 +120,42 @@ persons.delete() # Will only affect 3rd record
 
 persons.execute() # Will act on all records
 
+
+# Relations
+
+class Person(relations.MySQLModel):
+    id = relations.MySQLField(int,autoincrement=True)
+    name = str
+    data = dict
+
+class Phone(relations.MySQLModel):
+    id = relations.MySQLField(int, autoincrement=True)
+    person_id = int
+    kind = ["mobile", "office", "home"]
+    number = str
+
+class Employee(relations.MySQLModel):
+    id = relations.MySQLField(int,autoincrement=True)
+    person_id = int
+    role = {
+      0: "worker",
+      1: "manager",
+      2: "owner"
+    }
+
+class Skill(relations.MySQLModel):
+    id = relations.MySQLField(int,autoincrement=True)
+    name = str
+
+relations.model.OneToMany(Person, Phone)
+
+person = Person.create("Dave)
+person.phone.add("moble", "555-1212")
+person.create()  $ Creates both person and phone records
+
+phone = Phone.get(person_id=person.id)
+phone.person.name # 'Dave'
+
 ```
 
 ## API
