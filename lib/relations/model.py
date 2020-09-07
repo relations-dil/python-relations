@@ -424,15 +424,22 @@ class Model:
     FIELD = Field    # Default field class
     RECORD = Record  # Default record clas
 
-    PARENTS = {}     # Parent relationships
-    CHILDREN = {}    # Child relationships
-    SISTERS = {}     # Sister relationships
-    BROTHERS = {}    # Brother relationships
+    PARENTS = None    # Parent relationships
+    CHILDREN = None   # Child relationships
+    SISTERS = None    # Sister relationships
+    BROTHERS = None   # Brother relationships
 
     _fields = None   # Base record to create other records with
     _record = None   # The current loaded single record (from get/create)
     _models = None   # The current loaded multiple models (from list/create)
     _search = None   # The current record to search with
+
+    _parents = None  # Parent models
+    _children = None # Children models
+    _sisters = None  # Sister models
+    _brothers = None # Brother models
+
+    _single = False  # Whether or not we'll only only single records (from OneToOne)
 
     def __init__(self, *args, **kwargs):
         """
@@ -448,6 +455,15 @@ class Model:
 
         self._fields = self.RECORD()
 
+        # Whether we're OneToOne Child
+
+        self._single = self._extract(kwargs, '_single', False)
+
+        _readonly = self._extract(kwargs, '_readonly', [])
+
+        if not isinstance(_readonly, list):
+            _readonly = [_readonly]
+
         for name, attribute in self.__class__.__dict__.items():
 
             if name.startswith('_') or name != name.lower():
@@ -460,6 +476,10 @@ class Model:
                 field.name = name
             else:
                 continue # pragma: no cover
+
+            # if we're forcing any to he readonly
+
+            field.readonly = field.name in _readonly
 
             self._fields.append(field)
 
@@ -492,6 +512,13 @@ class Model:
             self._search = self._build(_action, _defaults=False)
             self.filter(*args, **kwargs)
 
+        # Initialize relation models
+
+        self._parents = {}
+        self._children = {}
+        self._sisters = {}
+        self._brothers = {}
+
     def __setattr__(self, name, value):
         """
         Use to set field values directly
@@ -509,9 +536,23 @@ class Model:
             else:
                 raise ValueError("no records")
 
+            self._negate(name, value)
+
         else:
 
             object.__setattr__(self, name, value)
+
+    def __getattr__(self, name):
+        """
+        Used to get relation models directly
+        """
+
+        relation = self._relate(name)
+
+        if relation is not None:
+            return relation
+
+        raise AttributeError()
 
     def __getattribute__(self, name):
         """
@@ -601,12 +642,19 @@ class Model:
         else:
             raise ValueError("no records")
 
+        self._negate(key, value)
+
     def __getitem__(self, key):
         """
         Access numerically or by name
         """
 
         self._ensure()
+
+        relation = self._relate(key)
+
+        if relation is not None:
+            return relation
 
         if self._record is not None:
             return self._record[key]
@@ -621,36 +669,128 @@ class Model:
         raise ValueError("no records")
 
     @classmethod
-    def _parent(cls, parent):
+    def _parent(cls, relation):
         """
         Adds a parent to the class
         """
 
-        cls.PARENTS[parent.child_parent] = parent
+        cls.PARENTS = cls.PARENTS or {}
+        cls.PARENTS[relation.child_parent] = relation
 
     @classmethod
-    def _child(cls, child):
+    def _child(cls, relation):
         """
         Adds a child to the class
         """
 
-        cls.CHILDREN[child.parent_child] = child
+        cls.CHILDREN = cls.CHILDREN or {}
+        cls.CHILDREN[relation.parent_child] = relation
 
     @classmethod
-    def _sister(cls, sister):
+    def _sister(cls, relation):
         """
         Adds a sister to the class
         """
 
-        cls.SISTERS[sister.brother_sister] = sister
+        cls.SISTERS = cls.SISTERS or {}
+        cls.SISTERS[relation.brother_sister] = relation
 
     @classmethod
-    def _brother(cls, brother):
+    def _brother(cls, relation):
         """
         Adds a brother to the class
         """
 
-        cls.BROTHERS[brother.sister_brother] = brother
+        cls.BROTHERS = cls.BROTHERS or {}
+        cls.BROTHERS[relation.sister_brother] = relation
+
+    def _relate(self, name):
+        """
+        Looks up a relation by attribute name
+        """
+
+        if name in (self.PARENTS or {}):
+
+            relation = self.PARENTS[name]
+
+            if self._parents.get(name) is None:
+
+                # If we have a single record
+
+                if self._record is not None:
+
+                    # If there's a value on the child field
+
+                    if self[relation.child_field] is None:
+                        raise ValueError(f"can't access {name} if {relation.child_field} not set")
+                    else:
+                        self._parents[name] = relation.Parent.get(**{relation.parent_field: self[relation.child_field]})
+
+                # If we have multiple
+
+                elif self._models is not None:
+
+                    # Find all the matching parents
+
+                    self._parents[name] = relation.Parent.list(
+                        **{f"{relation.parent_field}__in": [value for value in self[relation.child_field] if value is not None]}
+                    )
+
+                elif self._search is not None:
+
+                    self._parents[name] = relation.Parent.list()
+
+            return self._parents[name]
+
+        elif name in (self.CHILDREN or {}):
+
+            relation = self.CHILDREN[name]
+
+            if self._children.get(name) is None:
+
+                # If we have a single record
+
+                if self._record is not None:
+
+                    if isinstance(relation, OneToOne):
+                        self._children[name] = relation.Child.list(
+                            _single=True, _readonly=relation.child_field, **{relation.child_field: self[relation.parent_field]}
+                        )
+                    elif isinstance(relation, OneToMany):
+                        self._children[name] = relation.Child.list(
+                            _readonly=relation.child_field, **{relation.child_field: self[relation.parent_field]}
+                        )
+
+                # If we have multiple
+
+                elif self._models is not None:
+
+                    self._children[name] = relation.Child.list(
+                        **{f"{relation.child_field}__in": [value for value in self[relation.parent_field] if value is not None]}
+                    )
+
+                elif self._search is not None:
+
+                    self._children[name] = relation.Child.list()
+
+            return self._children[name]
+
+        return None
+
+    def _negate(self, field, value):
+        """
+        Remove a relation when its field is set
+        """
+
+        field_name = Relation.field_name(field, self)
+
+        for child_parent, relation in (self.PARENTS or {}).items():
+            if field_name == relation.child_field:
+                self._parents[child_parent] = None
+
+        for parent_child, relation in (self.CHILDREN or {}).items():
+            if field_name == relation.parent_field:
+                self._children[parent_child] = None
 
     @staticmethod
     def _extract(kwargs, name, default=None):
@@ -738,7 +878,15 @@ class Model:
             self._search.filter(index, value)
 
         for name, value in kwargs.items():
-            self._search.filter(name, value)
+
+            pieces = name.split('__', 1)
+
+            relation = self._relate(pieces[0])
+
+            if relation is not None:
+                relation.filter(**{pieces[1]: value})
+            else:
+                self._search.filter(name, value)
 
         return self
 
@@ -778,16 +926,26 @@ class Model:
         Adds records
         """
 
-        if self._record:
-            self._models = [copy.copy(self)]
-            self._record = None
-
         _count = self._extract(kwargs, '_count', 1)
 
-        for record in range(_count):
-            model = copy.copy(self)
-            model._record = self._build("create", *args, **kwargs)
-            self._models.append(model)
+        if not self._single:
+
+            if self._record:
+                self._models = [copy.copy(self)]
+                self._record = None
+
+            for record in range(_count):
+                model = copy.copy(self)
+                model._record = self._build("create", *args, **kwargs)
+                self._models.append(model)
+
+        else:
+
+            if _count != 1 or self._record is not None:
+                raise ValueError("only one record")
+
+            self._search = None
+            self._record = self._build("create", *args, **kwargs)
 
         return self
 

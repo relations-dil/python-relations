@@ -193,7 +193,7 @@ person.phone.create()
 
 person = Person("Dave")
 person.phone.add("moble", "555-1212")
-person.create()  $ Creates both person and phone records
+person.create()  # Creates both person and phone records
 
 ## Retrieving
 
@@ -262,7 +262,7 @@ person.employee.create()
 
 person = Person("Dave")
 person.employee.set("worker")
-person.create()  $ Creates both person and employee records
+person.create()  # Creates both person and employee records
 
 ## Retrieving
 
