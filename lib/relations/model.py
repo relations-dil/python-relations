@@ -533,7 +533,7 @@ class Model:
             else:
                 raise ValueError("no records")
 
-            self._negate(name, value)
+            self._propagate(name, value)
 
         else:
 
@@ -639,7 +639,7 @@ class Model:
         else:
             raise ValueError("no records")
 
-        self._negate(key, value)
+        self._propagate(key, value)
 
     def __getitem__(self, key):
         """
@@ -774,7 +774,7 @@ class Model:
 
         return None
 
-    def _negate(self, field, value):
+    def _propagate(self, field, value):
         """
         Remove a relation when its field is set
         """
@@ -787,7 +787,10 @@ class Model:
 
         for parent_child, relation in (self.CHILDREN or {}).items():
             if field_name == relation.parent_field:
-                self._children[parent_child] = None
+                if self._record is not None and len(self._children.get(parent_child, [])):
+                    self._children[parent_child][relation.child_field] = value
+                else:
+                    self._children[parent_child] = None
 
     @staticmethod
     def _extract(kwargs, name, default=None):

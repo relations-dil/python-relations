@@ -664,7 +664,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(tests._search._action, "list")
         self.assertIsNone(tests._search._names["unit_id"].search)
 
-    def test__negate(self):
+    def test__propagate(self):
 
         test = Test()
         test.unit_id = 1
@@ -674,10 +674,10 @@ class TestModel(unittest.TestCase):
         test.unit_id = 2
         self.assertIsNone(test._parents['unit'])
 
-        test.case
+        test.case.add()
         self.assertIsNotNone(test._children['case'])
-        test.id = 1
-        self.assertIsNone(test._children['case'])
+        test.id = 3
+        self.assertEqual(test._children['case']['test_id'], 3)
 
     def test__extract(self):
 
