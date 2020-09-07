@@ -148,13 +148,164 @@ class Skill(relations.MySQLModel):
     name = str
 
 relations.model.OneToMany(Person, Phone)
+relations.model.OneToOne(Person, Employee)
+relations.model.ManyToMany(Person, Skill)
 
-person = Person.create("Dave)
+### OneToMany
+
+## Creating
+
+# Child creation referencing Parent
+
+person = Person("Dave").create()
+
+# Equivalent
+
+phone = Phone(person.id, "moble", "555-1212").create()
+phone = Phone(person=person, kind="moble", number="555-1212").create()
+
+# Person().phone = Phone.create([])
+
+phone = Phone()
+phone.person_id = person.id
+phone.kind = "mobile"
+phone.number = "555-1212"
+phone.create()
+
+phone = Phone()
+phone.person = person
+phone.kind = "mobile"
+phone.number = "555-1212"
+phone.create()
+
+# Child creation from Parent
+
+# Equivalent (person_id becomes readonly on phone)
+
+person.phone.add("moble", "555-1212").create()
+
+person.phone.add()
+person.phone[0].kind = "mobile"
+person.phone[0].number = "555-1212"
+person.phone.create()
+
+# Parent and Child creation
+
+person = Person("Dave")
 person.phone.add("moble", "555-1212")
 person.create()  $ Creates both person and phone records
 
-phone = Phone.get(person_id=person.id)
-phone.person.name # 'Dave'
+## Retrieving
+
+person = Person.get(1)
+person.phone # Equivlanet to Phone.list(person_id=person.id)
+
+persons = Person.list()
+persons.phone # Equivalent to Phone.list(person_id__in=persons.id)
+
+# Equivalent
+
+persons = Person.list().phone.filter(kind="mobile")
+persons = Person.list(phone__kind="mobile")
+
+phones = Phone.list().person.filter(name="Dave")
+phones = Phone.list(person__name="Dave")
+
+## Updating
+
+# When updating a parent, this implies propagate creates, updates, and deletes to children
+
+person = Person.get(1)
+person.phone.add("home", "555-2121")
+person.phone.add("work", "555-1221")
+person.update() # Creates the phone records, equivalent to person.phone.execute()
+
+## Deleting
+
+person = Person.get(1).delete() # Will delete all the phone records
+
+
+### OneToOne
+
+## Creating
+
+# Child creation referencing Parent
+
+person = Person("Dave").create()
+
+# Equivalent
+
+employee = Employee(person.id, "worker").create()
+
+employee = Employee(person=person, role="worker").create()
+
+employee = Employee()
+employee.person_id = person.id
+employee.role = "worker"
+employee.create()
+
+employee = Employee()
+employee.person = person
+employee.role = "worker"
+employee.create()
+
+# Child creation from Parent
+
+# Equivalent (person_id becomes readonly on employee)
+
+person.employee.set("worker").create()
+
+person.employee.role = "worker"
+person.employee.create()
+
+# Parent and Child creation
+
+person = Person("Dave")
+person.employee.set("worker")
+person.create()  $ Creates both person and employee records
+
+## Retrieving
+
+person = Person.get(1)
+person.employee # Equivlanet to Employee.get(person_id=person.id)
+
+persons = Person.list()
+persons.employee # Equivalent to Employee.list(person_id__in=persons.id)
+
+# Equivalent
+
+persons = Person.list().employee.filter(role="worker")
+persons = Person.list(employee__role="worker")
+
+employees = Employee.list().person.filter(name="Dave")
+employees = Employee.list(person__name="Dave")
+
+## Updating
+
+# When updating a parent, this implies propagate creates, updates, and deletes to children
+
+person = Person.get(1)
+person.employee.set("worker")
+person.update() # Creates the employee record, equivalent to person.employee.execute()
+
+## Deleting
+
+person = Person.get(1).delete() # Will delete all the employee record
+
+
+
+### ManyToMany
+
+# This isn't modeling as much as storing the values in another table
+
+person = Person.get(1)
+
+person.skill    # Selects records from the person_skill table where person_id=person.id
+
+person.skill = [skill.id]
+person.update() # Insert ignroe into person_skill and the delete from where person_id=person.id and skill_id not in [skill.id]
+
+# Maybe we'll make PersonSkill a Model? Or maybe it'll be implied, a Model/Relation hybrid
 
 ```
 

@@ -769,6 +769,12 @@ class TestRelation(unittest.TestCase):
             test_ident = int
             name = str
 
+        class Equal(relations.model.Relation):
+            SAME = True
+
+        class Unequal(relations.model.Relation):
+            SAME = False
+
         testunit = TestUnit()
         test = Test()
         unit = Unit()
@@ -776,12 +782,12 @@ class TestRelation(unittest.TestCase):
         self.assertEqual(relations.model.Relation.relative_field(testunit, unit), "testunit_id")
         self.assertEqual(relations.model.Relation.relative_field(test, unit), "test_ident")
         self.assertEqual(relations.model.Relation.relative_field(test, testunit), "ident")
-        self.assertEqual(relations.model.Relation.relative_field(unit, testunit, same=True), "id")
+        self.assertEqual(Equal.relative_field(unit, testunit), "id")
 
-        self.assertRaisesRegex(ValueError, "cannot determine field for unit in testunit", relations.model.Relation.relative_field, unit, testunit)
+        self.assertRaisesRegex(ValueError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
 
 
-class TestOneToMany(unittest.TestCase):
+class TestOneTo(unittest.TestCase):
 
     maxDiff = None
 
@@ -798,6 +804,39 @@ class TestOneToMany(unittest.TestCase):
             name = str
             mom_ident = int
 
+        relation = relations.model.OneTo(Mom, Son)
+
+        self.assertEqual(relation.Parent, Mom)
+        self.assertEqual(relation.Child, Son)
+
+        self.assertEqual(relation.parent_child, "son")
+        self.assertEqual(relation.child_parent, "mom")
+        self.assertEqual(relation.parent_field, "id")
+        self.assertEqual(relation.child_field, "mom_id")
+
+        relation = relations.model.OneTo(Mom, Son, "sons", "mommy", "ident", "mom_ident")
+
+        self.assertEqual(relation.parent_child, "sons")
+        self.assertEqual(relation.child_parent, "mommy")
+        self.assertEqual(relation.parent_field, "ident")
+        self.assertEqual(relation.child_field, "mom_ident")
+
+
+class TestOneToMany(unittest.TestCase):
+
+    maxDiff = None
+
+    def test___init__(self):
+
+        class Mom(relations.model.Model):
+            id = int
+            name = str
+
+        class Son(relations.model.Model):
+            id = int
+            mom_id = int
+            name = str
+
         relation = relations.model.OneToMany(Mom, Son)
 
         self.assertEqual(relation.Parent, Mom)
@@ -808,13 +847,6 @@ class TestOneToMany(unittest.TestCase):
         self.assertEqual(relation.parent_field, "id")
         self.assertEqual(relation.child_field, "mom_id")
 
-        relation = relations.model.OneToMany(Mom, Son, "sons", "mommy", "ident", "mom_ident")
-
-        self.assertEqual(relation.parent_child, "sons")
-        self.assertEqual(relation.child_parent, "mommy")
-        self.assertEqual(relation.parent_field, "ident")
-        self.assertEqual(relation.child_field, "mom_ident")
-
 
 class TestOneToOne(unittest.TestCase):
 
@@ -822,29 +854,20 @@ class TestOneToOne(unittest.TestCase):
 
     def test___init__(self):
 
-        class Sis(relations.model.Model):
+        class Mom(relations.model.Model):
             id = int
             name = str
-            ident = int
 
-        class Bro(relations.model.Model):
+        class Son(relations.model.Model):
             id = int
             name = str
-            sis_ident = int
 
-        relation = relations.model.OneToOne(Sis, Bro)
+        relation = relations.model.OneToOne(Mom, Son)
 
-        self.assertEqual(relation.Sister, Sis)
-        self.assertEqual(relation.Brother, Bro)
+        self.assertEqual(relation.Parent, Mom)
+        self.assertEqual(relation.Child, Son)
 
-        self.assertEqual(relation.sister_brother, "bro")
-        self.assertEqual(relation.brother_sister, "sis")
-        self.assertEqual(relation.sister_field, "id")
-        self.assertEqual(relation.brother_field, "id")
-
-        relation = relations.model.OneToOne(Sis, Bro, "bros", "sistahs", "ident", "sis_ident")
-
-        self.assertEqual(relation.sister_brother, "bros")
-        self.assertEqual(relation.brother_sister, "sistahs")
-        self.assertEqual(relation.sister_field, "ident")
-        self.assertEqual(relation.brother_field, "sis_ident")
+        self.assertEqual(relation.parent_child, "son")
+        self.assertEqual(relation.child_parent, "mom")
+        self.assertEqual(relation.parent_field, "id")
+        self.assertEqual(relation.child_field, "id")

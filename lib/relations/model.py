@@ -836,6 +836,8 @@ class Relation:
     Base Relation class
     """
 
+    SAME = None
+
     @staticmethod
     def field_name(field, model):
         """
@@ -851,7 +853,7 @@ class Relation:
         return model._fields._order[field].name
 
     @classmethod
-    def relative_field(cls, model, relative, same=False):
+    def relative_field(cls, model, relative):
         """
         Returns the name of the relative field, based on the relative name
         """
@@ -874,14 +876,15 @@ class Relation:
 
         # Check to see if we're using the relative.relative_id, model.model_id, model.relative_id patten
 
-        if model_id in relative._fields and (same or model_id != cls.field_name(relative.ID, relative)):
+        if model_id in relative._fields and (cls.SAME or model_id != cls.field_name(relative.ID, relative)):
             return model_id
 
         raise ValueError(f"cannot determine field for {model.NAME} in {relative.NAME}")
 
-class OneToMany(Relation):
+
+class OneTo(Relation):
     """
-    Class that specific one to many relationships
+    Class that specific one to * relationships
     """
 
     Parent = None       # Model having one record
@@ -907,30 +910,18 @@ class OneToMany(Relation):
         self.Parent._child(self)
         self.Child._parent(self)
 
-class OneToOne(Relation):
+
+class OneToMany(OneTo):
     """
-    Class that specific one to one relationships, with the sister being the primary (if there is one)
+    Class that specific one to many relationships
     """
 
-    Sister = None         # Model having one record
-    sister_field = None   # The id field of the sister to connect to the brother
-    sister_brother = None # The name of the attribute on the sister model to reference brotherren
-    Brother = None        # Model having many reocrds
-    brother_field = None  # The if field in the brother to connect to the sister
-    brother_sister = None # The name of the attribute on the brother to reference the sister
+    SAME = False
 
-    def __init__(self, Sister, Brother, sister_brother=None, brother_sister=None, sister_field=None, brother_field=None):
 
-        self.Sister = Sister
-        self.Brother = Brother
+class OneToOne(OneTo):
+    """
+    Class that specific one to one relationships
+    """
 
-        sister = self.Sister()
-        brother = self.Brother()
-
-        self.sister_brother = sister_brother if sister_brother is not None else brother.NAME
-        self.brother_sister = brother_sister if brother_sister is not None else sister.NAME
-        self.sister_field = self.field_name(sister_field if sister_field is not None else sister.ID, sister)
-        self.brother_field = self.field_name(brother_field, brother) if brother_field is not None else self.relative_field(sister, brother, same=True)
-
-        self.Sister._brother(self)
-        self.Brother._sister(self)
+    SAME = True
