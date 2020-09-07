@@ -299,7 +299,7 @@ class Record:
         if name in (self._names or []):
             return self._names[name].value
 
-        raise AttributeError()
+        raise AttributeError(f"'{self}' object has no attribute '{name}'")
 
     def __len__(self):
         """
@@ -440,6 +440,7 @@ class Model:
     _brothers = None # Brother models
 
     _single = False  # Whether or not we'll only only single records (from OneToOne)
+    _related = None  # Which fields will be set automatically
 
     def __init__(self, *args, **kwargs):
         """
@@ -459,10 +460,10 @@ class Model:
 
         self._single = self._extract(kwargs, '_single', False)
 
-        _readonly = self._extract(kwargs, '_readonly', [])
+        self._related = self._extract(kwargs, '_related', [])
 
-        if not isinstance(_readonly, list):
-            _readonly = [_readonly]
+        if not isinstance(self._related, list):
+            self._related = [self._related]
 
         for name, attribute in self.__class__.__dict__.items():
 
@@ -476,10 +477,6 @@ class Model:
                 field.name = name
             else:
                 continue # pragma: no cover
-
-            # if we're forcing any to he readonly
-
-            field.readonly = field.name in _readonly
 
             self._fields.append(field)
 
@@ -552,7 +549,7 @@ class Model:
         if relation is not None:
             return relation
 
-        raise AttributeError()
+        raise AttributeError(f"'{self}' object has no attribute '{name}'")
 
     def __getattribute__(self, name):
         """
@@ -754,11 +751,11 @@ class Model:
 
                     if isinstance(relation, OneToOne):
                         self._children[name] = relation.Child.list(
-                            _single=True, _readonly=relation.child_field, **{relation.child_field: self[relation.parent_field]}
+                            _single=True, _related=relation.child_field, **{relation.child_field: self[relation.parent_field]}
                         )
                     elif isinstance(relation, OneToMany):
                         self._children[name] = relation.Child.list(
-                            _readonly=relation.child_field, **{relation.child_field: self[relation.parent_field]}
+                            _related=relation.child_field, **{relation.child_field: self[relation.parent_field]}
                         )
 
                 # If we have multiple
@@ -805,8 +802,7 @@ class Model:
 
         return default
 
-    @staticmethod
-    def _input(record, *args, **kwargs):
+    def _input(self, record, *args, **kwargs):
         """
         Fills in field values from args, kwargs
         """
@@ -814,7 +810,7 @@ class Model:
         field = 0
 
         for value in args:
-            while record._order[field].readonly:
+            while record._order[field].readonly or record._order[field].name in self._related:
                 field += 1
             record[field] = value
             field += 1

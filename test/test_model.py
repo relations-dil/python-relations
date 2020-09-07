@@ -381,9 +381,9 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model.id, 1)
         self.assertEqual(model.name, "unit")
 
-        models = UnitTest([], _single=True, _readonly='id')
+        models = UnitTest([], _single=True, _related='id')
         self.assertEqual(models._models, [])
-        self.assertTrue(models._fields._names["id"].readonly)
+        self.assertTrue(models._related, ["id"])
         self.assertTrue(models._single)
 
         models = UnitTest([["1", "unit"]])
@@ -638,8 +638,8 @@ class TestModel(unittest.TestCase):
         test.id = 4
         cases = test.case
         self.assertTrue(cases._single)
+        self.assertTrue(cases._related, ["test_id"])
         self.assertEqual(cases._search._action, "list")
-        self.assertTrue(cases._fields._names["test_id"].readonly)
         self.assertEqual(cases._search._names["test_id"].search["eq"], 4)
 
         unit = Unit()
@@ -647,15 +647,15 @@ class TestModel(unittest.TestCase):
         unit.id = 5
         tests = unit.test
         self.assertFalse(tests._single)
+        self.assertTrue(cases._related, ["unit_id"])
         self.assertEqual(tests._search._action, "list")
-        self.assertTrue(tests._fields._names["unit_id"].readonly)
         self.assertEqual(tests._search._names["unit_id"].search["eq"], 5)
 
         units = Unit([[6], [7], [8]])
 
         tests = units.test
+        self.assertTrue(cases._related, ["unit_id"])
         self.assertEqual(tests._search._action, "list")
-        self.assertFalse(tests._fields._names["unit_id"].readonly)
         self.assertEqual(tests._search._names["unit_id"].search["in"], [6, 7, 8])
 
         units = Unit().list()
