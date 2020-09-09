@@ -504,7 +504,7 @@ class Model:
         ):
             self = object.__new__(type(
                 f"{cls.__name__}{cls.SOURCE}",
-                (cls, relations.source(cls.SOURCE).MODEL),
+                (relations.source(cls.SOURCE).MODEL, cls),
                 {**relations.source(cls.SOURCE).MODEL.__dict__, **cls.__dict__}
             ))
             self.__init__(*args, **kwargs)
