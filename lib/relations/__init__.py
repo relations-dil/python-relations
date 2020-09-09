@@ -2,9 +2,11 @@
 Main relations module for storing sources
 """
 
-SOURCES = {}
+SOURCES = {}  # Sources reference to use
 
 class Source:
+
+    MODEL = None # Default model class to use when casting
 
     def __init__(self, name):
 

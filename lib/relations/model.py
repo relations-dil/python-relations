@@ -5,6 +5,8 @@ Base Model module
 import sys
 import copy
 
+import relations
+
 class Field:
     """
     Base field class
@@ -16,10 +18,14 @@ class Field:
     store = None      # Name to use when reading and writing
     value = None      # Value of the field
     search = None     # Values for searching
+    length = None     # Length of the value
     default = None    # Default value
-    changed = False   # Whether the values be set since read
+    not_null = None   # Whether to allow nulls (None)
     readonly = False  # Whether this field is readonly
     definition = None # Definition for storage creation
+
+    _kwargs    = None  # kwargs used to crate this field
+    _changed = False   # Whether the values be set since read
 
     # Operators supported and whether allwo multiple values
 
@@ -60,6 +66,7 @@ class Field:
         """
 
         self.kind = kind
+        self._kwargs = kwargs
 
         # Just set what as sent
 
@@ -91,7 +98,7 @@ class Field:
                 self.store = value
 
         if name == "value":
-            self.changed = True
+            self._changed = True
             value = self.set(value)
 
         object.__setattr__(self, name, value)
@@ -111,9 +118,16 @@ class Field:
         Returns the value to set
         """
 
-        if value is None or not self.strict:
+        if not self.strict:
 
             return value
+
+        elif value is None:
+
+            if not self.not_null:
+                return value
+
+            raise ValueError(f"{value} not allowed for {self.name}")
 
         elif isinstance(self.kind, list):
 
@@ -122,14 +136,6 @@ class Field:
                     return option
 
             raise ValueError(f"{value} not in {self.kind} for {self.name}")
-
-        elif isinstance(self.kind, dict):
-
-            for option, label in self.kind.items():
-                if label == value:
-                    return option
-
-            raise ValueError(f"{value} not in {list(self.kind.values())} for {self.name}")
 
         else:
 
@@ -152,30 +158,7 @@ class Field:
 
             raise ValueError(f"{value} not in {self.kind} for {self.name}")
 
-        if isinstance(self.kind, dict):
-
-            for option, label in self.kind.items():
-                if option == value:
-                    return label
-
-            raise ValueError(f"{value} not in {list(self.kind.keys())} for {self.name}")
-
         return value
-
-    def define(self):
-        """
-        Place holder for generating defintions
-        """
-
-        if self.definition:
-            return self.definition
-
-        raise NotImplementedError(f"need to implement 'define' on {self.__class__}")
-
-    def cast(self, value):
-        """
-        Get the proper value as it's supposed to be
-        """
 
     def filter(self, match, operator="eq"):
         """
@@ -228,7 +211,7 @@ class Field:
         """
 
         self.value = values.get(self.store)
-        self.changed = False
+        self._changed = False
 
     def write(self, values):
         """
@@ -237,7 +220,37 @@ class Field:
 
         if not self.readonly:
             values[self.store] = self.value
-            self.changed = False
+            self._changed = False
+
+    def define(self, *args, **kwargs):
+        """
+        Generates the definitions
+        """
+        raise NotImplementedError(f"need to implement 'define' on {self.__class__}")
+
+    def create(self, *args, **kwargs):
+        """
+        Executes the create(s), reloading verifying
+        """
+        raise NotImplementedError(f"need to implement 'create' on {self.__class__}")
+
+    def retrieve(self, *args, **kwargs):
+        """
+        Executes the retrieve, raising an exception if "get" and not gotten
+        """
+        raise NotImplementedError(f"need to implement 'retrieve' on {self.__class__}")
+
+    def update(self, *args, **kwargs):
+        """
+        Executes the update(s), reloading verifying
+        """
+        raise NotImplementedError(f"need to implement 'update' on {self.__class__}")
+
+    def delete(self, *args, **kwargs):
+        """
+        Executes the delete(s)
+        """
+        raise NotImplementedError(f"need to implement 'delete' on {self.__class__}")
 
 
 class Record:
@@ -414,33 +427,91 @@ class Record:
 
         return values
 
+    def define(self, *args, **kwargs):
+        """
+        Generates the definitions
+        """
+        for field in self._order:
+            field.define(*args, **kwargs)
+
+    def create(self, *args, **kwargs):
+        """
+        Generates the values for create
+        """
+        for field in self._order:
+            field.create(*args, **kwargs)
+
+    def retrieve(self, *args, **kwargs):
+        """
+        Generates the values for retrieve
+        """
+        for field in self._order:
+            field.retrieve(*args, **kwargs)
+
+    def update(self, *args, **kwargs):
+        """
+        Generates the values for update
+        """
+        for field in self._order:
+            field.update(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """
+        Generates the values for retrieve
+        """
+        for field in self._order:
+            field.delete(*args, **kwargs)
+
 
 class Model:
 
-    SOURCE = None    # Data source
+    SOURCE = None # Data source
 
-    ID = 0           # Ref of id field (assumes first field)
-    NAME = None      # Name of the model
-    FIELD = Field    # Default field class
-    RECORD = Record  # Default record clas
+    ID = 0          # Ref of id field (assumes first field)
+    NAME = None     # Name of the model
+    FIELD = Field   # Default field class
+    RECORD = Record # Default record clas
 
-    PARENTS = None    # Parent relationships
-    CHILDREN = None   # Child relationships
-    SISTERS = None    # Sister relationships
-    BROTHERS = None   # Brother relationships
+    PARENTS = None  # Parent relationships
+    CHILDREN = None # Child relationships
+    SISTERS = None  # Sister relationships
+    BROTHERS = None # Brother relationships
 
-    _fields = None   # Base record to create other records with
-    _record = None   # The current loaded single record (from get/create)
-    _models = None   # The current loaded multiple models (from list/create)
-    _search = None   # The current record to search with
+    _id = None     # Name of id field
+    _fields = None # Base record to create other records with
+    _record = None # The current loaded single record (from get/create)
+    _models = None # The current loaded multiple models (from list/create)
+    _search = None # The current record to search with
 
     _parents = None  # Parent models
     _children = None # Children models
     _sisters = None  # Sister models
     _brothers = None # Brother models
 
-    _single = False  # Whether or not we'll only only single records (from OneToOne)
-    _related = None  # Which fields will be set automatically
+    _single = False    # Whether or not we'll only only single records (from OneToOne)
+    _related = None    # Which fields will be set automatically
+    _definition = None # The table definition to use
+
+    def __new__(cls, *args, **kwargs):
+        """
+        Allow for source override
+        """
+
+        if (
+            cls.SOURCE is not None and
+            relations.source(cls.SOURCE).MODEL is not None and
+            relations.source(cls.SOURCE).MODEL != cls
+        ):
+            self = object.__new__(type(
+                f"{cls.__name__}{cls.SOURCE}",
+                (cls, relations.source(cls.SOURCE).MODEL),
+                {**relations.source(cls.SOURCE).MODEL.__dict__, **cls.__dict__}
+            ))
+            self.__init__(*args, **kwargs)
+        else:
+            self = object.__new__(cls)
+
+        return self
 
     def __init__(self, *args, **kwargs):
         """
@@ -472,13 +543,25 @@ class Model:
 
             if attribute in [int, float, str, dict , list]:
                 field = self.FIELD(attribute, name=name)
+            elif isinstance(attribute, tuple):
+                field = self.FIELD(name=name, *attribute)
+            elif isinstance(attribute, dict):
+                field = self.FIELD(name=name, **attribute)
             elif isinstance(attribute, self.FIELD):
                 field = attribute
+                field.name = name
+            elif isinstance(attribute, relations.model.Field):
+                field = self.FIELD(attribute.kind, **attribute._kwargs)
                 field.name = name
             else:
                 continue # pragma: no cover
 
             self._fields.append(field)
+
+        # Determine the _id field name
+
+        if self.ID is not None:
+            self._id = Relation.field_name(self.ID, self)
 
         _action = self._extract(kwargs, '_action', "create")
 
@@ -950,7 +1033,7 @@ class Model:
 
     def define(self):
         """
-        Executes the create(s)
+        Generates the definitions
         """
         raise NotImplementedError(f"need to implement 'define' on {self.__class__}")
 
@@ -982,7 +1065,6 @@ class Model:
         """
         Executes create(s), update(s), deletes(s)
         """
-
         self.create(verify)
         self.update(verify)
         self.delete()
