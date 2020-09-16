@@ -7,25 +7,31 @@ import copy
 
 import relations
 
+class FieldError(Exception):
+
+    def __init__(self, field, message):
+
+        self.field = field
+        self.message = message
+        super().__init__(self.message)
+
 class Field:
     """
     Base field class
     """
 
-    name = None       # Name used in models
-    kind = None       # Data class to cast values as or validate
+    name = None     # Name used in models
+    kind = None     # Data class to cast values as or validate
+    store = None    # Name to use when reading and writing
+    value = None    # Value of the field
+    changed = None  # Whether the values been changed since creation, retrieving
+    criteria = None # Values for searching
+
     strict = True     # Whether or not to cast on set
-    store = None      # Name to use when reading and writing
-    value = None      # Value of the field
-    search = None     # Values for searching
     length = None     # Length of the value
     default = None    # Default value
     not_null = None   # Whether to allow nulls (None)
     readonly = False  # Whether this field is readonly
-    definition = None # Definition for storage creation
-
-    _kwargs    = None  # kwargs used to crate this field
-    _changed = False   # Whether the values be set since read
 
     # Operators supported and whether allwo multiple values
 
@@ -42,7 +48,7 @@ class Field:
     RESERVED = [
         'define',
         'filter',
-        'match',
+        'satisfy',
         'prepare',
         'read',
         'write',
@@ -92,14 +98,14 @@ class Field:
                 error = "cannot start with '_'"
 
             if error:
-                raise ValueError(f"field name '{value}' {error} - use the store attribute for this name")
+                raise FieldError(self, f"field name '{value}' {error} - use the store attribute for this name")
 
             if self.store is None:
                 self.store = value
 
         if name == "value":
-            self._changed = True
             value = self.set(value)
+            self.changed = True
 
         object.__setattr__(self, name, value)
 
@@ -127,7 +133,7 @@ class Field:
             if not self.not_null:
                 return value
 
-            raise ValueError(f"{value} not allowed for {self.name}")
+            raise FieldError(self, f"{value} not allowed for {self.name}")
 
         elif isinstance(self.kind, list):
 
@@ -135,7 +141,7 @@ class Field:
                 if option == value:
                     return option
 
-            raise ValueError(f"{value} not in {self.kind} for {self.name}")
+            raise FieldError(self, f"{value} not in {self.kind} for {self.name}")
 
         else:
 
@@ -156,50 +162,50 @@ class Field:
                 if option == value:
                     return option
 
-            raise ValueError(f"{value} not in {self.kind} for {self.name}")
+            raise FieldError(self, f"{value} not in {self.kind} for {self.name}")
 
         return value
 
-    def filter(self, match, operator="eq"):
+    def filter(self, value, operator="eq"):
         """
-        Set a criterion for searching
+        Set a criterion in criteria
         """
 
         if operator not in self.OPERATORS:
-            raise ValueError(f"unknown operator '{operator}'")
+            raise FieldError(self, f"unknown operator '{operator}'")
 
-        if self.search is None:
-            self.search = {}
+        if self.criteria is None:
+            self.criteria = {}
 
         if self.OPERATORS[operator]:
 
-            self.search.setdefault(operator, [])
+            self.criteria.setdefault(operator, [])
 
-            if not isinstance(match, list):
-                match = [match]
+            if not isinstance(value, list):
+                value = [value]
 
-            self.search[operator].extend([self.set(item) for item in match])
+            self.criteria[operator].extend([self.set(item) for item in value])
 
         else:
 
-            self.search[operator] = self.set(match)
+            self.criteria[operator] = self.set(value)
 
-    def match(self, values):
+    def satisfy(self, values):
         """
-        Check if this value matches our search
+        Check if this value satisfies our criteria
         """
 
         value = self.set(values.get(self.store))
 
-        for operator, match in (self.search or {}).items():
+        for operator, satisfy in (self.criteria or {}).items():
             if (
-                (operator == "in" and value not in match) or
-                (operator in "ne" and value in match) or
-                (operator == "eq" and value != match) or
-                (operator == "gt" and value <= match) or
-                (operator == "ge" and value < match) or
-                (operator == "lt" and value >= match) or
-                (operator == "le" and value > match)
+                (operator == "in" and value not in satisfy) or
+                (operator in "ne" and value in satisfy) or
+                (operator == "eq" and value != satisfy) or
+                (operator == "gt" and value <= satisfy) or
+                (operator == "ge" and value < satisfy) or
+                (operator == "lt" and value >= satisfy) or
+                (operator == "le" and value > satisfy)
             ):
                 return False
 
@@ -211,7 +217,7 @@ class Field:
         """
 
         self.value = values.get(self.store)
-        self._changed = False
+        self.changed = False
 
     def write(self, values):
         """
@@ -220,47 +226,21 @@ class Field:
 
         if not self.readonly:
             values[self.store] = self.value
-            self._changed = False
+            self.changed = False
 
-    def define(self, *args, **kwargs):
-        """
-        Generates the definitions
-        """
-        raise NotImplementedError(f"need to implement 'define' on {self.__class__}")
 
-    def create(self, *args, **kwargs):
-        """
-        Executes the create(s), reloading verifying
-        """
-        raise NotImplementedError(f"need to implement 'create' on {self.__class__}")
+class RecordError(Exception):
 
-    def retrieve(self, *args, **kwargs):
-        """
-        Executes the retrieve, raising an exception if "get" and not gotten
-        """
-        raise NotImplementedError(f"need to implement 'retrieve' on {self.__class__}")
+    def __init__(self, record, message):
 
-    def update(self, *args, **kwargs):
-        """
-        Executes the update(s), reloading verifying
-        """
-        raise NotImplementedError(f"need to implement 'update' on {self.__class__}")
-
-    def delete(self, *args, **kwargs):
-        """
-        Executes the delete(s)
-        """
-        raise NotImplementedError(f"need to implement 'delete' on {self.__class__}")
-
+        self.record = record
+        self.message = message
+        super().__init__(self.message)
 
 class Record:
     """
     Stores record for a Model
     """
-
-    _order = None  # Access in order
-    _names = None  # Access by name
-    _action = None # What to do with this record
 
     ACTIONS = [
         'ignore',
@@ -270,6 +250,10 @@ class Record:
         'update',
         'delete'
     ]
+
+    _order  = None  # Access in order
+    _names  = None  # Access by name
+    _action = None # What to do with this record
 
     def __init__(self):
         """
@@ -354,7 +338,7 @@ class Record:
             self._names[key].value = value
             return
 
-        raise ValueError(f"unknown field '{key}'")
+        raise RecordError(self, f"unknown field '{key}'")
 
     def __getitem__(self, key):
         """
@@ -368,7 +352,7 @@ class Record:
         if key in self._names:
             return self._names[key].value
 
-        raise ValueError(f"unknown field '{key}'")
+        raise RecordError(self, f"unknown field '{key}'")
 
     def action(self, _action=None):
 
@@ -376,7 +360,7 @@ class Record:
             return self._action
 
         if _action not in self.ACTIONS:
-            raise ValueError(f"unknown action '{_action}'")
+            raise RecordError(self, f"unknown action '{_action}'")
 
         self._action = _action
 
@@ -396,15 +380,15 @@ class Record:
             if criterion in self._names:
                 return self._names[criterion].filter(value)
 
-        raise ValueError(f"unknown criterion '{criterion}'")
+        raise RecordError(self, f"unknown criterion '{criterion}'")
 
-    def match(self, values):
+    def satisfy(self, values):
         """
-        Sees if a record matches search in a dict
+        Sees if a record satisfies criteria in a dict
         """
 
         for field in self._order:
-            if not field.match(values):
+            if not field.satisfy(values):
                 return False
 
         return True
@@ -427,50 +411,20 @@ class Record:
 
         return values
 
-    def define(self, *args, **kwargs):
-        """
-        Generates the definitions
-        """
-        for field in self._order:
-            field.define(*args, **kwargs)
+class ModelError(Exception):
 
-    def create(self, *args, **kwargs):
-        """
-        Generates the values for create
-        """
-        for field in self._order:
-            field.create(*args, **kwargs)
+    def __init__(self, model, message):
 
-    def retrieve(self, *args, **kwargs):
-        """
-        Generates the values for retrieve
-        """
-        for field in self._order:
-            field.retrieve(*args, **kwargs)
-
-    def update(self, *args, **kwargs):
-        """
-        Generates the values for update
-        """
-        for field in self._order:
-            field.update(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        """
-        Generates the values for retrieve
-        """
-        for field in self._order:
-            field.delete(*args, **kwargs)
-
+        self.model = model
+        self.message = message
+        super().__init__(self.message)
 
 class Model:
 
-    SOURCE = None # Data source
+    SOURCE = None   # Data source
 
     ID = 0          # Ref of id field (assumes first field)
     NAME = None     # Name of the model
-    FIELD = Field   # Default field class
-    RECORD = Record # Default record clas
 
     PARENTS = None  # Parent relationships
     CHILDREN = None # Child relationships
@@ -481,7 +435,7 @@ class Model:
     _fields = None # Base record to create other records with
     _record = None # The current loaded single record (from get/create)
     _models = None # The current loaded multiple models (from list/create)
-    _search = None # The current record to search with
+    _criteria = None # The current record to search with
 
     _parents = None  # Parent models
     _children = None # Children models
@@ -490,28 +444,6 @@ class Model:
 
     _single = False    # Whether or not we'll only only single records (from OneToOne)
     _related = None    # Which fields will be set automatically
-    _definition = None # The table definition to use
-
-    def __new__(cls, *args, **kwargs):
-        """
-        Allow for source override
-        """
-
-        if (
-            cls.SOURCE is not None and
-            relations.source(cls.SOURCE).MODEL is not None and
-            relations.source(cls.SOURCE).MODEL != cls
-        ):
-            self = object.__new__(type(
-                f"{cls.__name__}{cls.SOURCE}",
-                (relations.source(cls.SOURCE).MODEL, cls),
-                {**relations.source(cls.SOURCE).MODEL.__dict__, **cls.__dict__}
-            ))
-            self.__init__(*args, **kwargs)
-        else:
-            self = object.__new__(cls)
-
-        return self
 
     def __init__(self, *args, **kwargs):
         """
@@ -525,16 +457,15 @@ class Model:
 
         # Create a fields list of actual field in the right format
 
-        self._fields = self.RECORD()
+        self._fields = Record()
 
         # Whether we're OneToOne Child
 
         self._single = self._extract(kwargs, '_single', False)
 
-        self._related = self._extract(kwargs, '_related', [])
+        # Parent value to set on adds
 
-        if not isinstance(self._related, list):
-            self._related = [self._related]
+        self._related = self._extract(kwargs, '_related', {})
 
         for name, attribute in self.__class__.__dict__.items():
 
@@ -542,19 +473,17 @@ class Model:
                 continue # pragma: no cover
 
             if attribute in [int, float, str, dict , list]:
-                field = self.FIELD(attribute, name=name)
+                field = Field(attribute)
             elif isinstance(attribute, tuple):
-                field = self.FIELD(name=name, *attribute)
+                field = Field(*attribute)
             elif isinstance(attribute, dict):
-                field = self.FIELD(name=name, **attribute)
-            elif isinstance(attribute, self.FIELD):
+                field = Field(**attribute)
+            elif isinstance(attribute, Field):
                 field = attribute
-                field.name = name
-            elif isinstance(attribute, relations.model.Field):
-                field = self.FIELD(attribute.kind, **attribute._kwargs)
-                field.name = name
             else:
                 continue # pragma: no cover
+
+            field.name = name
 
             self._fields.append(field)
 
@@ -563,7 +492,19 @@ class Model:
         if self.ID is not None:
             self._id = Relation.field_name(self.ID, self)
 
+        # Have the the source do whatever it needs to
+
+        if self.SOURCE is not None:
+            relations.source(self.SOURCE).model_init(self)
+
         _action = self._extract(kwargs, '_action', "create")
+
+        # Initialize relation models
+
+        self._parents = {}
+        self._children = {}
+        self._sisters = {}
+        self._brothers = {}
 
         if _action == "create":
 
@@ -579,25 +520,18 @@ class Model:
 
                 for single in args[0]:
 
-                    args = single if isinstance(single, list) else []
-                    kwargs = single if isinstance(single, dict) else {}
+                    sargs = single if isinstance(single, list) else []
+                    skwargs = single if isinstance(single, dict) else {}
+                    self._models.append(self.__class__(_action="create", _single=self._single, _related=self._related, *sargs, **skwargs))
 
-                    model = copy.copy(self)
-                    model._record = model._build("create", *args, **kwargs)
+        elif _action == "update":
 
-                    self._models.append(model)
+            self._record = self._build("update", _read=self._extract(kwargs, '_read'))
 
         elif _action in ["get", "list"]:
 
-            self._search = self._build(_action, _defaults=False)
+            self._criteria = self._build(_action, _defaults=False)
             self.filter(*args, **kwargs)
-
-        # Initialize relation models
-
-        self._parents = {}
-        self._children = {}
-        self._sisters = {}
-        self._brothers = {}
 
     def __setattr__(self, name, value):
         """
@@ -614,7 +548,7 @@ class Model:
                 for model in self._models:
                     model[name] = value
             else:
-                raise ValueError("no records")
+                raise ModelError(self, "no records")
 
             self._propagate(name, value)
 
@@ -649,7 +583,7 @@ class Model:
             if self._models is not None:
                 return [model[name] for model in self._models]
 
-            raise ValueError("no records")
+            raise ModelError(self, "no records")
 
         else:
 
@@ -668,7 +602,7 @@ class Model:
         if self._models is not None:
             return len(self._models)
 
-        raise ValueError("no records")
+        raise ModelError(self, "no records")
 
     def __iter__(self):
         """
@@ -683,7 +617,7 @@ class Model:
         if self._models is not None:
             return iter(self._models)
 
-        raise ValueError("no records")
+        raise ModelError(self, "no records")
 
     def __contains__(self, key):
         """
@@ -698,7 +632,7 @@ class Model:
         if self._models is not None:
             return key in self._fields
 
-        raise ValueError("no records")
+        raise ModelError(self, "no records")
 
     def __setitem__(self, key, value):
         """
@@ -714,13 +648,13 @@ class Model:
         elif self._models is not None:
 
             if isinstance(key, int):
-                raise ValueError("no override")
+                raise ModelError(self, "no override")
             else:
                 for model in self._models:
                     model[key] = value
 
         else:
-            raise ValueError("no records")
+            raise ModelError(self, "no records")
 
         self._propagate(key, value)
 
@@ -746,7 +680,7 @@ class Model:
 
             return [model[key] for model in self._models]
 
-        raise ValueError("no records")
+        raise ModelError(self, "no records")
 
     @classmethod
     def _parent(cls, relation):
@@ -802,7 +736,7 @@ class Model:
                     # If there's a value on the child field
 
                     if self[relation.child_field] is None:
-                        raise ValueError(f"can't access {name} if {relation.child_field} not set")
+                        raise ModelError(self, f"can't access {name} if {relation.child_field} not set")
                     else:
                         self._parents[name] = relation.Parent.get(**{relation.parent_field: self[relation.child_field]})
 
@@ -810,13 +744,13 @@ class Model:
 
                 elif self._models is not None:
 
-                    # Find all the matching parents
+                    # Find all the satisfying parents
 
                     self._parents[name] = relation.Parent.list(
                         **{f"{relation.parent_field}__in": [value for value in self[relation.child_field] if value is not None]}
                     )
 
-                elif self._search is not None:
+                elif self._criteria is not None:
 
                     self._parents[name] = relation.Parent.list()
 
@@ -832,30 +766,56 @@ class Model:
 
                 if self._record is not None:
 
-                    if isinstance(relation, OneToOne):
-                        self._children[name] = relation.Child.list(
-                            _single=True, _related=relation.child_field, **{relation.child_field: self[relation.parent_field]}
-                        )
-                    elif isinstance(relation, OneToMany):
-                        self._children[name] = relation.Child.list(
-                            _related=relation.child_field, **{relation.child_field: self[relation.parent_field]}
-                        )
+                    _related = {relation.child_field: self._record[relation.parent_field]}
+
+                    if self._record.action() == "create":
+
+                        if isinstance(relation, OneToOne):
+                            self._children[name] = relation.Child([], _single=True, _related=_related)
+                        elif isinstance(relation, OneToMany):
+                            self._children[name] = relation.Child([], _related=_related)
+
+                    else:
+
+                        if isinstance(relation, OneToOne):
+                            self._children[name] = relation.Child.list(_single=True, _related=_related)
+                        elif isinstance(relation, OneToMany):
+                            self._children[name] = relation.Child.list(_related=_related)
 
                 # If we have multiple
 
                 elif self._models is not None:
 
-                    self._children[name] = relation.Child.list(
-                        **{f"{relation.child_field}__in": [value for value in self[relation.parent_field] if value is not None]}
-                    )
+                    values = [value for value in self[relation.parent_field] if value is not None]
 
-                elif self._search is not None:
+                    if values:
+                        self._children[name] = relation.Child.list(**{f"{relation.child_field}__in": values})
+                    else:
+                        self._children[name] = relation.Child([])
+
+                elif self._criteria is not None:
 
                     self._children[name] = relation.Child.list()
 
             return self._children[name]
 
         return None
+
+    def _collate(self):
+        """
+        Executes relatives criteria and adds to our own
+        """
+
+        if self._criteria is None:
+            return
+
+        for child_parent, relation in (self.PARENTS or {}).items():
+            if self._parents.get(child_parent) is not None:
+                self._criteria.filter(f"{relation.child_field}__in", self._parents[child_parent][relation.parent_field])
+
+        for parent_child, relation in (self.CHILDREN or {}).items():
+            if self._children.get(parent_child) is not None:
+                self._criteria.filter(f"{relation.parent_field}__in", self._children[parent_child][relation.child_field])
 
     def _propagate(self, field, value):
         """
@@ -871,7 +831,10 @@ class Model:
         for parent_child, relation in (self.CHILDREN or {}).items():
             if field_name == relation.parent_field:
                 if self._record is not None and len(self._children.get(parent_child, [])):
-                    self._children[parent_child][relation.child_field] = value
+                    self._children[parent_child]._related[relation.child_field] = value
+                    for child in (self._children[parent_child]._models or []):
+                        child._related[relation.child_field] = value
+                        child[relation.child_field] = value
                 else:
                     self._children[parent_child] = None
 
@@ -922,32 +885,35 @@ class Model:
         if _read is not None:
             record.read(_read)
 
+        for field, value in self._related.items():
+            record[field] = value
+
         self._input(record, *args, **kwargs)
 
         return record
 
     def _ensure(self):
         """
-        Makes sure there's records if there's search
+        Makes sure there's records if there's criteria
         """
 
-        if self._search:
+        if self._criteria is not None:
 
             if self._record:
                 self.update(True)
             else:
                 self.retrieve()
 
-    def _records(self, action=None):
+    def each(self, action=None):
         """
         Converts to all records, whether _record or _models
         """
 
         if self._record and (action is None or self._record.action() == action):
-            return [self._record]
+            return [self]
 
         if self._models:
-            return [model._record for model in self._models if action is None or model._record.action() == action]
+            return [model for model in self._models if action is None or model._record.action() == action]
 
         return []
 
@@ -956,8 +922,11 @@ class Model:
         Sets to return multiple records
         """
 
+        for field, value in self._related.items():
+            self._criteria.filter(field, value)
+
         for index, value in enumerate(args):
-            self._search.filter(index, value)
+            self._criteria.filter(index, value)
 
         for name, value in kwargs.items():
 
@@ -968,7 +937,7 @@ class Model:
             if relation is not None:
                 relation.filter(**{pieces[1]: value})
             else:
-                self._search.filter(name, value)
+                self._criteria.filter(name, value)
 
         return self
 
@@ -993,13 +962,13 @@ class Model:
         Sets a single or multiple records or prepares to
         """
 
-        # If we have search, build values to set later
+        # If we have criteria, build values to set later
 
-        if self._search:
+        if self._criteria:
             self._record = self._record or self._build("update", _defaults=False)
 
-        for record in self._records():
-            self._input(record, *args, **kwargs)
+        for model in self.each():
+            self._input(model._record, *args, **kwargs)
 
         return self
 
@@ -1008,66 +977,63 @@ class Model:
         Adds records
         """
 
+        self._ensure()
+
         _count = self._extract(kwargs, '_count', 1)
 
-        if not self._single:
+        if self._record or (self._single and (_count != 1 or self._models)):
+            raise ModelError(self, "only one allowed")
 
-            if self._record:
-                self._models = [copy.copy(self)]
-                self._record = None
-
-            for record in range(_count):
-                model = copy.copy(self)
-                model._record = self._build("create", *args, **kwargs)
-                self._models.append(model)
-
-        else:
-
-            if _count != 1 or self._record is not None:
-                raise ValueError("only one record")
-
-            self._search = None
-            self._record = self._build("create", *args, **kwargs)
+        for record in range(_count):
+            self._models.append(self.__class__(_action="create", _related=self._related, *args, **kwargs))
 
         return self
 
-    def define(self):
+    def define(self, *args, **kwargs):
         """
-        Generates the definitions
+        define the model
         """
-        raise NotImplementedError(f"need to implement 'define' on {self.__class__}")
+        return relations.source(self.SOURCE).model_define(self, *args, **kwargs)
 
-    def create(self, verify=False):
+    def create(self, *args, **kwargs):
         """
-        Executes the create(s), reloading verifying
+        create the model
         """
-        raise NotImplementedError(f"need to implement 'create' on {self.__class__}")
+        return relations.source(self.SOURCE).model_create(self, *args, **kwargs)
 
-    def retrieve(self, verify=True):
+    def retrieve(self, verify=True, *args, **kwargs):
         """
-        Executes the retrieve, raising an exception if "get" and not gotten
+        retrieve the model
         """
-        raise NotImplementedError(f"need to implement 'retrieve' on {self.__class__}")
+        return relations.source(self.SOURCE).model_retrieve(self, verify, *args, **kwargs)
 
-    def update(self, verify=False):
+    def update(self, *args, **kwargs):
         """
-        Executes the update(s), reloading verifying
+        update the model
         """
-        raise NotImplementedError(f"need to implement 'update' on {self.__class__}")
+        return relations.source(self.SOURCE).model_update(self, *args, **kwargs)
 
-    def delete(self):
+    def delete(self, *args, **kwargs):
         """
-        Executes the delete(s)
+        delete the model
         """
-        raise NotImplementedError(f"need to implement 'delete' on {self.__class__}")
+        return relations.source(self.SOURCE).model_delete(self, *args, **kwargs)
 
-    def execute(self, verify=False):
+    def execute(self):
         """
         Executes create(s), update(s), deletes(s)
         """
-        self.create(verify)
-        self.update(verify)
-        self.delete()
+
+        if self.each("delete"):
+            self.delete()
+
+        if self.each("update"):
+            self.update()
+
+        if self.each("create"):
+            self.create()
+
+        return self
 
 
 class Relation:
@@ -1084,7 +1050,7 @@ class Relation:
         """
 
         if field not in model._fields:
-            raise ValueError(f"cannot find field {field} in {model.NAME}")
+            raise ModelError(model, f"cannot find field {field} in {model.NAME}")
 
         if isinstance(field, str):
             return field
@@ -1118,8 +1084,7 @@ class Relation:
         if model_id in relative._fields and (cls.SAME or model_id != cls.field_name(relative.ID, relative)):
             return model_id
 
-        raise ValueError(f"cannot determine field for {model.NAME} in {relative.NAME}")
-
+        raise ModelError(model, f"cannot determine field for {model.NAME} in {relative.NAME}")
 
 class OneTo(Relation):
     """
@@ -1149,14 +1114,12 @@ class OneTo(Relation):
         self.Parent._child(self)
         self.Child._parent(self)
 
-
 class OneToMany(OneTo):
     """
     Class that specific one to many relationships
     """
 
     SAME = False
-
 
 class OneToOne(OneTo):
     """

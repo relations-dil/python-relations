@@ -4,13 +4,33 @@ import unittest.mock
 import relations.model
 
 
-class TestField(unittest.TestCase):
+class TestFieldError(unittest.TestCase):
 
     maxDiff = None
 
     def test___init__(self):
 
-        # Extra
+        error = relations.model.FieldError("unittest", "oops")
+
+        self.assertEqual(error.field, "unittest")
+        self.assertEqual(error.message, "oops")
+
+class TestField(unittest.TestCase):
+
+    maxDiff = None
+
+    def setUp(self):
+
+        self.source = unittest.mock.MagicMock()
+        relations.SOURCES["TestField"] = self.source
+        self.field = relations.model.Field(int)
+        self.field._source = "TestField"
+
+    def tearDown(self):
+
+        del relations.SOURCES["TestField"]
+
+    def test___init__(self):
 
         field = relations.model.Field(int, unit="test")
         self.assertEqual(field.kind, int)
@@ -34,13 +54,13 @@ class TestField(unittest.TestCase):
         def rename(name):
             field.name = name
 
-        self.assertRaisesRegex(ValueError, "field name 'define' is reserved - use the store attribute for this name", rename, 'define')
-        self.assertRaisesRegex(ValueError, "field name 'def__ine' cannot contain '__' - use the store attribute for this name", rename, 'def__ine')
-        self.assertRaisesRegex(ValueError, "field name '_define' cannot start with '_' - use the store attribute for this name", rename, '_define')
+        self.assertRaisesRegex(relations.model.FieldError, "field name 'define' is reserved - use the store attribute for this name", rename, 'define')
+        self.assertRaisesRegex(relations.model.FieldError, "field name 'def__ine' cannot contain '__' - use the store attribute for this name", rename, 'def__ine')
+        self.assertRaisesRegex(relations.model.FieldError, "field name '_define' cannot start with '_' - use the store attribute for this name", rename, '_define')
 
         field.value = "1"
         self.assertEqual(field.value, 1)
-        self.assertTrue(field._changed)
+        self.assertTrue(field.changed)
 
         field.value = None
         self.assertIsNone(field.value)
@@ -51,7 +71,6 @@ class TestField(unittest.TestCase):
 
         field.value = "1"
         self.assertEqual(field.value, 1)
-        self.assertTrue(field._changed)
 
         field.value = None
         self.assertIsNone(field.value)
@@ -67,12 +86,12 @@ class TestField(unittest.TestCase):
         field = relations.model.Field([1], name="id", not_null=True)
         self.assertEqual(field.set(1.0), 1)
 
-        self.assertRaisesRegex(ValueError, "None not allowed for id", field.set, None)
+        self.assertRaisesRegex(relations.model.FieldError, "None not allowed for id", field.set, None)
 
         field = relations.model.Field([1], name="id")
         self.assertEqual(field.set(1.0), 1)
 
-        self.assertRaisesRegex(ValueError, "2 not in \[1\] for id", field.set, 2)
+        self.assertRaisesRegex(relations.model.FieldError, "2 not in \[1\] for id", field.set, 2)
 
     def test_get(self):
 
@@ -85,131 +104,118 @@ class TestField(unittest.TestCase):
         field = relations.model.Field([1], name="id")
         self.assertEqual(field.get(1.0), 1)
 
-        self.assertRaisesRegex(ValueError, "2 not in \[1\] for id", field.get, 2)
+        self.assertRaisesRegex(relations.model.FieldError, "2 not in \[1\] for id", field.get, 2)
 
     def test_filter(self):
 
         field = relations.model.Field(int)
 
         field.filter("1", "in")
-        self.assertEqual(field.search["in"], [1])
+        self.assertEqual(field.criteria["in"], [1])
         field.filter(2.0, "in")
-        self.assertEqual(field.search["in"], [1, 2])
+        self.assertEqual(field.criteria["in"], [1, 2])
 
         field.filter("1", "ne")
-        self.assertEqual(field.search["ne"], [1])
+        self.assertEqual(field.criteria["ne"], [1])
         field.filter(2.0, "ne")
-        self.assertEqual(field.search["ne"], [1, 2])
+        self.assertEqual(field.criteria["ne"], [1, 2])
 
         field.filter("1")
-        self.assertEqual(field.search["eq"], 1)
+        self.assertEqual(field.criteria["eq"], 1)
 
         field.filter("1", "gt")
-        self.assertEqual(field.search["gt"], 1)
+        self.assertEqual(field.criteria["gt"], 1)
 
         field.filter("1", "ge")
-        self.assertEqual(field.search["ge"], 1)
+        self.assertEqual(field.criteria["ge"], 1)
 
         field.filter("1", "lt")
-        self.assertEqual(field.search["lt"], 1)
+        self.assertEqual(field.criteria["lt"], 1)
 
         field.filter("1", "le")
-        self.assertEqual(field.search["le"], 1)
+        self.assertEqual(field.criteria["le"], 1)
 
-        self.assertRaisesRegex(ValueError, "unknown operator 'nope'", field.filter, 0, "nope")
+        self.assertRaisesRegex(relations.model.FieldError, "unknown operator 'nope'", field.filter, 0, "nope")
 
-    def test_match(self):
+    def test_satisfy(self):
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "in")
-        self.assertTrue(field.match({"_id": '1'}))
-        self.assertFalse(field.match({"_id": '2'}))
+        self.assertTrue(field.satisfy({"_id": '1'}))
+        self.assertFalse(field.satisfy({"_id": '2'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "ne")
-        self.assertTrue(field.match({"_id": '2'}))
-        self.assertFalse(field.match({"_id": '1'}))
+        self.assertTrue(field.satisfy({"_id": '2'}))
+        self.assertFalse(field.satisfy({"_id": '1'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1")
-        self.assertTrue(field.match({"_id": '1'}))
-        self.assertFalse(field.match({"_id": '2'}))
+        self.assertTrue(field.satisfy({"_id": '1'}))
+        self.assertFalse(field.satisfy({"_id": '2'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "gt")
-        self.assertTrue(field.match({"_id": '2'}))
-        self.assertFalse(field.match({"_id": '1'}))
+        self.assertTrue(field.satisfy({"_id": '2'}))
+        self.assertFalse(field.satisfy({"_id": '1'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "ge")
-        self.assertTrue(field.match({"_id": '1'}))
-        self.assertFalse(field.match({"_id": '0'}))
+        self.assertTrue(field.satisfy({"_id": '1'}))
+        self.assertFalse(field.satisfy({"_id": '0'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "lt")
-        self.assertTrue(field.match({"_id": '0'}))
-        self.assertFalse(field.match({"_id": '1'}))
+        self.assertTrue(field.satisfy({"_id": '0'}))
+        self.assertFalse(field.satisfy({"_id": '1'}))
 
         field = relations.model.Field(int, store="_id")
         field.filter("1", "le")
-        self.assertTrue(field.match({"_id": '1'}))
-        self.assertFalse(field.match({"_id": '2'}))
+        self.assertTrue(field.satisfy({"_id": '1'}))
+        self.assertFalse(field.satisfy({"_id": '2'}))
 
     def test_read(self):
 
         field = relations.model.Field(int, store="_id")
-        field._changed = True
         field.read({"_id": "1"})
         self.assertEqual(field.value, 1)
-        self.assertFalse(field._changed)
+        self.assertFalse(field.changed)
 
     def test_write(self):
 
         field = relations.model.Field(int, store="_id")
 
         field.value = 1
-        field._changed = True
         values = {}
         field.write(values)
         self.assertEqual(values, {'_id': 1})
-        self.assertFalse(field._changed)
+        self.assertFalse(field.changed)
 
+        field.value = 0
         field.readonly = True
         values = {}
         field.write(values)
         self.assertEqual(values, {})
+        self.assertTrue(field.changed)
 
-    def test_define(self):
+class TestRecordError(unittest.TestCase):
 
-        field = relations.model.Field(int)
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'define' on <class", field.define)
+    maxDiff = None
 
-    def test_create(self):
+    def test___init__(self):
 
-        field = relations.model.Field(int)
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'create' on <class", field.create)
+        error = relations.model.RecordError("unittest", "oops")
 
-    def test_retrieve(self):
-
-        field = relations.model.Field(int)
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'retrieve' on <class", field.retrieve)
-
-    def test_update(self):
-
-        field = relations.model.Field(int)
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'update' on <class", field.update)
-
-    def test_delete(self):
-
-        field = relations.model.Field(int)
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'delete' on <class", field.delete)
-
+        self.assertEqual(error.record, "unittest")
+        self.assertEqual(error.message, "oops")
 
 class TestRecord(unittest.TestCase):
 
     maxDiff = None
 
     def setUp(self):
+
+        self.source = unittest.mock.MagicMock()
 
         self.record = relations.model.Record()
 
@@ -292,7 +298,7 @@ class TestRecord(unittest.TestCase):
         def nope():
             self.record['nope'] = 1
 
-        self.assertRaisesRegex(ValueError, "unknown field 'nope'", nope)
+        self.assertRaisesRegex(relations.model.RecordError, "unknown field 'nope'", nope)
 
     def test___getitem__(self):
 
@@ -303,36 +309,36 @@ class TestRecord(unittest.TestCase):
         def nope():
             self.record['nope']
 
-        self.assertRaisesRegex(ValueError, "unknown field 'nope'", nope)
+        self.assertRaisesRegex(relations.model.RecordError, "unknown field 'nope'", nope)
 
     def test_action(self):
 
         self.record.action("ignore")
         self.assertEqual(self.record.action(), "ignore")
 
-        self.assertRaisesRegex(ValueError, "unknown action 'nope'", self.record.action, "nope")
+        self.assertRaisesRegex(relations.model.RecordError, "unknown action 'nope'", self.record.action, "nope")
 
     def test_filter(self):
 
         self.record.filter(0, "0")
-        self.assertEqual(self.id.search["eq"], 0)
+        self.assertEqual(self.id.criteria["eq"], 0)
 
         self.record.filter("id", "1")
-        self.assertEqual(self.id.search["eq"], 1)
+        self.assertEqual(self.id.criteria["eq"], 1)
 
         self.record.filter("id__ne", "2")
-        self.assertEqual(self.id.search["ne"], [2])
+        self.assertEqual(self.id.criteria["ne"], [2])
 
-        self.assertRaisesRegex(ValueError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
+        self.assertRaisesRegex(relations.model.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 
-    def test_match(self):
+    def test_satisfy(self):
 
         self.record.filter("id", "1")
         self.record.filter("name", "unit")
 
-        self.assertTrue(self.record.match({"_id": 1, "_name": "unit"}))
-        self.assertFalse(self.record.match({"_id": 2, "_name": "unit"}))
-        self.assertFalse(self.record.match({"_id": 1, "_name": "test"}))
+        self.assertTrue(self.record.satisfy({"_id": 1, "_name": "unit"}))
+        self.assertFalse(self.record.satisfy({"_id": 2, "_name": "unit"}))
+        self.assertFalse(self.record.satisfy({"_id": 1, "_name": "test"}))
 
     def test_read(self):
 
@@ -348,58 +354,22 @@ class TestRecord(unittest.TestCase):
 
         self.assertEqual(self.record.write({}), {"_id": 1, "_name": "unit"})
 
-    @unittest.mock.patch('relations.model.Field.define')
-    def test_define(self, mock_define):
 
-        self.record.define(1, name="unit")
+class TestModelError(unittest.TestCase):
 
-        mock_define.assert_has_calls([
-            unittest.mock.call(1, name="unit"),
-            unittest.mock.call(1, name="unit")
-        ])
+    maxDiff = None
 
-    @unittest.mock.patch('relations.model.Field.create')
-    def test_create(self, mock_create):
+    def test___init__(self):
 
-        self.record.create(1, name="unit")
+        error = relations.model.ModelError("unittest", "oops")
 
-        mock_create.assert_has_calls([
-            unittest.mock.call(1, name="unit"),
-            unittest.mock.call(1, name="unit")
-        ])
-
-    @unittest.mock.patch('relations.model.Field.retrieve')
-    def test_retrieve(self, mock_retrieve):
-
-        self.record.retrieve(1, name="unit")
-
-        mock_retrieve.assert_has_calls([
-            unittest.mock.call(1, name="unit"),
-            unittest.mock.call(1, name="unit")
-        ])
-
-    @unittest.mock.patch('relations.model.Field.update')
-    def test_update(self, mock_update):
-
-        self.record.update(1, name="unit")
-
-        mock_update.assert_has_calls([
-            unittest.mock.call(1, name="unit"),
-            unittest.mock.call(1, name="unit")
-        ])
-
-    @unittest.mock.patch('relations.model.Field.delete')
-    def test_delete(self, mock_delete):
-
-        self.record.delete(1, name="unit")
-
-        mock_delete.assert_has_calls([
-            unittest.mock.call(1, name="unit"),
-            unittest.mock.call(1, name="unit")
-        ])
-
+        self.assertEqual(error.model, "unittest")
+        self.assertEqual(error.message, "oops")
 
 class UnitTest(relations.model.Model):
+
+    SOURCE = "TestModel"
+
     id = (int,)
     name = relations.model.Field(str, default="unittest")
     nope = False
@@ -425,38 +395,14 @@ class TestModel(unittest.TestCase):
 
     maxDiff = None
 
-    @unittest.mock.patch("relations.SOURCES", {})
-    def test___new__(self):
+    def setUp(self):
 
-        class NewField(relations.model.Field):
-            pass
+        self.source = unittest.mock.MagicMock()
+        relations.SOURCES["TestModel"] = self.source
 
-        class NewModel(relations.model.Model):
-            FIELD = NewField
+    def tearDown(self):
 
-        class NewSource(relations.Source):
-            MODEL = NewModel
-
-        class SourceField(relations.model.Field):
-            pass
-
-        class SourceModel(relations.model.Model):
-
-            SOURCE = "unittest"
-
-            id = (int,)
-            name = SourceField(str, default="unittest")
-            nope = False
-
-        NewSource("unittest")
-        model = SourceModel()
-
-        self.assertTrue(isinstance(model, NewModel))
-        self.assertTrue(isinstance(model._fields._names["id"], NewField))
-        self.assertTrue(isinstance(model._fields._names["name"], NewField))
-        self.assertTrue(model._fields._names["id"].kind, int)
-        self.assertTrue(model._fields._names["name"].kind, str)
-        self.assertTrue(model._fields._names["name"].default, "unittest")
+        del relations.SOURCES["TestModel"]
 
     def test___init__(self):
 
@@ -474,12 +420,12 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model.id, 1)
         self.assertEqual(model.name, "unit")
 
-        models = UnitTest([], _single=True, _related='id')
+        models = UnitTest([], _single=True, _related={'id': 1})
         self.assertEqual(models._models, [])
-        self.assertTrue(models._related, ["id"])
+        self.assertTrue(models._related, {'id': 1})
         self.assertTrue(models._single)
 
-        models = UnitTest([["1", "unit"]])
+        models = UnitTest([["unit"]], _related={'id': 1})
         self.assertEqual(models._models[0]._record.id, 1)
         self.assertEqual(models.name, ["unit"])
 
@@ -487,11 +433,16 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models.id, [1])
         self.assertEqual(models.name, ["unit"])
 
+        model = UnitTest(_action="update", _read={"id": 1, "name": "unit"})
+        self.assertEqual(model._record._action, "update")
+        self.assertEqual(model.id, 1)
+        self.assertEqual(model.name, "unit")
+
         models = UnitTest(_action="list", id="1")
-        self.assertEqual(models._search._names["id"].search["eq"], 1)
+        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
 
         models = UnitTest(_action="get", name="unit")
-        self.assertEqual(models._search._names["name"].search["eq"], "unit")
+        self.assertEqual(models._criteria._names["name"].criteria["eq"], "unit")
 
     @unittest.mock.patch("relations.model.Model.retrieve")
     def test___setattr__(self,  mock_retrieve):
@@ -509,7 +460,7 @@ class TestModel(unittest.TestCase):
         def nope():
             models.id = 3
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     def test___getattr__(self):
@@ -534,7 +485,7 @@ class TestModel(unittest.TestCase):
         def nope():
             models.id
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     @unittest.mock.patch("relations.model.Model.retrieve")
@@ -551,7 +502,7 @@ class TestModel(unittest.TestCase):
         def nope():
             len(models)
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     @unittest.mock.patch("relations.model.Model.retrieve")
@@ -568,7 +519,7 @@ class TestModel(unittest.TestCase):
         def nope():
             [nope for nope in models]
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     @unittest.mock.patch("relations.model.Model.retrieve")
@@ -595,7 +546,7 @@ class TestModel(unittest.TestCase):
         def nope():
             0 in models
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     @unittest.mock.patch("relations.model.Model.retrieve")
@@ -618,14 +569,14 @@ class TestModel(unittest.TestCase):
         def nope():
             models[0] = 1
 
-        self.assertRaisesRegex(ValueError, "no override", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no override", nope)
 
         models = UnitTest(_action="list", id="1")
 
         def nope():
             models[0] = 1
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     @unittest.mock.patch("relations.model.Model.retrieve")
@@ -650,7 +601,7 @@ class TestModel(unittest.TestCase):
         def nope():
             models[0]
 
-        self.assertRaisesRegex(ValueError, "no records", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "no records", nope)
         mock_retrieve.assert_called_once_with()
 
     def test__parent(self):
@@ -705,57 +656,130 @@ class TestModel(unittest.TestCase):
 
         test = Test()
 
+        # parents
+
+        # can't determine parent
+
         def nope():
 
             test.unit
 
-        self.assertRaisesRegex(ValueError, "can't access unit if unit_id not set", nope)
+        self.assertRaisesRegex(relations.model.ModelError, "can't access unit if unit_id not set", nope)
+
+        # single parents
 
         test.unit_id = 1
         unit = test.unit
-        self.assertEqual(unit._search._action, "get")
-        self.assertEqual(unit._search._names["id"].search["eq"], 1)
+        self.assertEqual(unit._criteria._action, "get")
+        self.assertEqual(unit._criteria._names["id"].criteria["eq"], 1)
+
+        # multiple parents
 
         tests = Test([{"unit_id": 1}, {"unit_id": 2}, {"unit_id": 3}])
 
         unit = tests.unit
-        self.assertEqual(unit._search._action, "list")
-        self.assertEqual(unit._search._names["id"].search["in"], [1, 2, 3])
+        self.assertEqual(unit._criteria._action, "list")
+        self.assertEqual(unit._criteria._names["id"].criteria["in"], [1, 2, 3])
+
+        # searching for parents (so sad)
 
         tests = Test.list()
 
         unit = tests.unit
-        self.assertEqual(unit._search._action, "list")
-        self.assertIsNone(unit._search._names["id"].search)
+        self.assertEqual(unit._criteria._action, "list")
+        self.assertIsNone(unit._criteria._names["id"].criteria)
+
+        # children
+
+        # searching for children (even sadder)
+
+        cases = tests.case
+        self.assertEqual(cases._criteria._action, "list")
+
+        # creating children (much better) from single create
+
+        # one to one
+
+        test = Test()
 
         test.id = 4
         cases = test.case
         self.assertTrue(cases._single)
-        self.assertTrue(cases._related, ["test_id"])
-        self.assertEqual(cases._search._action, "list")
-        self.assertEqual(cases._search._names["test_id"].search["eq"], 4)
+        self.assertEqual(cases._related, {"test_id": 4})
+        self.assertEqual(cases._models, [])
+
+        # one to many
 
         unit = Unit()
 
         unit.id = 5
         tests = unit.test
         self.assertFalse(tests._single)
-        self.assertTrue(cases._related, ["unit_id"])
-        self.assertEqual(tests._search._action, "list")
-        self.assertEqual(tests._search._names["unit_id"].search["eq"], 5)
+        self.assertEqual(tests._related, {"unit_id": 5})
+        self.assertEqual(tests._models, [])
+
+        # creating children from single update
+
+        # one to one
+
+        test = Test()
+        test._record.action("update")
+
+        test.id = 4
+        cases = test.case
+        self.assertTrue(cases._single)
+        self.assertEqual(cases._related, {"test_id": 4})
+        self.assertEqual(cases._criteria._names["test_id"].criteria["eq"], 4)
+
+        # one to many
+
+        unit = Unit()
+        unit._record.action("update")
+
+        unit.id = 5
+        tests = unit.test
+        self.assertFalse(tests._single)
+        self.assertEqual(tests._related, {"unit_id": 5})
+        self.assertEqual(tests._criteria._names["unit_id"].criteria["eq"], 5)
+
+        # creating children from multiple create with id's
 
         units = Unit([[6], [7], [8]])
 
         tests = units.test
-        self.assertTrue(cases._related, ["unit_id"])
-        self.assertEqual(tests._search._action, "list")
-        self.assertEqual(tests._search._names["unit_id"].search["in"], [6, 7, 8])
+        self.assertEqual(tests._related, {})
+        self.assertEqual(tests._criteria._action, "list")
+        self.assertEqual(tests._criteria._names["unit_id"].criteria["in"], [6, 7, 8])
+
+        # creating children from multiple create without
+
+        units = Unit([[], [], []])
+
+        tests = units.test
+        self.assertEqual(tests._related, {})
+        self.assertEqual(tests._models, [])
+
+        # children from criteria
 
         units = Unit().list()
 
         tests = units.test
-        self.assertEqual(tests._search._action, "list")
-        self.assertIsNone(tests._search._names["unit_id"].search)
+        self.assertEqual(tests._criteria._action, "list")
+        self.assertIsNone(tests._criteria._names["unit_id"].criteria)
+
+    def test__collate(self):
+
+        Test()._collate()
+
+        test = Test.list()
+
+        test._parents['unit'] = Unit(1, "unit")
+        test._children['case'] = Case(3, 2, "case")
+
+        test._collate()
+
+        self.assertEqual(test._criteria._names["id"].criteria["in"], [2])
+        self.assertEqual(test._criteria._names["unit_id"].criteria["in"], [1])
 
     def test__propagate(self):
 
@@ -770,7 +794,9 @@ class TestModel(unittest.TestCase):
         test.case.add()
         self.assertIsNotNone(test._children['case'])
         test.id = 3
-        self.assertEqual(test._children['case']['test_id'], 3)
+        self.assertEqual(test._children['case']._related['test_id'], 3)
+        self.assertEqual(test._children['case']._models[0]._related['test_id'], 3)
+        self.assertEqual(test._children['case'][0].test_id, 3)
 
     def test__extract(self):
 
@@ -812,6 +838,11 @@ class TestModel(unittest.TestCase):
         self.assertEqual(record.id, 2)
         self.assertIsNone(record.name)
 
+        model._related = {"id": 3}
+        record = model._build("create", _defaults=False)
+        self.assertEqual(record.id, 3)
+        self.assertIsNone(record.name)
+
     @unittest.mock.patch("relations.model.Model.update")
     @unittest.mock.patch("relations.model.Model.retrieve")
     def test__ensure_(self,  mock_retrieve, mock_update):
@@ -825,48 +856,48 @@ class TestModel(unittest.TestCase):
         mock_update.assert_called_once_with(True)
         mock_retrieve.assert_called_once_with()
 
-    def test__records(self,):
+    def test_each(self,):
 
         model = UnitTest("1", "unit")
-        self.assertEqual(model._records()[0].id, 1)
-        self.assertEqual(model._records("create")[0].id, 1)
-        self.assertEqual(model._records("ignore"), [])
+        self.assertEqual(model.each()[0].id, 1)
+        self.assertEqual(model.each("create")[0].id, 1)
+        self.assertEqual(model.each("ignore"), [])
 
         models = UnitTest([{"id": "1", "name": "unit"}, {"id": "2", "name": "test"}])
 
-        self.assertEqual(models._records()[1].id, 2)
-        self.assertEqual(models._records("create")[1].id, 2)
-        self.assertEqual(models._records("ignore"), [])
+        self.assertEqual(models.each()[1].id, 2)
+        self.assertEqual(models.each("create")[1].id, 2)
+        self.assertEqual(models.each("ignore"), [])
 
         models = UnitTest(_action="list", id="1")
-        self.assertEqual(models._records(), [])
+        self.assertEqual(models.each(), [])
 
     def test_filter(self):
 
         models = UnitTest(_action="list").filter(1).filter(name__ne="unittest")
 
-        self.assertEqual(models._search._action, "list")
-        self.assertEqual(models._search._names["id"].search["eq"], 1)
-        self.assertEqual(models._search._names["name"].search["ne"], ["unittest"])
+        self.assertEqual(models._criteria._action, "list")
+        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
+        self.assertEqual(models._criteria._names["name"].criteria["ne"], ["unittest"])
 
         unit = Unit.list().filter(test__id__in=[1])
 
-        self.assertEqual(unit._children['test']._search._names['id'].search['in'], [1])
+        self.assertEqual(unit._children['test']._criteria._names['id'].criteria['in'], [1])
 
     def test_list(self):
 
         models = UnitTest.list(1, name__ne="unittest")
 
-        self.assertEqual(models._search._action, "list")
-        self.assertEqual(models._search._names["id"].search["eq"], 1)
-        self.assertEqual(models._search._names["name"].search["ne"], ["unittest"])
+        self.assertEqual(models._criteria._action, "list")
+        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
+        self.assertEqual(models._criteria._names["name"].criteria["ne"], ["unittest"])
 
     def test_get(self):
 
         models = UnitTest.get(1)
 
-        self.assertEqual(models._search._action, "get")
-        self.assertEqual(models._search._names["id"].search["eq"], 1)
+        self.assertEqual(models._criteria._action, "get")
+        self.assertEqual(models._criteria._names["id"].criteria["eq"], 1)
 
     def test_set(self):
 
@@ -891,54 +922,62 @@ class TestModel(unittest.TestCase):
         model = UnitTest(1, name="unit")
         self.assertEqual(model.name, "unit")
 
-        models = model.add(2, name="test")
-        self.assertEqual(models.id, [1, 2])
-        self.assertEqual(models.name, ["unit", "test"])
+        self.assertRaisesRegex(relations.model.ModelError, "only one allowed", model.add)
 
+        models = UnitTest([{"id": 1, "name": "unit"}])
         models = models.add(_count=2, name="more")
-        self.assertEqual(models.name, ["unit", "test", "more", "more"])
+        self.assertEqual(models.name, ["unit", "more", "more"])
 
         test = Test()
 
-        self.assertRaisesRegex(ValueError, "only one record", test.case.add, _count=2)
+        self.assertRaisesRegex(relations.model.ModelError, "only one allowed", test.case.add, _count=2)
 
         test.case.add(3, "sure")
-        self.assertEqual(test.case._record.id, 3)
-        self.assertEqual(test.case.name, "sure")
+        self.assertEqual(test.case[0].id, 3)
+        self.assertEqual(test.case[0].name, "sure")
 
-        self.assertRaisesRegex(ValueError, "only one record", test.case.add)
+        self.assertRaisesRegex(relations.model.ModelError, "only one allowed", test.case.add)
 
     def test_define(self):
 
         model = UnitTest()
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'define' on <class", model.define)
+        model.define()
+        self.source.model_define.assert_called_with(model)
 
     def test_create(self):
 
         model = UnitTest()
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'create' on <class", model.create)
+        model.create()
+        self.source.model_create.assert_called_with(model)
 
     def test_retrieve(self):
 
         model = UnitTest()
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'retrieve' on <class", model.retrieve)
+        model.retrieve()
+        self.source.model_retrieve.assert_called_with(model, True)
 
     def test_update(self):
 
         model = UnitTest()
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'update' on <class", model.update)
+        model.update()
+        self.source.model_update.assert_called_with(model)
 
     def test_delete(self):
 
         model = UnitTest()
-        self.assertRaisesRegex(NotImplementedError, "need to implement 'delete' on <class", model.delete)
+        model.delete()
+        self.source.model_delete.assert_called_with(model)
 
     @unittest.mock.patch("relations.model.Model.create")
     @unittest.mock.patch("relations.model.Model.update")
     @unittest.mock.patch("relations.model.Model.delete")
     def test_execute(self,  mock_delete, mock_update, mock_create):
 
-        model = UnitTest()
+        model = UnitTest([]).add(_count=3)
+
+        model._models[1]._record.action("update")
+        model._models[2]._record.action("delete")
+
         model.execute()
 
         mock_create.assert_called_once_with(False)
@@ -954,6 +993,15 @@ class TestRelation(unittest.TestCase):
 
     maxDiff = None
 
+    def setUp(self):
+
+        self.source = unittest.mock.MagicMock()
+        relations.SOURCES["TestModel"] = self.source
+
+    def tearDown(self):
+
+        del relations.SOURCES["TestModel"]
+
     def test_field_name(self):
 
         unittest = UnitTest()
@@ -961,7 +1009,7 @@ class TestRelation(unittest.TestCase):
         self.assertEqual(relations.model.Relation.field_name("id", unittest), "id")
         self.assertEqual(relations.model.Relation.field_name(1, unittest), "name")
 
-        self.assertRaisesRegex(ValueError, "cannot find field nope in unittest", relations.model.Relation.field_name, "nope", unittest)
+        self.assertRaisesRegex(relations.model.ModelError, "cannot find field nope in unittest", relations.model.Relation.field_name, "nope", unittest)
 
     def test_relative_field(self):
 
@@ -996,8 +1044,7 @@ class TestRelation(unittest.TestCase):
         self.assertEqual(relations.model.Relation.relative_field(test, testunit), "ident")
         self.assertEqual(Equal.relative_field(unit, testunit), "id")
 
-        self.assertRaisesRegex(ValueError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
-
+        self.assertRaisesRegex(relations.model.ModelError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
 
 class TestOneTo(unittest.TestCase):
 
@@ -1033,7 +1080,6 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(relation.parent_field, "ident")
         self.assertEqual(relation.child_field, "mom_ident")
 
-
 class TestOneToMany(unittest.TestCase):
 
     maxDiff = None
@@ -1058,7 +1104,6 @@ class TestOneToMany(unittest.TestCase):
         self.assertEqual(relation.child_parent, "mom")
         self.assertEqual(relation.parent_field, "id")
         self.assertEqual(relation.child_field, "mom_id")
-
 
 class TestOneToOne(unittest.TestCase):
 
