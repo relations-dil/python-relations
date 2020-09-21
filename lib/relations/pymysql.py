@@ -2,37 +2,18 @@
 Module for intersting with PyMySQL
 """
 
+import copy
+
 import pymysql
 import pymysql.cursors
 
 import relations
 import relations.query
-import relations.model
 
 class Source(relations.Source):
     """
     PyMySQL Source
     """
-
-    connection = None
-    database = None
-
-    def __init__(self, name, host, database, cursorclass=pymysql.cursors.DictCursor, **kwargs):
-
-        super().__init__(name)
-
-        self.database = database
-        self.connection = pymysql.connect(
-            host=host, cursorclass=cursorclass, **{name: arg for name, arg in kwargs if name != "database"}
-        )
-
-
-class Field(relations.model.Field):
-    """
-    PyMySQL Field class
-    """
-
-    auto_increment = False
 
     RETRIEVE = {
         'eq': '=',
@@ -42,263 +23,330 @@ class Field(relations.model.Field):
         'le': '<='
     }
 
-    def __init__(self, name, cast, *args, **kwargs):
-        """
-        Set the name and what to cast it as and everything else be free form
-        """
+    database = None   # Database to use
+    connection = None # Connection
 
-        super().__init(name, case, *args, **kwargs)
+    def __init__(self, name, database, host=None, connection=None, cursorclass=pymysql.cursors.DictCursor, **kwargs):
 
-        if self.auto_increment:
-            self.readonly = kwargs.get("readonly", True)
+        self.database = database
 
-    def create(self, values):
+        if connection is not None:
+            self.connection = connection
+        else:
+            self.connection = pymysql.connect(
+                host=host, cursorclass=cursorclass, **{name: arg for name, arg in kwargs.items() if name not in ["name", "database", "connection"]}
+            )
+
+    def table(self, model):
         """
-        Preps values to dict (if not readonly)
-        """
-
-        if not self.readonly:
-            values[self.store] = f"s({field.strore})%"
-
-    def retrieve(self, query, values):
-        """
-        Adds where caluse to query
+        Get the full table name
         """
 
-        for operator, value in (self._criteria or {}).items():
-            if operator == "in":
-                query.add(wheres=f"{self.store} IN ({','.join('%s' * len(value))}")
-                values.extends(value)
-            elif operator == "ne":
-                query.add(wheres=f"{self.store} NOT IN ({','.join('%s' * len(value))}")
-                values.extends(value)
-            else:
-                query.add(wheres=f"{self.store}{self.RETRIEVE[operator]}%s")
-                values.append(value)
+        table = []
 
-    def update(self, clause, values):
+        if model.DATABASE is not None:
+            table.append(f"`{model.DATABASE}`")
+        elif self.database is not None:
+            table.append(f"`{self.database}`")
+
+        table.append(f"`{model.TABLE}`")
+
+        return ".".join(table)
+
+    def field_init(self, field):
         """
-        Preps values to dict (if not readonly)
-        """
-
-        if not self.readonly:
-            clause.append(f"{self.store}=%s")
-            values.append(self.value)
-
-class Record(relations.model.Record):
-    """
-    Stores record for a PyMySQL Model
-    """
-
-    def create(self, values):
-        """
-        Writes values to dict (if not readonly)
+        Make sure there's auto_increment
         """
 
-        for field in self._order:
-            field.create(values)
+        self.ensure_attribute(field, "auto_increment")
+        self.ensure_attribute(field, "definition")
 
-        return values
-
-    def retrieve(self, query, values):
+    def model_init(self, model):
         """
-        Writes values to dict (if not readonly)
+        Init the model
         """
 
-        for field in self._order:
-            field.retrieve(query, values)
+        self.record_init(model._fields)
 
-    def update(self, clause, values):
+        self.ensure_attribute(model, "DATABASE")
+        self.ensure_attribute(model, "TABLE")
+        self.ensure_attribute(model, "QUERY")
+        self.ensure_attribute(model, "DEFINITION")
+
+        if model.TABLE is None:
+            model.TABLE = model.NAME
+
+        if model.QUERY is None:
+            model.QUERY = relations.query.Query(selects='*', froms=self.table(model))
+
+        if model._id is not None and model._fields._names[model._id].auto_increment is None:
+            model._fields._names[model._id].auto_increment = True
+            model._fields._names[model._id].readonly = True
+
+    def field_define(self, field, definitions):
         """
-        Writes values to dict (if not readonly)
-        """
-
-        for field in self._order:
-            field.update(query, values)
-
-
-class Model(relations.model.Model):
-    """
-    Model for handling Redis interactions
-    """
-
-    FIELD = Field
-    RECORD = Record
-    TABLE = None
-    QUERY = None
-
-    def __init__(self, name, cast, *args, **kwargs):
-        """
-        Set the name and what to cast it as and everything else be free form
+        Add what this field is the definition
         """
 
-        super().__init(*args, **kwargs)
+        if field.definition is not None:
+            definitions.append(field.definition)
+            return
 
-        if self.TABLE is None:
-            self.TABLE = self.__class__.__name__
+        definition = [f"`{field.store}`"]
 
-        if self.QUERY is None:
-            self.QUERY = relation.query.Query(selects='*', froms=self.TABLE)
+        default = None
 
-    def create(self):
+        if field.kind == int:
+
+            definition.append("INTEGER")
+
+            if field.default is not None:
+                default = f"DEFAULT {field.default}"
+
+        elif field.kind == str:
+
+            length = field.length if field.length is not None else 255
+
+            definition.append(f"VARCHAR({length})")
+
+            if field.default is not None:
+                default = f"DEFAULT '{field.default}'"
+
+        if field.not_null:
+            definition.append("NOT NULL")
+
+        if field.auto_increment:
+            definition.append("AUTO_INCREMENT")
+
+        if default:
+            definition.append(default)
+
+        definitions.append(" ".join(definition))
+
+    def model_define(self, cls):
+
+        model = cls._thyself()
+
+        if model.DEFINITION is not None:
+            return model.DEFINITION
+
+        definitions = []
+
+        self.record_define(model._fields, definitions)
+
+        if model._id is not None:
+            definitions.append(f"PRIMARY KEY (`{model._id}`)")
+
+        sep = ',\n  '
+        return f"CREATE TABLE IF NOT EXISTS {self.table(model)} (\n  {sep.join(definitions)}\n)"
+
+    def field_create(self, field, fields, clause):
+        """
+        Adds values to clause if not readonly
+        """
+
+        if not field.readonly:
+            fields.append(f"`{field.store}`")
+            clause.append(f"%({field.store})s")
+            field.changed = False
+
+    def model_create(self, model):
         """
         Executes the create
         """
 
-        cursor = relations[self.SOURCE].connection.cursor()
+        cursor = self.connection.cursor()
 
         # Create the insert query
 
-        query = f"INSERT INTO {self.TABLE} {self._fields.prepare({})}""
+        fields = []
+        clause = []
 
-        if self.ID is not None and self._fields[self.ID].auto_increment:
+        self.record_create(model._fields, fields, clause)
 
-            for record in self._all("insert"):
-                cursor.execute(query, record.write({}))
-                record[self.ID].value = cursor.lastrowid
+        query = f"INSERT INTO {self.table(model)} ({','.join(fields)}) VALUES({','.join(clause)})"
 
+        if model._id is not None and model._fields._names[model._id].auto_increment:
+            for creating in model._each("create"):
+                cursor.execute(query, creating._record.write({}))
+                creating[model._id] = cursor.lastrowid
         else:
-            cursor.executemany(query, [record.write({}) for record in self._all("insert")])
+            cursor.executemany(query, [model._record.write({}) for model in model._each("create")])
 
         cursor.close()
 
-        return self
+        for creating in model._each("create"):
+            for parent_child, relation in creating.CHILDREN.items():
+                if creating._children.get(parent_child):
+                    creating._children[parent_child].create()
+            creating._action = "update"
+            creating._record._action = "update"
 
-    def retrieve(self, verify=True):
+        model._action = "update"
+
+        return model
+
+    def field_retrieve(self, field, query, values):
+        """
+        Adds where caluse to query
+        """
+
+        for operator, value in (field.criteria or {}).items():
+            if operator == "in":
+                query.add(wheres=f"`{field.store}` IN ({','.join(['%s' for each in value])})")
+                values.extend(value)
+            elif operator == "ne":
+                query.add(wheres=f"`{field.store}` NOT IN ({','.join(['%s' for each in value])})")
+                values.extend(value)
+            else:
+                query.add(wheres=f"`{field.store}`{self.RETRIEVE[operator]}%s")
+                values.append(value)
+
+    def model_retrieve(self, model, verify=True):
         """
         Executes the retrieve
         """
 
-        if self._criteria is None:
-            return
+        model._collate()
 
-        cursor = relations[self.SOURCE].connection.cursor()
+        cursor = self.connection.cursor()
 
-        query = copy.deepcopy(self.QUERY)
+        query = copy.deepcopy(model.QUERY)
         values = []
 
-        self._criteria.retrieve(query, values)
+        self.record_retrieve(model._record, query, values)
 
-        cursor.execute(query, values)
+        cursor.execute(query.get(), values)
 
-        if self._criteria.action() == "get":
+        if model._mode == "one" and cursor.rowcount > 1:
+            raise relations.model.ModelError(model, "more than one retrieved")
 
-            if cursor.rowcount > 1:
-                raise Exception("more than one retrieved")
+        if model._mode == "one" and model._role != "child":
 
             if cursor.rowcount < 1:
 
                 if verify:
-                    raise Exception("none retrieved")
+                    raise relations.model.ModelError(model, "none retrieved")
                 else:
                     return None
 
-            self._record = self._build("update", _read=cursor.fetchone())
+            model._record = model._build("update", _read=cursor.fetchone())
 
-        elif self._criteria.action() == "list":
+        else:
 
-            self._records = []
+            model._models = []
 
-            while len(self._records) < cursor.rowcount:
-                self._records.append(self._build("update", _read=cursor.fetchone()))
+            while len(model._models) < cursor.rowcount:
+                model._models.append(model.__class__(_read=cursor.fetchone()))
 
-        self._criteria = None
+            model._record = None
 
-        return self
+        model._action = "update"
 
-    def update(self, verify=False):
+        cursor.close()
+
+        return model
+
+    def field_update(self, field, clause, values, changed=None):
+        """
+        Preps values to dict (if not readonly)
+        """
+
+        if not field.readonly and (changed is None or field.changed==changed):
+            clause.append(f"`{field.store}`=%s")
+            values.append(field.value)
+            field.changed = False
+
+    def model_update(self, model):
         """
         Executes the update
         """
-;
-        if not self._all("update") and (self._criteria is None or self._values is None):
-            raise Exception("nothing to update to")
 
-        if self._all("update") and self.ID is None:
-            raise Exception("nothing to update from")
-
-        cursor = relations[self.SOURCE].connection.cursor()
+        cursor = self.connection.cursor()
 
         updated = 0
 
-        # IF we have criteria, then we're going to run a query and select nothing
+        # If the overall model is retrieving and the record has values set
 
-        if self._criteria:
+        if model._action == "retrieve" and model._record._action == "update":
 
             # Build the SET clause first
 
             clause = []
             values = []
 
-            if name in self._values:
-                self._record[name].update(clause, values)
-
-            self._values = None
+            self.record_update(model._record, clause, values, changed=True)
 
             # Build the WHERE clause next
 
-            where = relation.query.Query()
-            self._criteria.retrieve(where, values)
+            where = relations.query.Query()
+            self.record_retrieve(model._record, where, values)
 
-            self._criteria = None
-
-            query = f"UPDATE {self.TABLE} SET {relations.assign_clause(clause)} {where.get()}"
+            query = f"UPDATE {self.table(model)} SET {relations.sql.assign_clause(clause)} {where.get()}"
 
             cursor.execute(query, values)
 
             updated = cursor.rowcount
 
-        elif self.ID:
+        elif model._id:
 
-            for record in self._all("update"):
+            store = model._fields._names[model._id].store
+
+            for updating in model._each("update"):
 
                 clause = []
                 values = []
 
-                record.update(clause, values)
+                self.record_update(updating._record, clause, values)
 
-                where = relation.query.Query()
-                record[self.ID].retrieve(where, values)
+                values.append(updating[model._id])
 
-                query = f"UPDATE {self.TABLE} SET {relations.assign_clause(clause)} {where.get()}"
+                query = f"UPDATE {self.table(model)} SET {relations.sql.assign_clause(clause)} WHERE `{store}`=%s"
 
                 cursor.execute(query, values)
 
+                for parent_child, relation in updating.CHILDREN.items():
+                    if updating._children.get(parent_child):
+                        updating._children[parent_child].create().update()
+
                 updated += cursor.rowcount
+
+        else:
+
+            raise relations.model.ModelError(model, "nothing to update from")
 
         return updated
 
-    def delete(self):
+    def model_delete(self, model):
         """
         Executes the delete
         """
 
-        if not self._all("delete") and self._criteria is None:
-            raise Exception("nothing to delete to")
-
-        if self._all("delete") and self.ID is None:
-            raise Exception("nothing to delete from")
-
-        cursor = relations[self.SOURCE].connection.cursor()
+        cursor = self.connection.cursor()
 
         deleted = 0
 
-        if self._criteria:
+        if model._action == "retrieve":
 
-            where = relation.query.Query()
+            where = relations.query.Query()
             values = []
-            self._criteria.retrieve(where, values)
+            self.record_retrieve(model._record, where, values)
 
-            self._criteria = None
+            query = f"DELETE FROM {self.table(model)} {where.get()}"
 
-            query = f"DELETE FROM {self.TABLE} {where.get()}"
+        elif model._id:
 
-        elif self.ID:
+            store = model._fields._names[model._id].store
+            values = []
 
-            store = self._fields._names[self.ID].store
-            values = self[self.ID]
-            query = f"DELETE FROM {self.TABLE} WHERE {store} IN ({','.join(['%s'] * len(values))})"
+            for deleting in model._each():
+                values.append(deleting[model._id])
 
+            query = f"DELETE FROM {self.table(model)} WHERE `{store}` IN ({','.join(['%s'] * len(values))})"
+
+        else:
+
+            raise relations.model.ModelError(model, "nothing to delete from")
 
         cursor.execute(query, values)
 

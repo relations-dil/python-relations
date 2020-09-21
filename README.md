@@ -3,357 +3,129 @@ DB/API Modeling
 
 # Models
 
-## MySQL
 
 The defintion for DB model has two purposes. First to generate code to create and alter tables. Second to specify how to read and write to the databse.
 
 ```python
 
-# Simple as
+class SourceModel(relations.model.Model):
+    SOURCE = "TestSource"
 
-class Person(relations.MySQLModel):
-    id = relations.MySQLField(int,autoincrement=True)
-    name = str
-    data = dict
-
-# Same as
-
-class Person(relations.MySQLModel):
-
-    table = "person"
-
-    query = relations.Query(
-        select={
-            "id": "id"
-            "label": "name"
-        },
-        from=table,
-        order_by="name"
-    )
-
-    member = relations.Member(table=table)
-
-    id = relations.MySQLField(int, autoincrement=True)
-    name = str
-    data = dict
-
-    special = relations.Field(virtual=True) // Either works
-    special = relations.Field(virtual=data) // Either works
-
-# Usage
-
-# Creating
-
-person = Person()
-person.name = "Dave"
-person.create()
-
-persons = Person(_count=3)
-persons[0].name = "Tom"
-persons[1].name = "Dick"
-persons[2].name = "Harry"
-person.create()
-
-# Or
-
-person = Person(name="Dave").create()
-persons = Person([{"name": "Tom"}, {"name": "Dick"}, {"name": "Harry"}]).create()
-
-person = Person(name="Dave").create(True) # Will reload record after creation
-
-# Retrieve (won't queruy until accesses)
-
-person = Person.get().filter(id=1)
-persons = Person.list().filter(name__in=["Tom", "Dick", "Harry"])
-
-# Or (won't queruy until accesses)
-
-person = Person.get(id=1)
-persons = Person.list(name__in=["Tom", "Dick", "Harry"])
-
-# Will query immediately
-
-person = Person.get(id=1).retrieve() # Will throw and exception if greater or fewer than one found
-persons = Person.list(name__in=["Tom", "Dick", "Harry"]).retrieve()
-
-person = Person.get(id=1).retrieve(False) # Will throw an exception for greater than one found, not 0
-
-# Updates
-
-person.name = "David"
-person.update() # Returns count of updated
-person.update(True) # Will reload record after update
-
-persons.birthday = True
-persons.update() # Returns count of updated
-
-# Or (for DB will do in a single query)
-
-Person.get(id=1).set(name="David").update() # Returns count of updated
-Person.list(name__in=["Tom", "Dick", "Harry"]).set(birthday=True).update() # Returns count of updated
-
-# Deletes
-
-person.delete() # Returns count of deleted
-persons.delete() # Returns count of deleted
-
-# Or (single query)
-
-Person.get(id=1).delete() # Returns count of deleted
-Person.list(name__in=["Tom", "Dick", "Harry"]).delete() # Returns count of deleted
-
-# Mixed
-
-persons = Person.list().filter(name__in=["Tom", "Dick", "Harry"])
-persons[0].action() # Return 'update'
-persons[1].action("ignore") # Won't propagate changes
-persons[2].action("delete")
-persons.add(name="Mary")
-persons[3].action() # "insert"
-
-persons[0].name "Thomas"
-persons[1].name "Richard"
-
-persons.create() # Will only affect 4th record
-persons.update() # Will only affect 1st record, not 2nd
-persons.delete() # Will only affect 3rd record
-
-persons.execute() # Will act on all records
-
-
-# Relations
-
-class Person(relations.MySQLModel):
-    id = relations.MySQLField(int,autoincrement=True)
-    name = str
-    data = dict
-
-class Phone(relations.MySQLModel):
-    id = relations.MySQLField(int, autoincrement=True)
-    person_id = int
-    kind = ["mobile", "office", "home"]
-    number = str
-
-class Employee(relations.MySQLModel):
-    id = relations.MySQLField(int,autoincrement=True)
-    person_id = int
-    role = {
-      0: "worker",
-      1: "manager",
-      2: "owner"
-    }
-
-class Skill(relations.MySQLModel):
-    id = relations.MySQLField(int,autoincrement=True)
+class Unit(SourceModel):
+    id = int
     name = str
 
-relations.model.OneToMany(Person, Phone)
-relations.model.OneToOne(Person, Employee)
-relations.model.ManyToMany(Person, Skill)
+class Test(SourceModel):
+    id = int
+    unit_id = int
+    name = str
 
-### OneToMany
+class Case(ModelTest):
+    id = int
+    test_id = int
+    name = str
 
-## Creating
+relations.model.OneToMany(Unit, Test)
+relations.model.OneToOne(Test, Case)
 
-# Child creation referencing Parent
+relations.pymysql.Source("TestSource", database="test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
 
-person = Person("Dave").create()
+cursor = self.source.connection.cursor()
 
-# Equivalent
+cursor.execute(Unit.define())
+cursor.execute(Test.define())
+cursor.execute(Case.define())
 
-phone = Phone(person.id, "moble", "555-1212").create()
-phone = Phone(person=person, kind="moble", number="555-1212").create()
+Unit("yep").create()
+self.assertEqual(Unit.one(name="yep").id, 1)
 
-# Person().phone = Phone.create([])
+Unit([["people"], ["stuff"]]).create()
 
-phone = Phone()
-phone.person_id = person.id
-phone.kind = "mobile"
-phone.number = "555-1212"
-phone.create()
+unit = Unit.one(id=2).set(name="things")
+self.assertEqual(unit.update(), 1)
 
-phone = Phone()
-phone.person = person
-phone.kind = "mobile"
-phone.number = "555-1212"
-phone.create()
+unit = Unit.one(2)
+unit.name = "thing"
+unit.test.add("moar")[-1].case.add("lass")
 
-# Child creation from Parent
+self.assertEqual(unit.update(), 1)
+self.assertEqual(unit.name, "thing")
+self.assertEqual(unit.test[0].id, 1)
+self.assertEqual(unit.test[0].name, "moar")
+self.assertEqual(unit.test[0].case.id, 1)
+self.assertEqual(unit.test[0].case.name, "lass")
 
-# Equivalent (person_id becomes readonly on phone)
+tests = Test.many(unit__name="thing",case__name="lass", id__gt=0)
 
-person.phone.add("moble", "555-1212").create()
-
-person.phone.add()
-person.phone[0].kind = "mobile"
-person.phone[0].number = "555-1212"
-person.phone.create()
-
-# Parent and Child creation
-
-person = Person("Dave")
-person.phone.add("moble", "555-1212")
-person.create()  # Creates both person and phone records
-
-## Retrieving
-
-person = Person.get(1)
-person.phone # Equivlanet to Phone.list(person_id=person.id)
-
-persons = Person.list()
-persons.phone # Equivalent to Phone.list(person_id__in=persons.id)
-
-# Equivalent
-
-persons = Person.list().phone.filter(kind="mobile")
-persons = Person.list(phone__kind="mobile")
-
-phones = Phone.list().person.filter(name="Dave")
-phones = Phone.list(person__name="Dave")
-
-## Updating
-
-# When updating a parent, this implies propagate creates, updates, and deletes to children
-
-person = Person.get(1)
-person.phone.add("home", "555-2121")
-person.phone.add("work", "555-1221")
-person.update() # Creates the phone records, equivalent to person.phone.execute()
-
-## Deleting
-
-person = Person.get(1).delete() # Will delete all the phone records
-
-
-### OneToOne
-
-## Creating
-
-# Child creation referencing Parent
-
-person = Person("Dave").create()
-
-# Equivalent
-
-employee = Employee(person.id, "worker").create()
-
-employee = Employee(person=person, role="worker").create()
-
-employee = Employee()
-employee.person_id = person.id
-employee.role = "worker"
-employee.create()
-
-employee = Employee()
-employee.person = person
-employee.role = "worker"
-employee.create()
-
-# Child creation from Parent
-
-# Equivalent (person_id becomes readonly on employee)
-
-person.employee.set("worker").create()
-
-person.employee.role = "worker"
-person.employee.create()
-
-# Parent and Child creation
-
-person = Person("Dave")
-person.employee.set("worker")
-person.create()  # Creates both person and employee records
-
-## Retrieving
-
-person = Person.get(1)
-person.employee # Equivlanet to Employee.get(person_id=person.id)
-
-persons = Person.list()
-persons.employee # Equivalent to Employee.list(person_id__in=persons.id)
-
-# Equivalent
-
-persons = Person.list().employee.filter(role="worker")
-persons = Person.list(employee__role="worker")
-
-employees = Employee.list().person.filter(name="Dave")
-employees = Employee.list(person__name="Dave")
-
-## Updating
-
-# When updating a parent, this implies propagate creates, updates, and deletes to children
-
-person = Person.get(1)
-person.employee.set("worker")
-person.update() # Creates the employee record, equivalent to person.employee.execute()
-
-## Deleting
-
-person = Person.get(1).delete() # Will delete all the employee record
-
-
-
-### ManyToMany
-
-# This isn't modeling as much as storing the values in another table
-
-person = Person.get(1)
-
-person.skill    # Selects records from the person_skill table where person_id=person.id
-
-person.skill = [skill.id]
-person.update() # Insert ignroe into person_skill and the delete from where person_id=person.id and skill_id not in [skill.id]
-
-# Maybe we'll make PersonSkill a Model? Or maybe it'll be implied, a Model/Relation hybrid
+cursor.close()
 
 ```
 
-## Model States
+# Model
 
 ```
-person = Person().create() - create single record
-persons = Person([]).create() - create multiple records
-person = Person.one() - ready to retreieve single record, will in context
-person = Person.one().retrieve() - retrieve single record, fail if not found
-person = Person.one().retrieve(True) - retrieve single record, return None if not found
-persons = Person.many() - ready to retrieve multiple records, will in context
-persons = Person.many().retrieve() - retrieve one more records
-updated = Person.one().retrieve().set().update() - retrieve a record, change values, then update, return count of updated
-updated = Person.one().set() - ready to update on source side, will in context and return count of updated in context
-updated = Person.one().set().update() - will update record on source side and return count of updated
-updated = Person.many().retrieve().set().update() - retrieve records, change values, then update, return count of updated
-updated = Person.many().set() - ready to update recoods on source side, will in context and return count of updated in context
-updated = Person.many().set().update() - will update records on source side and return count of updated
-deleted = Person.one().retrieve().delete() - retrieve a record, then delete, return count of deleted
-deleted = Person.one().delete() - will delete a record on source side and return count of deleted
-deleted = Person.many().retrieve().delete() - retrieve records, return count of deleted
-deleted = Person.many().delete() - will update records on source side and return count of deleted
+variable	=	call	action	mode	description
+model	=	Model()	create	one	make single record
+models	=	Model([])	create	many	make multiple records
+model	=	Model().create()	update	one	create single record at source
+model	=	Model([]).create()	update	one	create multiple records at source
+model	=	Model.one()	retrieve	one	ready to retreieve single record, will in context
+model	=	Model.one().retrieve()	update	one	retrieve single record, exception if not found
+model	=	Model.one().retrieve(False)	update	one	retrieve single record, None if not found
+models	=	Model.many()	retrieve	many	ready to retrieve multiple records, will in context
+models	=	Model.many().retrieve()	update	many	retrieve multiple records
+model	=	Model.one().retrieve().set()	update	one	retrieve a record and change values
+updated	=	Model.one().retrieve().set().update()	update	one	retrieve a record, change values, update source
+model	=	Model.one().set()	update	one	ready to update, will in context, return count of updated
+updated	=	Model.one().set().update()	update	one	update at source, return count of updated
+models	=	Model.many().retrieve().set()	update	many	retrieve records and change values
+updated	=	Model.many().retrieve().set().update()	update	many	retrieve records, change values, update source
+models	=	Model.many().set()	update	many	ready to update, will in context, return count of updated
+updated	=	Model.many().set().update()	update	many	update at source, return count of updated
+deleted	=	Model.one().retrieve().delete()	None	one	retrieve a record, then delete, return count of deleted
+deleted	=	Model.one().delete()	None	one	will delete a record on source side and return count of deleted
+deleted	=	Model.many().retrieve().delete()	None	many	retrieve records, return count of deleted
+deleted	=	Model.many().delete()	None	many	will update records on source side and return count of deleted
+```
 
-person.id - return the id field value
-person.name = "ya" - set the name field value
-person['id'] - return the id field value
-person['name'] = "ya" - set the name field value
-persons[0].id - return the id field value of the first record
-persons[0].name = "ya" - set the name field value of the first record
-persons[0]['id'] - return the id field value of the first record
-persons[0]['name'] = "ya" - set the name field value of the first record
-persons.id - return the array of the id field values for all records
-persons.name = "sure" - set the name fields to "sure" for all records
-persons['id'] - return the array of the id field values for all records
-persons['name'] = "sure" - set the name fields to "sure" for all records
-persons.add() - adds a record to the ends of the records
+# Parent
 
-person.action() - return the intended action
-person.action(action) - sets the intended action
-persons.action() - return the array of intended actions for all records
-persons.action(action) - sets the intended actions for all records
+```
+call	action	mode	parent	description
+Model().parent	retrieve	one	Yes	retrieve single record, fail if not found
+Model([]).parent	retrieve	many	Yes	retrieve records, fail if no child fields not set
+Model.one().parent	retrieve	one	Yes	induces retrieve on model, ready to retrieve on parent
+Model.many().parent	retrieve	many	Yes	induces retrieve on model, ready to retrieve on parent
+```
 
-person.execute() - execute the intended action
-person.execute(action) - execute the intended action if matching action
-persons.execute() - execute the intended action for all records
-persons.execute(action) - execute the intended action for records matching action
+# Child
 
+```
+call	action	mode	parent	description
+Model().child	create	many	Yes	make multiple records (starts as [])
+Model().child	create	one	Yes	make single record (starts as None)
+Model().child.add()	create	many	Yes	adds a record to the list
+Model().child.add()	create	one	Yes	builds a single record
+Model([]).child	create	many	Yes	list of children models, ready to retrieve
+Model([]).child	create	one	Yes	list of children models, ready to retrieve
+Model().create()	update	many	Yes	will execute child creates
+Model().create()	update	one	Yes	will execute child creates
+Model([]).create()	update	many	Yes	will execute child creates
+Model([]).create()	update	one	Yes	will execute child creates
+Model.one().child	update	many	Yes	will induce retrieve of model, ready to retrieve of child
+Model.one().child	update	one	Yes	will induce retrieve of model, ready to retrieve of child
+Model.one().child.add()	update	many	Yes	will induce retrieve of model and child, add to child
+Model.one().child.add()	update	one	Yes	will induce retrieve of model and child, add to child
+Model.many().child	update	many	Yes	will induce retrieve of model, list of children models, ready to retrieve
+Model.many().child	update	one	Yes	will induce retrieve of model, list of children models, ready to retrieve
+Model.one().update()	update	many	Yes	will execute child creates/updates/deletes
+Model.one().update()	update	one	Yes	will execute child creates/updates/deletes
+Model.many().update()	update	many	Yes	will execute child creates/updates/deletes
+Model.many().update()	update	one	Yes	will execute child creates/updates/deletes
+Model.one().delete()	None	many	None	will execute model deletes, not children
+Model.one().delete()	None	one	None	will execute model deletes, not children
+Model.many().delete()	None	many	None	will execute model deletes, not children
+Model.many().delete()	None	one	None	will execute model deletes, not children
 ```
 
 ## API
