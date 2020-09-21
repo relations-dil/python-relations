@@ -15,7 +15,9 @@ VOLUMES=-v ${PWD}/lib:/opt/service/lib \
 ENVIRONMENT=-e MYSQL_HOST=$(MYSQL_HOST) \
 			-e MYSQL_PORT=3306 \
 			-e PYTHONDONTWRITEBYTECODE=1 \
-			-e PYTHONUNBUFFERED=1
+			-e PYTHONUNBUFFERED=1 \
+			-e test="python -m unittest -v" \
+			-e debug="python -m ptvsd --host 0.0.0.0 --port 5678 --wait -m unittest -v"
 .PHONY: build network mysql shell debug test lint verify tag untag
 
 build:
@@ -30,7 +32,7 @@ mysql: network
 	docker run $(TTY) --rm --network=$(NETWORK) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "./mysql.sh"
 
 shell: mysql
-	docker run $(TTY) --network=$(NETWORK) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh
+	docker run $(TTY) --network=$(NETWORK) $(VOLUMES) $(ENVIRONMENT) -p 127.0.0.1:$(DEBUG_PORT):5678 $(ACCOUNT)/$(IMAGE):$(VERSION) sh
 
 debug: mysql
 	docker run $(TTY) --network=$(NETWORK) $(VOLUMES) $(ENVIRONMENT) -p 127.0.0.1:$(DEBUG_PORT):5678 $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "python -m ptvsd --host 0.0.0.0 --port 5678 --wait -m unittest discover -v test"

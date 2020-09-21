@@ -18,7 +18,7 @@ def source(name):
     Returns a source
     """
 
-    return SOURCES[name]
+    return SOURCES.get(name)
 
 
 class Source:
@@ -168,7 +168,3 @@ class Source:
         """
         Execute everythong on the kids
         """
-
-        for parent_child, relation in (model.CHILDREN or {}).items():
-            if model._children.get(parent_child):
-                model._children[parent_child].execute()

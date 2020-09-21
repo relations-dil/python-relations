@@ -7,13 +7,44 @@ import pymysql.cursors
 import relations.model
 import relations.pymysql
 
+class SourceModel(relations.model.Model):
+    SOURCE = "PyMySQLSource"
+
+class Simple(SourceModel):
+    id = int
+    name = str
+
+class Plain(SourceModel):
+    ID = None
+    simple_id = int
+    name = str
+
+relations.model.OneToMany(Simple, Plain)
+
+class Unit(SourceModel):
+    id = int
+    name = str
+
+class Test(SourceModel):
+    id = int
+    unit_id = int
+    name = str
+
+class Case(SourceModel):
+    id = int
+    test_id = int
+    name = str
+
+relations.model.OneToMany(Unit, Test)
+relations.model.OneToOne(Test, Case)
+
 class TestSource(unittest.TestCase):
 
     maxDiff = None
 
     def setUp(self):
 
-        self.source = relations.pymysql.Source("TestSource", "test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
+        self.source = relations.pymysql.Source("PyMySQLSource", "test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
 
         cursor = self.source.connection.cursor()
         cursor.execute("CREATE DATABASE IF NOT EXISTS `test_source`")
@@ -176,24 +207,23 @@ class TestSource(unittest.TestCase):
 
         class Simple(relations.model.Model):
 
-            SOURCE = "TestSource"
+            SOURCE = "PyMySQLSource"
             DEFINITION = "whatever"
 
             id = int
             name = str
 
-        model = Simple()
-        self.assertEqual(self.source.model_define(model), "whatever")
+        self.assertEqual(Simple.define(), "whatever")
 
-        model.DEFINITION = None
-        self.assertEqual(self.source.model_define(model), """CREATE TABLE IF NOT EXISTS `test_source`.`simple` (
+        Simple.DEFINITION = None
+        self.assertEqual(Simple.define(), """CREATE TABLE IF NOT EXISTS `test_source`.`simple` (
   `id` INTEGER AUTO_INCREMENT,
   `name` VARCHAR(255),
   PRIMARY KEY (`id`)
 )""")
 
         cursor = self.source.connection.cursor()
-        cursor.execute(self.source.model_define(model))
+        cursor.execute(Simple.define())
         cursor.close()
 
     def test_field_create(self):
@@ -221,30 +251,21 @@ class TestSource(unittest.TestCase):
 
     def test_model_create(self):
 
-        class Simple(relations.model.Model):
-            SOURCE = "TestSource"
-            id = int
-            name = str
-
-        class Plain(relations.model.Model):
-            SOURCE = "TestSource"
-            ID = None
-            simple_id = int
-            name = str
-
-        relations.model.OneToMany(Simple, Plain)
-
         simple = Simple("sure")
         simple.plain.add("fine")
 
         cursor = self.source.connection.cursor()
-        cursor.execute(self.source.model_define(simple))
-        cursor.execute(self.source.model_define(simple.plain))
+        cursor.execute(Simple.define())
+        cursor.execute(Plain.define())
 
         simple.create()
 
         self.assertEqual(simple.id, 1)
+        self.assertEqual(simple._action, "update")
+        self.assertEqual(simple._record._action, "update")
         self.assertEqual(simple.plain[0].simple_id, 1)
+        self.assertEqual(simple.plain._action, "update")
+        self.assertEqual(simple.plain[0]._record._action, "update")
 
         cursor.execute("SELECT * FROM test_source.simple")
         self.assertEqual(cursor.fetchone(), {"id": 1, "name": "sure"})
@@ -335,52 +356,40 @@ class TestSource(unittest.TestCase):
 
     def test_model_retrieve(self):
 
-        class SourceModel(relations.model.Model):
-            SOURCE = "TestSource"
-
-        class Unit(SourceModel):
-            id = int
-            name = str
-
-        class Test(SourceModel):
-            id = int
-            unit_id = int
-            name = str
-
-        relations.model.OneToMany(Unit, Test)
-
         model = Unit()
-
-        self.assertRaisesRegex(relations.model.ModelError, "nothing to retrieve", model.retrieve)
 
         cursor = self.source.connection.cursor()
 
-        cursor.execute(self.source.model_define(Unit()))
-        cursor.execute(self.source.model_define(Test()))
+        cursor.execute(Unit.define())
+        cursor.execute(Test.define())
+        cursor.execute(Case.define())
 
         Unit([["people"], ["stuff"]]).create()
 
-        models = Unit.get(name__in=["people", "stuff"])
-        self.assertRaisesRegex(relations.model.ModelError, "more than one retrieved", models.retrieve)
+        models = Unit.one(name__in=["people", "stuff"])
+        self.assertRaisesRegex(relations.model.ModelError, "unit: more than one retrieved", models.retrieve)
 
-        model = Unit.get(name="things")
-        self.assertRaisesRegex(relations.model.ModelError, "none retrieved", model.retrieve)
+        model = Unit.one(name="things")
+        self.assertRaisesRegex(relations.model.ModelError, "unit: none retrieved", model.retrieve)
 
         self.assertIsNone(model.retrieve(False))
 
-        unit = Unit.get(name="people")
+        unit = Unit.one(name="people")
 
         self.assertEqual(unit.id, 1)
-        self.assertEqual(unit._record.action(), "update")
-        self.assertIsNone(unit._criteria)
+        self.assertEqual(unit._action, "update")
+        self.assertEqual(unit._record._action, "update")
 
-        unit.test.add("things").create()
+        unit.test.add("things")[0].case.add("persons")
+        unit.update()
 
-        model = Unit.list(test__name="things")
+        model = Unit.many(test__name="things")
 
         self.assertEqual(model.id, [1])
-        self.assertEqual(model[0]._record.action(), "update")
-        self.assertIsNone(model._criteria)
+        self.assertEqual(model[0]._action, "update")
+        self.assertEqual(model[0]._record._action, "update")
+        self.assertEqual(model[0].test[0].id, 1)
+        self.assertEqual(model[0].test[0].case.name, "persons")
 
     def test_field_update(self):
 
@@ -418,95 +427,52 @@ class TestSource(unittest.TestCase):
 
     def test_model_update(self):
 
-        class SourceModel(relations.model.Model):
-            SOURCE = "TestSource"
-
-        class Plain(relations.model.Model):
-            SOURCE = "TestSource"
-            ID = None
-            name = str
-
-        plain = Plain()
-        self.assertRaisesRegex(relations.model.ModelError, "nothing to update to", plain.update)
-
-        plain._record.action("update")
-        self.assertRaisesRegex(relations.model.ModelError, "nothing to update from", plain.update)
-
-        class Unit(SourceModel):
-            id = int
-            name = str
-
-        class Test(SourceModel):
-            id = int
-            unit_id = int
-            name = str
-
-        relations.model.OneToMany(Unit, Test)
-
         cursor = self.source.connection.cursor()
 
-        cursor.execute(self.source.model_define(Unit()))
-        cursor.execute(self.source.model_define(Test()))
+        cursor.execute(Unit.define())
+        cursor.execute(Test.define())
+        cursor.execute(Case.define())
 
         Unit([["people"], ["stuff"]]).create()
 
-        unit = Unit().get(id=2).set(name="things")
+        unit = Unit.one(id=2).set(name="things")
 
-        self.assertEqual(unit.update(True), 1)
-        self.assertEqual(unit.name, "things")
-        self.assertIsNone(unit._criteria)
+        self.assertEqual(unit.update(), 1)
+
+        unit = Unit.one(2)
 
         unit.name = "thing"
         unit.test.add("moar")
 
-        self.assertEqual(unit.update(True), 1)
+        self.assertEqual(unit.update(), 1)
         self.assertEqual(unit.name, "thing")
         self.assertEqual(unit.test[0].id, 1)
         self.assertEqual(unit.test[0].name, "moar")
 
+        plain = Plain.one()
+        self.assertRaisesRegex(relations.model.ModelError, "plain: nothing to update from", plain.update)
+
     def test_model_delete(self):
-
-        class SourceModel(relations.model.Model):
-            SOURCE = "TestSource"
-
-        class Plain(relations.model.Model):
-            SOURCE = "TestSource"
-            ID = None
-            name = str
-
-        plain = Plain()
-        self.assertRaisesRegex(relations.model.ModelError, "nothing to update to", plain.update)
-
-        plain._record.action("update")
-        self.assertRaisesRegex(relations.model.ModelError, "nothing to update from", plain.update)
-
-        class Unit(SourceModel):
-            id = int
-            name = str
-
-        class Test(SourceModel):
-            id = int
-            unit_id = int
-            name = str
-
-        class Case(SourceModel):
-            id = int
-            test_id = int
-            name = str
 
         cursor = self.source.connection.cursor()
 
-        cursor.execute(self.source.model_define(Unit()))
+        cursor.execute(Unit.define())
+        cursor.execute(Test.define())
+        cursor.execute(Case.define())
 
-        Unit([["people"], ["stuff"]]).create()
+        unit = Unit("people")
+        unit.test.add("stuff").add("things")
+        unit.create()
 
-        unit = Unit().get(id=2).set(name="things")
+        self.assertEqual(Test.one(id=2).delete(), 1)
+        self.assertEqual(len(Test.many()), 1)
 
-        self.assertEqual(unit.update(True), 1)
-        self.assertEqual(unit.name, "things")
-        self.assertIsNone(unit._criteria)
+        self.assertEqual(Unit.one(1).test.delete(), 1)
+        self.assertEqual(Unit.one(1).retrieve().delete(), 1)
+        self.assertEqual(len(Unit.many()), 0)
+        self.assertEqual(len(Test.many()), 0)
 
-        unit.name = "thing"
+        cursor.execute(Plain.define())
 
-        self.assertEqual(unit.update(True), 1)
-        self.assertEqual(unit.name, "thing")
+        plain = Plain().create()
+        self.assertRaisesRegex(relations.model.ModelError, "plain: nothing to delete from", plain.delete)

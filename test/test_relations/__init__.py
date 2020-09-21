@@ -3,7 +3,6 @@ import unittest.mock
 
 import relations
 
-
 class TestRelations(unittest.TestCase):
 
     maxDiff = None

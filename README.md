@@ -309,6 +309,53 @@ person.update() # Insert ignroe into person_skill and the delete from where pers
 
 ```
 
+## Model States
+
+```
+person = Person().create() - create single record
+persons = Person([]).create() - create multiple records
+person = Person.one() - ready to retreieve single record, will in context
+person = Person.one().retrieve() - retrieve single record, fail if not found
+person = Person.one().retrieve(True) - retrieve single record, return None if not found
+persons = Person.many() - ready to retrieve multiple records, will in context
+persons = Person.many().retrieve() - retrieve one more records
+updated = Person.one().retrieve().set().update() - retrieve a record, change values, then update, return count of updated
+updated = Person.one().set() - ready to update on source side, will in context and return count of updated in context
+updated = Person.one().set().update() - will update record on source side and return count of updated
+updated = Person.many().retrieve().set().update() - retrieve records, change values, then update, return count of updated
+updated = Person.many().set() - ready to update recoods on source side, will in context and return count of updated in context
+updated = Person.many().set().update() - will update records on source side and return count of updated
+deleted = Person.one().retrieve().delete() - retrieve a record, then delete, return count of deleted
+deleted = Person.one().delete() - will delete a record on source side and return count of deleted
+deleted = Person.many().retrieve().delete() - retrieve records, return count of deleted
+deleted = Person.many().delete() - will update records on source side and return count of deleted
+
+person.id - return the id field value
+person.name = "ya" - set the name field value
+person['id'] - return the id field value
+person['name'] = "ya" - set the name field value
+persons[0].id - return the id field value of the first record
+persons[0].name = "ya" - set the name field value of the first record
+persons[0]['id'] - return the id field value of the first record
+persons[0]['name'] = "ya" - set the name field value of the first record
+persons.id - return the array of the id field values for all records
+persons.name = "sure" - set the name fields to "sure" for all records
+persons['id'] - return the array of the id field values for all records
+persons['name'] = "sure" - set the name fields to "sure" for all records
+persons.add() - adds a record to the ends of the records
+
+person.action() - return the intended action
+person.action(action) - sets the intended action
+persons.action() - return the array of intended actions for all records
+persons.action(action) - sets the intended actions for all records
+
+person.execute() - execute the intended action
+person.execute(action) - execute the intended action if matching action
+persons.execute() - execute the intended action for all records
+persons.execute(action) - execute the intended action for records matching action
+
+```
+
 ## API
 
 These are just defaults and overriable
