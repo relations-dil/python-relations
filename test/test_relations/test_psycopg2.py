@@ -2,13 +2,13 @@ import unittest
 import unittest.mock
 
 import os
-import pymysql.cursors
+import psycopg2.extras
 
 import relations.model
-import relations.pymysql
+import relations.psycopg2
 
 class SourceModel(relations.model.Model):
-    SOURCE = "PyMySQLSource"
+    SOURCE = "PsycoPg2Source"
 
 class Simple(SourceModel):
     id = int
@@ -44,45 +44,52 @@ class TestSource(unittest.TestCase):
 
     def setUp(self):
 
-        self.source = relations.pymysql.Source("PyMySQLSource", "test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
+        self.source = relations.psycopg2.Source("PsycoPg2Source", "test_source", user="postgres", host=os.environ["POSTGRES_HOST"], port=int(os.environ["POSTGRES_PORT"]))
+        self.source.connection.autocommit = True
 
         cursor = self.source.connection.cursor()
-        cursor.execute("CREATE DATABASE IF NOT EXISTS `test_source`")
+        cursor.autocommit = True
+        cursor.execute('DROP DATABASE IF EXISTS "test_source"')
+        cursor.execute('CREATE DATABASE "test_source"')
+        cursor.execute('CREATE SCHEMA public')
         cursor.close()
 
     def tearDown(self):
 
         cursor = self.source.connection.cursor()
-        cursor.execute("DROP DATABASE IF EXISTS `test_source`")
+        cursor.execute('DROP SCHEMA public CASCADE')
+        cursor.execute('DROP DATABASE "test_source"')
         self.source.connection.close()
 
     @unittest.mock.patch("relations.SOURCES", {})
-    @unittest.mock.patch("pymysql.connect", unittest.mock.MagicMock())
+    @unittest.mock.patch("psycopg2.connect", unittest.mock.MagicMock())
     def test___init__(self):
 
-        source = relations.pymysql.Source("unit", "init", connection="corkneckshurn")
+        source = relations.psycopg2.Source("unit", "init", connection="corkneckshurn")
         self.assertEqual(source.name, "unit")
         self.assertEqual(source.database, "init")
+        self.assertEqual(source.schema, "public")
         self.assertEqual(source.connection, "corkneckshurn")
         self.assertEqual(relations.SOURCES["unit"], source)
 
-        source = relations.pymysql.Source("test", "init", host="db.com", extra="stuff")
+        source = relations.psycopg2.Source("test", "init", schema="private", extra="stuff")
         self.assertEqual(source.name, "test")
         self.assertEqual(source.database, "init")
-        self.assertEqual(source.connection, pymysql.connect.return_value)
+        self.assertEqual(source.schema, "private")
+        self.assertEqual(source.connection, psycopg2.connect.return_value)
         self.assertEqual(relations.SOURCES["test"], source)
-        pymysql.connect.assert_called_once_with(cursorclass=pymysql.cursors.DictCursor, host="db.com", extra="stuff")
+        psycopg2.connect.assert_called_once_with(cursor_factory=psycopg2.extras.RealDictCursor, extra="stuff")
 
     def test_table(self):
 
         model = unittest.mock.MagicMock()
-        model.DATABASE = None
+        model.SCHEMA = None
 
         model.TABLE = "people"
-        self.assertEqual(self.source.table(model), "`test_source`.`people`")
+        self.assertEqual(self.source.table(model), '"public"."people"')
 
-        model.DATABASE = "stuff"
-        self.assertEqual(self.source.table(model), "`stuff`.`people`")
+        model.SCHEMA = "things"
+        self.assertEqual(self.source.table(model), '"things"."people"')
 
     def test_field_init(self):
 
@@ -93,7 +100,8 @@ class TestSource(unittest.TestCase):
 
         self.source.field_init(field)
 
-        self.assertIsNone(field.auto_increment)
+        self.assertIsNone(field.primary_key)
+        self.assertIsNone(field.serial)
         self.assertIsNone(field.definition)
 
     def test_model_init(self):
@@ -107,107 +115,109 @@ class TestSource(unittest.TestCase):
         self.source.model_init(model)
 
         self.assertIsNone(model.DATABASE)
+        self.assertIsNone(model.SCHEMA)
         self.assertEqual(model.TABLE, "check")
-        self.assertEqual(model.QUERY.get(), "SELECT * FROM `test_source`.`check`")
+        self.assertEqual(model.QUERY.get(), 'SELECT * FROM "public"."check"')
         self.assertIsNone(model.DEFINITION)
-        self.assertTrue(model._fields._names["id"].auto_increment)
+        self.assertTrue(model._fields._names["id"].primary_key)
+        self.assertTrue(model._fields._names["id"].serial)
         self.assertTrue(model._fields._names["id"].readonly)
 
     def test_field_define(self):
 
         # Specific
 
-        field = relations.model.Field(int, definition="id")
+        field = relations.model.Field(int, definition='id')
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["id"])
+        self.assertEqual(definitions, ['id'])
 
-        # INTEGER
+        # SMALLINT
 
-        field = relations.model.Field(int, store="_id")
+        field = relations.model.Field(int, store='_id')
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`_id` INTEGER"])
+        self.assertEqual(definitions, ['"_id" SMALLINT'])
 
-        # INTEGER default
+        # SMALLINT default
 
-        field = relations.model.Field(int, store="_id", default=0)
+        field = relations.model.Field(int, store='_id', default=0)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`_id` INTEGER DEFAULT 0"])
+        self.assertEqual(definitions, ['"_id" SMALLINT DEFAULT 0'])
 
-        # INTEGER not_null
+        # SMALLINT not_null
 
-        field = relations.model.Field(int, store="_id", not_null=True)
+        field = relations.model.Field(int, store='_id', not_null=True)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`_id` INTEGER NOT NULL"])
+        self.assertEqual(definitions, ['"_id" SMALLINT NOT NULL'])
 
-        # INTEGER auto_increment
+        # SMALLINT primary
 
-        field = relations.model.Field(int, store="_id", auto_increment=True)
+        field = relations.model.Field(int, store='_id', primary_key=True)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`_id` INTEGER AUTO_INCREMENT"])
+        self.assertEqual(definitions, ['"_id" SMALLINT PRIMARY KEY'])
 
-        # INTEGER full
+        # SMALLINT full
 
-        field = relations.model.Field(int, store="_id", not_null=True, auto_increment=True, default=0)
+        field = relations.model.Field(int, store='_id', not_null=True, primary_key=True, serial=True)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`_id` INTEGER NOT NULL AUTO_INCREMENT DEFAULT 0"])
+        self.assertEqual(definitions, ['"_id" SERIAL NOT NULL PRIMARY KEY'])
 
         # VARCHAR
 
-        field = relations.model.Field(str, name="name")
+        field = relations.model.Field(str, name='name')
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`name` VARCHAR(255)"])
+        self.assertEqual(definitions, ['"name" VARCHAR(255)'])
 
         # VARCHAR length
 
-        field = relations.model.Field(str, name="name", length=32)
+        field = relations.model.Field(str, name='name', length=32)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`name` VARCHAR(32)"])
+        self.assertEqual(definitions, ['"name" VARCHAR(32)'])
 
         # VARCHAR default
 
-        field = relations.model.Field(str, name="name", default='ya')
+        field = relations.model.Field(str, name='name', default='ya')
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`name` VARCHAR(255) DEFAULT 'ya'"])
+        self.assertEqual(definitions, ['"name" VARCHAR(255) DEFAULT \'ya\''])
 
         # VARCHAR not_null
 
-        field = relations.model.Field(str, name="name", not_null=True)
+        field = relations.model.Field(str, name='name', not_null=True)
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`name` VARCHAR(255) NOT NULL"])
+        self.assertEqual(definitions, ['"name" VARCHAR(255) NOT NULL'])
 
         # VARCHAR full
 
-        field = relations.model.Field(str, name="name", length=32, not_null=True, default='ya')
+        field = relations.model.Field(str, name='name', length=32, not_null=True, default='ya')
         self.source.field_init(field)
         definitions = []
         self.source.field_define(field, definitions)
-        self.assertEqual(definitions, ["`name` VARCHAR(32) NOT NULL DEFAULT 'ya'"])
+        self.assertEqual(definitions, ['"name" VARCHAR(32) NOT NULL DEFAULT \'ya\''])
 
     def test_model_define(self):
 
         class Simple(relations.model.Model):
 
-            SOURCE = "PyMySQLSource"
+            SOURCE = "PsycoPg2Source"
             DEFINITION = "whatever"
 
             id = int
@@ -216,10 +226,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Simple.define(), "whatever")
 
         Simple.DEFINITION = None
-        self.assertEqual(Simple.define(), """CREATE TABLE IF NOT EXISTS `test_source`.`simple` (
-  `id` INTEGER AUTO_INCREMENT,
-  `name` VARCHAR(255),
-  PRIMARY KEY (`id`)
+        self.assertEqual(Simple.define(), """CREATE TABLE IF NOT EXISTS "public"."simple" (
+  "id" SERIAL PRIMARY KEY,
+  "name" VARCHAR(255)
 )""")
 
         cursor = self.source.connection.cursor()
@@ -235,7 +244,7 @@ class TestSource(unittest.TestCase):
         fields = []
         clause = []
         self.source.field_create( field, fields, clause)
-        self.assertEqual(fields, ["`id`"])
+        self.assertEqual(fields, ['"id"'])
         self.assertEqual(clause, ["%(id)s"])
         self.assertFalse(field.changed)
 
@@ -260,17 +269,16 @@ class TestSource(unittest.TestCase):
 
         simple.create()
 
-        self.assertEqual(simple.id, 1)
         self.assertEqual(simple._action, "update")
         self.assertEqual(simple._record._action, "update")
-        self.assertEqual(simple.plain[0].simple_id, 1)
+        self.assertEqual(simple.plain[0].simple_id, simple.id)
         self.assertEqual(simple.plain._action, "update")
         self.assertEqual(simple.plain[0]._record._action, "update")
 
-        cursor.execute("SELECT * FROM test_source.simple")
+        cursor.execute("SELECT * FROM simple")
         self.assertEqual(cursor.fetchone(), {"id": 1, "name": "sure"})
 
-        cursor.execute("SELECT * FROM test_source.plain")
+        cursor.execute("SELECT * FROM plain")
         self.assertEqual(cursor.fetchone(), {"simple_id": 1, "name": "fine"})
 
         cursor.close()
@@ -279,79 +287,79 @@ class TestSource(unittest.TestCase):
 
         # IN
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter([1, 2, 3], "in")
+        field.filter([1, 2, 3], 'in')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id` IN (%s,%s,%s)")
+        self.assertEqual(query.wheres, '"id" IN (%s,%s,%s)')
         self.assertEqual(values, [1, 2, 3])
 
         # NOT IN
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter([1, 2, 3], "ne")
+        field.filter([1, 2, 3], 'ne')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id` NOT IN (%s,%s,%s)")
+        self.assertEqual(query.wheres, '"id" NOT IN (%s,%s,%s)')
         self.assertEqual(values, [1, 2, 3])
 
         # =
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
         field.filter(1)
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id`=%s")
+        self.assertEqual(query.wheres, '"id"=%s')
         self.assertEqual(values, [1])
 
         # >
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter(1, "gt")
+        field.filter(1, 'gt')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id`>%s")
+        self.assertEqual(query.wheres, '"id">%s')
         self.assertEqual(values, [1])
 
         # >=
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter(1, "ge")
+        field.filter(1, 'ge')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id`>=%s")
+        self.assertEqual(query.wheres, '"id">=%s')
         self.assertEqual(values, [1])
 
         # <
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter(1, "lt")
+        field.filter(1, 'lt')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id`<%s")
+        self.assertEqual(query.wheres, '"id"<%s')
         self.assertEqual(values, [1])
 
         # <=
 
-        field = relations.model.Field(int, name="id")
+        field = relations.model.Field(int, name='id')
         self.source.field_init(field)
-        field.filter(1, "le")
+        field.filter(1, 'le')
         query = relations.query.Query()
         values = []
         self.source.field_retrieve( field, query, values)
-        self.assertEqual(query.wheres, "`id`<=%s")
+        self.assertEqual(query.wheres, '"id"<=%s')
         self.assertEqual(values, [1])
 
     def test_model_retrieve(self):
@@ -401,7 +409,7 @@ class TestSource(unittest.TestCase):
         values = []
         field.value = 1
         self.source.field_update(field, clause, values)
-        self.assertEqual(clause, ["`id`=%s"])
+        self.assertEqual(clause, ['"id"=%s'])
         self.assertEqual(values, [1])
         self.assertFalse(field.changed)
 
@@ -446,7 +454,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(unit.update(), 1)
         self.assertEqual(unit.name, "thing")
-        self.assertEqual(unit.test[0].id, 1)
+        self.assertEqual(unit.test[0].unit_id, unit.id)
         self.assertEqual(unit.test[0].name, "moar")
 
         plain = Plain.one()

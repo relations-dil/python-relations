@@ -4,8 +4,8 @@ Module for intersting with PyMySQL
 
 import copy
 
-import pymysql
-import pymysql.cursors
+import psycopg2
+import psycopg2.extras
 
 import relations
 import relations.query
@@ -24,18 +24,20 @@ class Source(relations.Source):
     }
 
     database = None   # Database to use
+    schema = None   # Schema to use
     connection = None # Connection
 
-    def __init__(self, name, database, connection=None, **kwargs):
+    def __init__(self, name, database, schema="public", connection=None, **kwargs):
 
         self.database = database
+        self.schema = schema
 
         if connection is not None:
             self.connection = connection
         else:
-            self.connection = pymysql.connect(
-                cursorclass=pymysql.cursors.DictCursor,
-                **{name: arg for name, arg in kwargs.items() if name not in ["name", "database", "connection"]}
+            self.connection = psycopg2.connect(
+                cursor_factory=psycopg2.extras.RealDictCursor,
+                **{name: arg for name, arg in kwargs.items() if name not in ["name", "database", "schema", "connection"]}
             )
 
     def table(self, model):
@@ -45,21 +47,22 @@ class Source(relations.Source):
 
         table = []
 
-        if model.DATABASE is not None:
-            table.append(f"`{model.DATABASE}`")
-        elif self.database is not None:
-            table.append(f"`{self.database}`")
+        if model.SCHEMA is not None:
+            table.append(f'"{model.SCHEMA}"')
+        else:
+            table.append(f'"{self.schema}"')
 
-        table.append(f"`{model.TABLE}`")
+        table.append(f'"{model.TABLE}"')
 
         return ".".join(table)
 
     def field_init(self, field):
         """
-        Make sure there's auto_increment
+        Make sure there's primary_key
         """
 
-        self.ensure_attribute(field, "auto_increment")
+        self.ensure_attribute(field, "primary_key")
+        self.ensure_attribute(field, "serial")
         self.ensure_attribute(field, "definition")
 
     def model_init(self, model):
@@ -70,6 +73,7 @@ class Source(relations.Source):
         self.record_init(model._fields)
 
         self.ensure_attribute(model, "DATABASE")
+        self.ensure_attribute(model, "SCHEMA")
         self.ensure_attribute(model, "TABLE")
         self.ensure_attribute(model, "QUERY")
         self.ensure_attribute(model, "DEFINITION")
@@ -80,9 +84,14 @@ class Source(relations.Source):
         if model.QUERY is None:
             model.QUERY = relations.query.Query(selects='*', froms=self.table(model))
 
-        if model._id is not None and model._fields._names[model._id].auto_increment is None:
-            model._fields._names[model._id].auto_increment = True
-            model._fields._names[model._id].readonly = True
+        if model._id is not None:
+
+            if model._fields._names[model._id].primary_key is None:
+                model._fields._names[model._id].primary_key = True
+
+            if model._fields._names[model._id].serial is None:
+                model._fields._names[model._id].serial = True
+                model._fields._names[model._id].readonly = True
 
     def field_define(self, field, definitions):
         """
@@ -93,13 +102,16 @@ class Source(relations.Source):
             definitions.append(field.definition)
             return
 
-        definition = [f"`{field.store}`"]
+        definition = [f'"{field.store}"']
 
         default = None
 
         if field.kind == int:
 
-            definition.append("INTEGER")
+            if field.serial:
+                definition.append("SERIAL")
+            else:
+                definition.append("SMALLINT")
 
             if field.default is not None:
                 default = f"DEFAULT {field.default}"
@@ -116,8 +128,8 @@ class Source(relations.Source):
         if field.not_null:
             definition.append("NOT NULL")
 
-        if field.auto_increment:
-            definition.append("AUTO_INCREMENT")
+        if field.primary_key:
+            definition.append("PRIMARY KEY")
 
         if default:
             definition.append(default)
@@ -135,9 +147,6 @@ class Source(relations.Source):
 
         self.record_define(model._fields, definitions)
 
-        if model._id is not None:
-            definitions.append(f"PRIMARY KEY (`{model._id}`)")
-
         sep = ',\n  '
         return f"CREATE TABLE IF NOT EXISTS {self.table(model)} (\n  {sep.join(definitions)}\n)"
 
@@ -147,7 +156,7 @@ class Source(relations.Source):
         """
 
         if not field.readonly:
-            fields.append(f"`{field.store}`")
+            fields.append(f'"{field.store}"')
             clause.append(f"%({field.store})s")
             field.changed = False
 
@@ -165,13 +174,19 @@ class Source(relations.Source):
 
         self.record_create(model._fields, fields, clause)
 
-        query = f"INSERT INTO {self.table(model)} ({','.join(fields)}) VALUES({','.join(clause)})"
+        if model._id is not None and model._fields._names[model._id].serial:
 
-        if model._id is not None and model._fields._names[model._id].auto_increment:
+            store = model._fields._names[model._id].store
+
+            query = f'INSERT INTO {self.table(model)} ({",".join(fields)}) VALUES({",".join(clause)}) RETURNING {store}'
+
             for creating in model._each("create"):
                 cursor.execute(query, creating._record.write({}))
-                creating[model._id] = cursor.lastrowid
+                creating[model._id] = cursor.fetchone()[store]
         else:
+
+            query = f'INSERT INTO {self.table(model)} ({",".join(fields)}) VALUES({",".join(clause)})'
+
             cursor.executemany(query, [model._record.write({}) for model in model._each("create")])
 
         cursor.close()
@@ -194,13 +209,13 @@ class Source(relations.Source):
 
         for operator, value in (field.criteria or {}).items():
             if operator == "in":
-                query.add(wheres=f"`{field.store}` IN ({','.join(['%s' for each in value])})")
+                query.add(wheres=f'"{field.store}" IN ({",".join(["%s" for each in value])})')
                 values.extend(value)
             elif operator == "ne":
-                query.add(wheres=f"`{field.store}` NOT IN ({','.join(['%s' for each in value])})")
+                query.add(wheres=f'"{field.store}" NOT IN ({",".join(["%s" for each in value])})')
                 values.extend(value)
             else:
-                query.add(wheres=f"`{field.store}`{self.RETRIEVE[operator]}%s")
+                query.add(wheres=f'"{field.store}"{self.RETRIEVE[operator]}%s')
                 values.append(value)
 
     def model_retrieve(self, model, verify=True):
@@ -254,7 +269,7 @@ class Source(relations.Source):
         """
 
         if not field.readonly and (changed is None or field.changed==changed):
-            clause.append(f"`{field.store}`=%s")
+            clause.append(f'"{field.store}"=%s')
             values.append(field.value)
             field.changed = False
 
@@ -302,7 +317,7 @@ class Source(relations.Source):
 
                 values.append(updating[model._id])
 
-                query = f"UPDATE {self.table(model)} SET {relations.sql.assign_clause(clause)} WHERE `{store}`=%s"
+                query = f'UPDATE {self.table(model)} SET {relations.sql.assign_clause(clause)} WHERE "{store}"=%s'
 
                 cursor.execute(query, values)
 
@@ -343,7 +358,7 @@ class Source(relations.Source):
             for deleting in model._each():
                 values.append(deleting[model._id])
 
-            query = f"DELETE FROM {self.table(model)} WHERE `{store}` IN ({','.join(['%s'] * len(values))})"
+            query = f'DELETE FROM {self.table(model)} WHERE "{store}" IN ({",".join(["%s"] * len(values))})'
 
         else:
 
