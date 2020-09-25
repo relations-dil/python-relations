@@ -466,6 +466,23 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(list(unit), ["id", "name"])
 
+    def test_keys(self):
+
+        # many, VERBOTTEN
+
+        self.assertRaisesRegex(relations.model.ModelError, "no keys with many", UnitTest([]).keys)
+
+        # single
+
+        model = UnitTest("unit")
+        self.assertEqual(list(model.keys()), ["id", "name"])
+        self.assertEqual(dict(model), {"id": None, "name": "unit"})
+
+        # child, one
+
+        self.assertEqual(list(Test().case.keys()), [])
+        self.assertEqual(list(Test().case.add().keys()), ["id", "test_id", "name"])
+
     def test___contains__(self):
 
        # model
@@ -946,6 +963,11 @@ class TestModel(unittest.TestCase):
 
         model = UnitTest().set("unit")
         self.assertEqual(model.name, "unit")
+        model.create()
+
+        model = UnitTest.one(name="unit").set(name="test")
+        self.assertEqual(model.id, 1)
+        self.assertEqual(model._action, "update")
 
         models = UnitTest.many(name="unit").set(name="test")
         self.assertEqual(models._record.name, "test")
@@ -1008,6 +1030,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(unit.update(), 1)
         self.assertEqual(Unit.one(name="sure").retrieve().id, 1)
 
+        self.assertEqual(Unit.one(name="sure").set(name="whatever").update(), 1)
+
         unit = Unit("sure")
         self.assertRaisesRegex(relations.model.ModelError, "unit: cannot update during create", unit.update)
 
@@ -1017,6 +1041,9 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(unit.delete(), 1)
         self.assertIsNone(Unit.one(name="yep").retrieve(False))
+
+        unit = Unit("sure").create()
+        self.assertEqual(Unit.one(name="sure").delete(), 1)
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.model.ModelError, "unit: cannot delete during create", unit.delete)

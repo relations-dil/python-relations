@@ -51,7 +51,7 @@ class TestSource(unittest.TestCase):
         cursor.autocommit = True
         cursor.execute('DROP DATABASE IF EXISTS "test_source"')
         cursor.execute('CREATE DATABASE "test_source"')
-        cursor.execute('CREATE SCHEMA public')
+        cursor.execute('CREATE SCHEMA IF NOT EXISTS public')
         cursor.close()
 
     def tearDown(self):
@@ -443,7 +443,7 @@ class TestSource(unittest.TestCase):
 
         Unit([["people"], ["stuff"]]).create()
 
-        unit = Unit.one(id=2).set(name="things")
+        unit = Unit.many(id=2).set(name="things")
 
         self.assertEqual(unit.update(), 1)
 

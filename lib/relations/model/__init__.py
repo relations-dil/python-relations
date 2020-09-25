@@ -339,6 +339,22 @@ class Model(ModelIdentity):
 
         return iter(self._models)
 
+    def keys(self):
+        """
+        Use the order of record
+        """
+
+        self._ensure()
+
+        if self._mode == "many":
+            raise ModelError(self, "no keys with many")
+
+        if self._role == "child":
+            if self._models:
+                return iter(self._models[0]._record._names)
+            return iter([])
+        return iter(self._record._names)
+
     def __contains__(self, key):
         """
         Checks numerically or by name
@@ -617,10 +633,12 @@ class Model(ModelIdentity):
         Sets a single or multiple records or prepares to
         """
 
-        # If we're retrieving, make sure the record knows it's going to update
-
+        # If we're retrieving, make we're only getting one or we'll store
         if self._action == "retrieve":
-            self._record._action = "update"
+            if self._mode == "one":
+                self.retrieve()
+            else:
+                self._record._action = "update"
 
         for model in self._each():
             self._input(model._record, *args, **kwargs)
@@ -703,5 +721,8 @@ class Model(ModelIdentity):
 
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot delete during {self._action}")
+
+        if self._action == "retrieve" and self._mode == "one":
+            self.retrieve()
 
         return relations.source(self.SOURCE).model_delete(self, *args, **kwargs)

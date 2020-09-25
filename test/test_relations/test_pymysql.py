@@ -435,7 +435,7 @@ class TestSource(unittest.TestCase):
 
         Unit([["people"], ["stuff"]]).create()
 
-        unit = Unit.one(id=2).set(name="things")
+        unit = Unit.many(id=2).set(name="things")
 
         self.assertEqual(unit.update(), 1)
 
