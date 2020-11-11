@@ -52,20 +52,19 @@ class TestSource(unittest.TestCase):
         cursor.execute('DROP DATABASE IF EXISTS "test_source"')
         cursor.execute('CREATE DATABASE "test_source"')
         cursor.execute('CREATE SCHEMA IF NOT EXISTS public')
-        cursor.close()
 
     def tearDown(self):
 
         cursor = self.source.connection.cursor()
         cursor.execute('DROP SCHEMA public CASCADE')
         cursor.execute('DROP DATABASE "test_source"')
-        self.source.connection.close()
 
     @unittest.mock.patch("relations.SOURCES", {})
     @unittest.mock.patch("psycopg2.connect", unittest.mock.MagicMock())
     def test___init__(self):
 
         source = relations.psycopg2.Source("unit", "init", connection="corkneckshurn")
+        self.assertFalse(source.created)
         self.assertEqual(source.name, "unit")
         self.assertEqual(source.database, "init")
         self.assertEqual(source.schema, "public")
@@ -73,12 +72,21 @@ class TestSource(unittest.TestCase):
         self.assertEqual(relations.SOURCES["unit"], source)
 
         source = relations.psycopg2.Source("test", "init", schema="private", extra="stuff")
+        self.assertTrue(source.created)
         self.assertEqual(source.name, "test")
         self.assertEqual(source.database, "init")
         self.assertEqual(source.schema, "private")
         self.assertEqual(source.connection, psycopg2.connect.return_value)
         self.assertEqual(relations.SOURCES["test"], source)
         psycopg2.connect.assert_called_once_with(cursor_factory=psycopg2.extras.RealDictCursor, extra="stuff")
+
+    @unittest.mock.patch("relations.SOURCES", {})
+    @unittest.mock.patch("psycopg2.connect", unittest.mock.MagicMock())
+    def test___del__(self):
+
+        relations.psycopg2.Source("test", "init", schema="private", extra="stuff")
+        del relations.SOURCES["test"]
+        psycopg2.connect.return_value.close.assert_called_once_with()
 
     def test_table(self):
 

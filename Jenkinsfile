@@ -12,15 +12,5 @@ pipeline {
                 sh 'make test'
             }
         }
-        stage('lint') {
-            steps {
-                sh 'make lint'
-            }
-        }
-        stage('verify') {
-            steps {
-                sh 'make verify'
-            }
-        }
     }
 }

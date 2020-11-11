@@ -45,33 +45,39 @@ class TestSource(unittest.TestCase):
     def setUp(self):
 
         self.source = relations.pymysql.Source("PyMySQLSource", "test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
-
-        cursor = self.source.connection.cursor()
-        cursor.execute("CREATE DATABASE IF NOT EXISTS `test_source`")
-        cursor.close()
+        self.source.connection.cursor().execute("CREATE DATABASE IF NOT EXISTS `test_source`")
 
     def tearDown(self):
 
         cursor = self.source.connection.cursor()
         cursor.execute("DROP DATABASE IF EXISTS `test_source`")
-        self.source.connection.close()
 
     @unittest.mock.patch("relations.SOURCES", {})
     @unittest.mock.patch("pymysql.connect", unittest.mock.MagicMock())
     def test___init__(self):
 
         source = relations.pymysql.Source("unit", "init", connection="corkneckshurn")
+        self.assertFalse(source.created)
         self.assertEqual(source.name, "unit")
         self.assertEqual(source.database, "init")
         self.assertEqual(source.connection, "corkneckshurn")
         self.assertEqual(relations.SOURCES["unit"], source)
 
         source = relations.pymysql.Source("test", "init", host="db.com", extra="stuff")
+        self.assertTrue(source.created)
         self.assertEqual(source.name, "test")
         self.assertEqual(source.database, "init")
         self.assertEqual(source.connection, pymysql.connect.return_value)
         self.assertEqual(relations.SOURCES["test"], source)
         pymysql.connect.assert_called_once_with(cursorclass=pymysql.cursors.DictCursor, host="db.com", extra="stuff")
+
+    @unittest.mock.patch("relations.SOURCES", {})
+    @unittest.mock.patch("pymysql.connect", unittest.mock.MagicMock())
+    def test___del__(self):
+
+        relations.pymysql.Source("test", "init", host="db.com", extra="stuff")
+        del relations.SOURCES["test"]
+        pymysql.connect.return_value.close.assert_called_once_with()
 
     def test_table(self):
 

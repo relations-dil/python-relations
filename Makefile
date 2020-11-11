@@ -54,7 +54,7 @@ lint:
 	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "pylint --rcfile=.pylintrc lib/"
 
 verify:
-	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && python setup.py install && python -m relations.sql && python -m relations.query && python -m relations.abstract"
+	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && python setup.py install && python -m relations.sql && python -m relations.query && python -m relations.model"
 
 tag:
 	-git tag -a "v$(VERSION)" -m "Version $(VERSION)"

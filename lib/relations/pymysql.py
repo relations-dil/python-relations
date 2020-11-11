@@ -25,6 +25,7 @@ class Source(relations.Source):
 
     database = None   # Database to use
     connection = None # Connection
+    created = False   # If we created the connection
 
     def __init__(self, name, database, connection=None, **kwargs):
 
@@ -33,10 +34,16 @@ class Source(relations.Source):
         if connection is not None:
             self.connection = connection
         else:
+            self.created = True
             self.connection = pymysql.connect(
                 cursorclass=pymysql.cursors.DictCursor,
                 **{name: arg for name, arg in kwargs.items() if name not in ["name", "database", "connection"]}
             )
+
+    def __del__(self):
+
+        if self.created:
+            self.connection.close()
 
     def table(self, model):
         """

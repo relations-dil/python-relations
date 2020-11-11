@@ -24,8 +24,9 @@ class Source(relations.Source):
     }
 
     database = None   # Database to use
-    schema = None   # Schema to use
+    schema = None     # Schema to use
     connection = None # Connection
+    created = False   # If we created the connection
 
     def __init__(self, name, database, schema="public", connection=None, **kwargs):
 
@@ -35,10 +36,16 @@ class Source(relations.Source):
         if connection is not None:
             self.connection = connection
         else:
+            self.created = True
             self.connection = psycopg2.connect(
                 cursor_factory=psycopg2.extras.RealDictCursor,
                 **{name: arg for name, arg in kwargs.items() if name not in ["name", "database", "schema", "connection"]}
             )
+
+    def __del__(self):
+
+        if self.created:
+            self.connection.close()
 
     def table(self, model):
         """
