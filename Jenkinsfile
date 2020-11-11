@@ -12,10 +12,5 @@ pipeline {
                 sh 'make test'
             }
         }
-        stage('verify') {
-            steps {
-                sh 'make verify'
-            }
-        }
     }
 }
