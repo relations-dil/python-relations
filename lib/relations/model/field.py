@@ -25,7 +25,7 @@ class Field:
     length = None     # Length of the value
     default = None    # Default value
     not_null = None   # Whether to allow nulls (None)
-    readonly = False  # Whether this field is readonly
+    readonly = None  # Whether this field is readonly
 
     # Operators supported and whether allwo multiple values
 
