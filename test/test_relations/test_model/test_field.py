@@ -35,8 +35,9 @@ class TestField(unittest.TestCase):
 
     def test___init__(self):
 
-        field = relations.model.Field(int, unit="test")
+        field = relations.model.Field(int, "unit", unit="test")
         self.assertEqual(field.kind, int)
+        self.assertEqual(field.default, "unit")
         self.assertEqual(field.unit, "test")
 
     def test___setattr__(self):

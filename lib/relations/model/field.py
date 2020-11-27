@@ -25,9 +25,15 @@ class Field:
     length = None     # Length of the value
     default = None    # Default value
     not_null = None   # Whether to allow nulls (None)
-    readonly = None  # Whether this field is readonly
+    readonly = None   # Whether this field is readonly
 
     # Operators supported and whether allwo multiple values
+
+    ATTRIBUTES = [
+        'default',
+        'not_null',
+        'readonly'
+    ]
 
     OPERATORS = {
         'in': True,
@@ -59,7 +65,7 @@ class Field:
         'delete'
     ]
 
-    def __init__(self, kind, **kwargs):
+    def __init__(self, kind, *args, **kwargs):
         """
         Set the name and what to cast it as and everything else be free form
         """
@@ -67,6 +73,9 @@ class Field:
         self.kind = kind
 
         # Just set what as sent
+
+        for index, attribute in enumerate(args):
+            setattr(self, self.ATTRIBUTES[index], attribute)
 
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
