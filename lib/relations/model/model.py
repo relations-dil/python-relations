@@ -61,6 +61,8 @@ class ModelIdentity:
 
             if attribute in [int, float, str, dict , list]:
                 field = Field(attribute)
+            elif callable(attribute):
+                field = Field(type(attribute()), default=attribute)
             elif isinstance(attribute, tuple):
                 field = Field(*attribute)
             elif isinstance(attribute, dict):
@@ -546,7 +548,7 @@ class Model(ModelIdentity):
 
         if _defaults:
             for field in record._order:
-                field.value = field.default
+                field.value = field.default() if callable(field.default) else field.default
 
         if _read is not None:
             record.read(_read)

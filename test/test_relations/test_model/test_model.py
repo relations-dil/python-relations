@@ -32,6 +32,9 @@ class People(relations.model.ModelIdentity):
     id = int
     name = str
 
+def stuffit():
+    return "things"
+
 class Stuff(relations.model.ModelIdentity):
 
     NAME = "stuffins"
@@ -40,6 +43,7 @@ class Stuff(relations.model.ModelIdentity):
     id = (int,)
     name = relations.model.Field(str, default="unittest")
     nope = False
+    people = stuffit
 
 class Things(relations.model.ModelIdentity):
 
@@ -70,6 +74,9 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["id"].kind, int)
         self.assertEqual(stuff._fields._names["name"].name, "name")
         self.assertEqual(stuff._fields._names["name"].kind, str)
+        self.assertEqual(stuff._fields._names["people"].name, "people")
+        self.assertEqual(stuff._fields._names["people"].kind, str)
+        self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
 
         things = Things._thyself()
@@ -93,10 +100,14 @@ class ModelTest(relations.model.Model):
 
     SOURCE = "TestModel"
 
+def unit():
+    return "test"
+
 class UnitTest(ModelTest):
     id = int
     name = relations.model.Field(str, default="unittest")
     nope = False
+    deffer = unit
 
 class Unit(ModelTest):
     id = int
@@ -380,7 +391,7 @@ class TestModel(unittest.TestCase):
         # single
 
         model = UnitTest("unit")
-        self.assertEqual(len(model), 2)
+        self.assertEqual(len(model), 3)
         self.assertTrue(model)
 
         # multiple, with records
@@ -429,7 +440,7 @@ class TestModel(unittest.TestCase):
         # single
 
         model = UnitTest("unit")
-        self.assertEqual(list(model), ["id", "name"])
+        self.assertEqual(list(model), ["id", "name", "deffer"])
 
         # multiple, with records
 
@@ -475,8 +486,8 @@ class TestModel(unittest.TestCase):
         # single
 
         model = UnitTest("unit")
-        self.assertEqual(list(model.keys()), ["id", "name"])
-        self.assertEqual(dict(model), {"id": None, "name": "unit"})
+        self.assertEqual(list(model.keys()), ["id", "name", "deffer"])
+        self.assertEqual(dict(model), {"id": None, "name": "unit", "deffer": "test"})
 
         # child, one
 
@@ -880,10 +891,12 @@ class TestModel(unittest.TestCase):
 
         record = model._build("create", "unittest")
         self.assertEqual(record.name, "unittest")
+        self.assertEqual(record.deffer, "test")
 
         record = model._build("create", _defaults=False, _read={"id": 2})
         self.assertEqual(record.id, 2)
         self.assertIsNone(record.name)
+        self.assertIsNone(record.deffer)
 
         model._related = {"id": 3}
         record = model._build("create", _defaults=False)
