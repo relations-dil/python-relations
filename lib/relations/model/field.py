@@ -1,3 +1,7 @@
+"""
+Relations Module for handling fields
+"""
+
 class FieldError(Exception):
     """
     Field Error class that captures the field
@@ -125,7 +129,7 @@ class Field:
         Returns the value to set
         """
 
-        if not self.strict:
+        if not self.strict: # pylint: disable=no-else-return
 
             return value
 
@@ -144,16 +148,14 @@ class Field:
 
             raise FieldError(self, f"{value} not in {self.kind} for {self.name}")
 
-        else:
-
-            return self.kind(value)
+        return self.kind(value)
 
     def get(self, value):
         """
         Gets the value
         """
 
-        if value is None or not self.strict:
+        if value is None or not self.strict: # pylint: disable=no-else-return
 
             return value
 
@@ -200,7 +202,7 @@ class Field:
 
         for operator, satisfy in (self.criteria or {}).items():
             if (
-                (operator == "in" and value not in satisfy) or
+                (operator == "in" and value not in satisfy) or # pylint: disable=too-many-boolean-expressions
                 (operator in "ne" and value in satisfy) or
                 (operator == "eq" and value != satisfy) or
                 (operator == "gt" and value <= satisfy) or

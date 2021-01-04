@@ -19,8 +19,8 @@ class Record:
     Stores record for a Model
     """
 
-    _order  = None  # Access in order
-    _names  = None  # Access by name
+    _order = None  # Access in order
+    _names = None  # Access by name
     _action = None # What to do with this record
 
     def __init__(self):
