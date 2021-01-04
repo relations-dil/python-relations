@@ -31,7 +31,7 @@ lint:
 
 verify:
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
-	apk update && apk add gcc libc-dev make libpq postgresql-dev build-base && python setup.py install && \
+	python setup.py install && \
 	python -m relations.sql && \
 	python -m relations.query && \
 	python -m relations.unittest && \
