@@ -14,14 +14,7 @@ setup(
         'relations.model.field',
         'relations.model.model',
         'relations.model.record',
-        'relations.model.relation',
-        'relations.pymysql',
-        'relations.psycopg2'
+        'relations.model.relation'
     ],
-    install_requires=[
-        'PyYAML==5.3.1',
-        'PyMySQL==0.10.0',
-        'psycopg2==2.8.6',
-        'redis==3.5.2'
-    ]
+    install_requires=[]
 )
