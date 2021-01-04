@@ -332,6 +332,12 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(test.case.name, "whatever")
 
+        def get():
+
+            test.fail
+
+        self.assertRaisesRegex(AttributeError, "has no attribute 'fail'", get)
+
     def test___getattribute__(self):
 
         # model
