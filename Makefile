@@ -74,5 +74,5 @@ tag:
 	git push origin --tags
 
 untag:
-	-git tag -d "v$(VERSION)"
+	-git tag -d $(VERSION)
 	git push origin ":refs/tags/$(VERSION)"
