@@ -2,6 +2,8 @@
 Module for Model Relations
 """
 
+# pylint: disable=too-few-public-methods
+
 import relations.model
 
 class Relation:

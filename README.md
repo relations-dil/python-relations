@@ -8,27 +8,35 @@ The defintion for DB model has two purposes. First to generate code to create an
 
 ```python
 
-class SourceModel(relations.model.Model):
-    SOURCE = "TestSource"
+# In your start code for MySQL (separate module)
 
-class Unit(SourceModel):
+import relations_pymysql
+
+relations_pymysql.Source("your-source", database="test_source", host="my-host", port=int(os.environ["MYSQL_PORT"]))
+
+# In your main code
+
+import relations.model
+
+class BaeeModel(relations.model.Model):
+    SOURCE = "your-source"
+
+class Unit(BaeeModel):
     id = int
     name = str
 
-class Test(SourceModel):
+class Test(BaeeModel):
     id = int
     unit_id = int
     name = str
 
-class Case(ModelTest):
+class Case(BaeeModel):
     id = int
     test_id = int
     name = str
 
 relations.model.OneToMany(Unit, Test)
 relations.model.OneToOne(Test, Case)
-
-relations.pymysql.Source("TestSource", database="test_source", host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]))
 
 cursor = self.source.connection.cursor()
 
@@ -127,40 +135,3 @@ Model.one().delete()	None	one	None	will execute model deletes, not children
 Model.many().delete()	None	many	None	will execute model deletes, not children
 Model.many().delete()	None	one	None	will execute model deletes, not children
 ```
-
-## API
-
-These are just defaults and overriable
-
-- `POST /{entity}/` - Create
-  - One
-    - request `{"entity": *}`
-    - response `{"entity": *}`
-  - Many
-    - request `{"entities": *}`
-    - response `{"entities": *}`
-- `GET /{entity}/` - Search
-  - request
-    - Can be in query `?field=value`
-        - Split in/not in by ','
-    - Can be in body `{"query": {"field": value}, "fields": []}` (fields to return)
-    - fields for querying
-        - field - equals
-        - field__not - not equals
-        - field__in - IN ()
-        - field__not_in - NOT IN ()
-        - field__gt - >
-        - field__gte - >=
-        - field__lt - <
-        - field__lte - <=
-    rsponse `{"entities": *}`
-- `GET /{entity}/{id}` - Retrieve
-  - response `{"entity": *}`
-- `PATCH /{entity}/{id}` - Update
-  - request `{"entity": *}`
-  - response `{"entity": *}`
-- `DELETE /{entity}/{id}` - Delete
-
-Strings for URL will be format strings: - `/{entity}/{id}` and overriable
-
-Strings for operations will be overridable too. __ etc.

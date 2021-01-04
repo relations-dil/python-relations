@@ -1,4 +1,9 @@
-import sys
+"""
+Relations Module for handling models
+"""
+
+# pylint: disable=unsupported-membership-test,too-few-public-methods
+
 import copy
 
 import relations
@@ -6,6 +11,9 @@ import relations
 from relations.model import Field, Record
 
 class ModelError(Exception):
+    """
+    Generic model Error for easier tracing
+    """
 
     def __init__(self, model, message):
 
@@ -20,6 +28,9 @@ class ModelError(Exception):
         return f"{self.model.NAME}: {self.message}"
 
 class ModelIdentity:
+    """
+    Intermiedate statuc type class for constructing mode information with a full model
+    """
 
     SOURCE = None   # Data source
 
@@ -59,7 +70,7 @@ class ModelIdentity:
             if name.startswith('_') or name != name.lower():
                 continue # pragma: no cover
 
-            if attribute in [int, float, str, dict , list]:
+            if attribute in [int, float, str, dict, list]:
                 field = Field(attribute)
             elif callable(attribute):
                 field = Field(type(attribute()), default=attribute)
@@ -111,6 +122,9 @@ class ModelIdentity:
         return self._fields._order[field].name
 
 class Model(ModelIdentity):
+    """
+    Main model class
+    """
 
     _record = None # The current loaded single record (from get/create)
     _models = None # The current loaded multiple models (from list/create)
@@ -285,8 +299,7 @@ class Model(ModelIdentity):
             if self._role == "child" and self._mode == "one":
                 if self._models:
                     return getattr(self._models[0], name)
-                else:
-                    raise ModelError(self, "no record")
+                raise ModelError(self, "no record")
 
             if self._mode == "one":
                 return self._record[name]
@@ -296,9 +309,7 @@ class Model(ModelIdentity):
 
             return [getattr(model, name) for model in self._models]
 
-        else:
-
-            return object.__getattribute__(self, name)
+        return object.__getattribute__(self, name)
 
     def __len__(self):
         """
@@ -310,8 +321,7 @@ class Model(ModelIdentity):
         if self._role == "child" and self._mode == "one":
             if self._models:
                 return len(self._models[0])
-            else:
-                return 0
+            return 0
 
         if self._mode == "one":
             return len(self._record)
@@ -407,8 +417,7 @@ class Model(ModelIdentity):
         if self._role == "child" and self._mode == "one":
             if self._models:
                 return self._models[0][key]
-            else:
-                raise ModelError(self, "no record")
+            raise ModelError(self, "no record")
 
         if self._mode == "one":
             return self._record[key]
@@ -462,7 +471,7 @@ class Model(ModelIdentity):
         Looks up a relation by attribute name
         """
 
-        if name in self.PARENTS:
+        if name in self.PARENTS: # pylint: disable=no-else-return
 
             relation = self.PARENTS[name]
 
@@ -482,7 +491,9 @@ class Model(ModelIdentity):
                 if self._action == "retrieve":
                     self._children[name] = relation.Child.many()
                 else:
-                    self._children[name] = relation.Child(_parent={relation.child_field: self._record[relation.parent_field]}, _mode=relation.MODE)
+                    self._children[name] = relation.Child(
+                        _parent={relation.child_field: self._record[relation.parent_field]}, _mode=relation.MODE
+                    )
 
             return self._children[name]
 
@@ -568,8 +579,7 @@ class Model(ModelIdentity):
         if self._action == "retrieve":
             if self._record._action == "update":
                 raise ModelError(self, "need to update")
-            else:
-                self.retrieve()
+            self.retrieve()
 
     def _each(self, action=None):
         """
@@ -668,7 +678,7 @@ class Model(ModelIdentity):
             if self._models is None:
                 self._models = []
 
-            for record in range(_count):
+            for _ in range(_count):
                 self._models.append(self.__class__(_action="create", _related=self._related, *args, **kwargs))
 
         return self

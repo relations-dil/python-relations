@@ -2,6 +2,8 @@
 Unittest Tools for Relations
 """
 
+# pylint: disable=unused-argument,arguments-differ
+
 import relations
 
 class MockSource(relations.Source):
@@ -80,7 +82,7 @@ class MockSource(relations.Source):
 
             self.data[model.NAME][self.ids[model.NAME]] = values
 
-            for parent_child, relation in creating.CHILDREN.items():
+            for parent_child in creating.CHILDREN:
                 if creating._children.get(parent_child):
                     creating._children[parent_child].create()
 
@@ -113,8 +115,8 @@ class MockSource(relations.Source):
 
                 if verify:
                     raise relations.model.ModelError(model, "none retrieved")
-                else:
-                    return None
+
+                return None
 
             model._record = model._build("update", _read=matches[0])
 
@@ -136,7 +138,7 @@ class MockSource(relations.Source):
         Updates values with the field's that changed
         """
 
-        if not field.readonly and (changed is None or field.changed==changed):
+        if not field.readonly and (changed is None or field.changed == changed):
             values[field.store] = field.value
             field.changed = False
 
@@ -170,7 +172,7 @@ class MockSource(relations.Source):
 
                 updated += 1
 
-                for parent_child, relation in updating.CHILDREN.items():
+                for parent_child in updating.CHILDREN:
                     if updating._children.get(parent_child):
                         updating._children[parent_child].create().update()
 

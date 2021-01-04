@@ -5,12 +5,12 @@ Main relations module for storing sources
 SOURCES = {}  # Sources reference to use
 
 
-def register(source):
+def register(new_source):
     """
     Registers a source
     """
 
-    SOURCES[source.name] = source
+    SOURCES[new_source.name] = new_source
 
 
 def source(name):
@@ -41,7 +41,7 @@ class Source:
 
         return self
 
-    def ensure_attribute(self, item, attribute, default=None):
+    def ensure_attribute(self, item, attribute, default=None): # pylint: disable=no-self-use
         """
         ensure the item has the attribute
         """
@@ -54,7 +54,6 @@ class Source:
         """
         init the field
         """
-        pass
 
     def record_init(self, record):
         """
@@ -73,7 +72,6 @@ class Source:
         """
         define the field
         """
-        pass
 
     def record_define(self, record, *args, **kwargs):
         """
@@ -86,13 +84,11 @@ class Source:
         """
         define the model
         """
-        pass
 
     def field_create(self, field, *args, **kwargs):
         """
         create the field
         """
-        pass
 
     def record_create(self, record, *args, **kwargs):
         """
@@ -105,13 +101,11 @@ class Source:
         """
         create the model
         """
-        pass
 
     def field_retrieve(self, field, *args, **kwargs):
         """
         retrieve the field
         """
-        pass
 
     def record_retrieve(self, record, *args, **kwargs):
         """
@@ -124,13 +118,11 @@ class Source:
         """
         retrieve the model
         """
-        pass
 
     def field_update(self, field, *args, **kwargs):
         """
         update the field
         """
-        pass
 
     def record_update(self, record, *args, **kwargs):
         """
@@ -143,13 +135,11 @@ class Source:
         """
         update the model
         """
-        pass
 
     def field_delete(self, field, *args, **kwargs):
         """
         delete the field
         """
-        pass
 
     def record_delete(self, record, *args, **kwargs):
         """
@@ -162,7 +152,6 @@ class Source:
         """
         delete the model
         """
-        pass
 
     def children_execute(self, model):
         """
