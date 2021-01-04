@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.1
+VERSION?=0.1.0
 NETWORK=relations.io
 MYSQL_IMAGE=mysql/mysql-server:5.7
 MYSQL_HOST=$(ACCOUNT)-$(IMAGE)-mysql
@@ -57,9 +57,9 @@ verify:
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && python setup.py install && python -m relations.sql && python -m relations.query && python -m relations.model"
 
 tag:
-	-git tag -a "v$(VERSION)" -m "Version $(VERSION)"
+	-git tag -a $(VERSION) -m "Version $(VERSION)"
 	git push origin --tags
 
 untag:
 	-git tag -d "v$(VERSION)"
-	git push origin ":refs/tags/v$(VERSION)"
+	git push origin ":refs/tags/$(VERSION)"
