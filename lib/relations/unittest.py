@@ -82,7 +82,7 @@ class MockSource(relations.Source):
 
             self.data[model.NAME][self.ids[model.NAME]] = values
 
-            for parent_child, _ in creating.CHILDREN.items():
+            for parent_child in creating.CHILDREN:
                 if creating._children.get(parent_child):
                     creating._children[parent_child].create()
 
@@ -172,7 +172,7 @@ class MockSource(relations.Source):
 
                 updated += 1
 
-                for parent_child, _ in updating.CHILDREN.items():
+                for parent_child in updating.CHILDREN:
                     if updating._children.get(parent_child):
                         updating._children[parent_child].create().update()
 
