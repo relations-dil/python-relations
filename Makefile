@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.1.0
+VERSION?=0.2.0
 NETWORK=relations.io
 MYSQL_IMAGE=mysql/mysql-server:5.7
 MYSQL_HOST=$(ACCOUNT)-$(IMAGE)-mysql
@@ -63,9 +63,6 @@ verify:
 	python -m relations.model.model && \
 	python -m relations.model.record && \
 	python -m relations.model.relation && \
-	python -m relations.restful.resource && \
-	python -m relations.restful.source && \
-	python -m relations.restful.unittest && \
 	python -m relations.pymysql && \
 	python -m relations.psycopg2"
 

@@ -15,10 +15,6 @@ setup(
         'relations.model.model',
         'relations.model.record',
         'relations.model.relation',
-        'relations.restful',
-        'relations.restful.resource',
-        'relations.restful.source',
-        'relations.restful.unittest',
         'relations.pymysql',
         'relations.psycopg2'
     ],
@@ -26,9 +22,6 @@ setup(
         'PyYAML==5.3.1',
         'PyMySQL==0.10.0',
         'psycopg2==2.8.6',
-        'redis==3.5.2',
-        'requests==2.24.0',
-        'flask==1.1.2',
-        'flask_restful==0.3.8'
+        'redis==3.5.2'
     ]
 )
