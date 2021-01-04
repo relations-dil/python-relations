@@ -1,6 +1,6 @@
 FROM python:3.8.5-alpine3.12
 
-RUN mkdir -p /opt/service && apk update && apk add gcc libc-dev make libpq postgresql-dev build-base
+RUN mkdir -p /opt/service
 
 WORKDIR /opt/service
 
