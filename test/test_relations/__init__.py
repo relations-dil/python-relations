@@ -37,7 +37,10 @@ class TestSource(unittest.TestCase):
 
     def test___new__(self):
 
-        self.assertEqual(relations.source("unittest"), self.source)
+        source = relations.Source("testunit", reverse=True)
+
+        self.assertEqual(relations.source("testunit"), source)
+        self.assertTrue(source.reverse)
 
     def test_ensure_attribute(self):
 

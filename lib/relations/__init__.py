@@ -37,6 +37,9 @@ class Source:
 
         self.name = kwargs.get("name", args[0])
 
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
+
         register(self)
 
         return self
