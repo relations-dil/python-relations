@@ -32,13 +32,14 @@ lint:
 verify:
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
 	python setup.py install && \
+	python -m relations.source && \
 	python -m relations.sql && \
 	python -m relations.query && \
 	python -m relations.unittest && \
-	python -m relations.model.field && \
-	python -m relations.model.model && \
-	python -m relations.model.record && \
-	python -m relations.model.relation"
+	python -m relations.field && \
+	python -m relations.model && \
+	python -m relations.record && \
+	python -m relations.relation"
 
 tag:
 	-git tag -a $(VERSION) -m "Version $(VERSION)"
