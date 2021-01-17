@@ -155,9 +155,9 @@ class Example:
     degreed = float, 1.23
 
     # If the second argument matches the kind, it is a default
-    # value and assumes not to allow None's (because bool here)
+    # value (because bool here)
 
-    # Field(bool, name="flag", default=False, none=False)
+    # Field(bool, name="flag", default=False, none=True)
     name = bool, False
 
     # If the first arg is a list, it'll use the first values type
