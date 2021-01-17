@@ -173,8 +173,14 @@ class TestSource(unittest.TestCase):
         field.value = 1
         values = {}
         self.source.field_update(field, values)
+        self.assertEqual(values, {'id': 1})
+
+        field.changed = False
+        values = {}
+        self.source.field_update(field, values)
         self.assertEqual(values, {'id': -1})
         self.assertEqual(field.value, -1)
+
 
         # not changed
 

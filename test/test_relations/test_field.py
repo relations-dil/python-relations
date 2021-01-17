@@ -212,10 +212,19 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.changed)
 
         field.value = 1
+        field.changed = True
+        values = {}
+        field.write(values, update=True)
+        self.assertEqual(values, {'_id': 1})
+        self.assertEqual(field.value, 1)
+
+        field.value = 1
+        field.changed = False
         values = {}
         field.write(values, update=True)
         self.assertEqual(values, {'_id': -1})
         self.assertEqual(field.value, -1)
+
 
         field.value = 0
         field.readonly = True

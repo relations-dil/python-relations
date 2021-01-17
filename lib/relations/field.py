@@ -241,7 +241,7 @@ class Field:
         """
 
         if not self.readonly:
-            if update and self.replace:
+            if update and self.replace and not self.changed:
                 self.value = self.default() if callable(self.default) else self.default
             values[self.store] = self.valid(self.value)
             self.changed = False
