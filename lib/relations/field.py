@@ -34,13 +34,14 @@ class Field:
 
     value = None      # Value of the field
     changed = None    # Whether the values been changed since creation, retrieving
+    replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
 
     # Operators supported and whether allwo multiple values
 
     ATTRIBUTES = [
         'default',
-        'none'
+        'replace'
     ]
 
     OPERATORS = {
@@ -80,15 +81,26 @@ class Field:
 
         self.kind = kind
 
-        # Just set what as sent
+        # If the last arg is a dict, use it as kwargs
 
-        for index, attribute in enumerate(args):
-            setattr(self, self.ATTRIBUTES[index], attribute)
+        if args and isinstance(args[-1], dict):
+            args = list(args)
+            kwargs = args.pop()
+
+        # If there's only one arg, it's bool and the kind isn't,
+        # assume is for none, making a field non None
+
+        if len(args) == 1 and isinstance(args[0], bool) and self.kind != bool:
+            self.none = args[0]
+        # Else just set what as sent
+        else:
+            for index, attribute in enumerate(args):
+                setattr(self, self.ATTRIBUTES[index], attribute)
 
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
 
-        if "none" not in kwargs:
+        if self.none is None:
             if self.default is None and self.options is None and self.validation is None:
                 self.none = True
             else:
@@ -221,11 +233,13 @@ class Field:
         self.value = self.valid(values.get(self.store))
         self.changed = False
 
-    def write(self, values):
+    def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
         """
 
         if not self.readonly:
+            if update and self.replace:
+                self.value = self.default() if callable(self.default) else self.default
             values[self.store] = self.valid(self.value)
             self.changed = False

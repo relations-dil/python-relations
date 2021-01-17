@@ -165,12 +165,12 @@ class Record:
         for field in self._order:
             field.read(values)
 
-    def write(self, values):
+    def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
         """
 
         for field in self._order:
-            field.write(values)
+            field.write(values, update=update)
 
         return values

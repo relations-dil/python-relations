@@ -114,45 +114,88 @@ Defining fields can be done in lots of clever ways, which is probably a bad idea
 ```python
 relations.Field(
 
-    # Required on creation
-    kind = None      # Data class to cast values as or validate
+    kind = None       # Data class to cast values as or validate
 
-    # Ordered parameters
-    default = None    # Default value
-    none = True       # Whether to allow nulls (None)
-
-    # Named parameters
     name = None       # Name used in models
-    store = None      # Name to use when reading and writing (in case your field name is reserved)
-    strict = True     # Whether or not to cast on set
+    store = None      # Name to use when reading and writing
+
+    default = None    # Default value
+    none = None       # Whether to allow None (nulls)
+    options = None    # Possible values (if not None)
+    validation = None # How to validate values (if not None), can regex or method
+    readonly = None   # Whether this field is readonly
     length = None     # Length of the value
-    none = True       # Whether to allow nulls (None)
+
+    value = None      # Value of the field
+    changed = None    # Whether the values been changed since creation, retrieving
+    replace = None    # Whether to replace the value with default on update
+    criteria = None   # Values for searching
 )
 ```
 
-The odd creation of a Field is to allow for cleverness. Here's some clever defintions and they're full equivlaents
+The odd creation of a Field is to allow for cleverness. Here's some clever defintions and their full equivlaents
 
 
 ```python
 class Example:
 
-    # Field(int, name="id")
+    # Field(int, name="id", none=True)
     id = int
 
-    # Field(str, name="name")
-    name = str
-
-    # Field(float, name="degreed")
-    degreed = float
+    # If the second argument is a bool and the kind isn't,
+    # it indicates whether to allow None's
 
     # Field(str, name="name", none=False)
     name = str, False
 
-    # Field(str, name="status", default="fail")
-    status = str, "fail"
+    # If the second argument matches the kind, it is a default
+    # value and assumes not to allow None's
 
-    # Field(str, name="status", default="fail")
-    status = ["pass", "fail"], "fail"
+    # Field(float, name="degreed", default=1.23, none=False)
+    degreed = float, 1.23
+
+    # If the second argument matches the kind, it is a default
+    # value and assumes not to allow None's (because bool here)
+
+    # Field(bool, name="flag", default=False, none=False)
+    name = bool, False
+
+    # If the first arg is a list, it'll use the first values type
+    # as kind, and use the list as options to validate against
+
+    # Field(str, name="status", options=["pass", "fail"], none=False)
+    status = ["pass", "fail"]
+
+    # If the last arg is dict, it casts it a kwargs
+
+    # Field(str, name="status", options=["pass", "fail"], none=True)
+    status = ["pass", "fail"], {"none": True}
+
+    # If you provide a function as the first arg, it'll call the function
+    # and take teh return value as the type. It'll also call the function
+    # for teh field value each time you create it.
+
+    # Field(flaat, name="create_ts", default=time.time, none=False)
+    create_ts = time.time
+
+    # If you provide an argument after the default, it'll assume it's the
+    # replace bool, which if true uses the default when updating
+
+    # Field(flaat, name="update_ts", default=time.time, replace=True, none=False)
+    update_ts = time.time, True
+
+    # All values are always cast as the kind, so even though time is floar,
+    # you can easily use it as int by being explicit
+
+    # Field(int, name="update_ts", default=time.time, replace=True, none=False)
+    update_ts = int, time.time, True
+
+    # If you want to just use the class instantiation, you do that.
+    # I just like to make daring (something bad) decisions. Just remember
+    # to exlcude the name. That'll be added later in ModelIdentity.
+
+    # Field(int, name="update_ts", default=time.time, replace=True, one=False)
+    update_ts = Field(int, default=time.time, replace=True, none=False)
 ```
 
 # Model
