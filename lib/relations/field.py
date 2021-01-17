@@ -99,7 +99,7 @@ class Field:
                 raise FieldError(self, f"{self.default} default not {self.kind} for {self.name}")
 
         if self.options is not None:
-            for option in self.options:
+            for option in self.options: # pylint: disable=not-an-iterable
                 if not isinstance(option, self.kind):
                     raise FieldError(self, f"{option} option not {self.kind} for {self.name}")
 
@@ -155,7 +155,7 @@ class Field:
 
         value = self.kind(value)
 
-        if self.options is not None and value not in self.options:
+        if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
             raise FieldError(self, f"{value} not in {self.options} for {self.name}")
 
         if self.validation is not None:
@@ -163,7 +163,7 @@ class Field:
                 if not re.match(self.validation, value):
                     raise FieldError(self, f"{value} doesn't match {self.validation} for {self.name}")
             elif callable(self.validation):
-                if not self.validation(value):
+                if not self.validation(value): # pylint: disable=not-callable
                     raise FieldError(self, f"{value} invalid for {self.name}")
 
         return value
