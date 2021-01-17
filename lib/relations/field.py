@@ -2,6 +2,8 @@
 Relations Module for handling fields
 """
 
+# pylint: disable=not-callable
+
 import re
 
 class FieldError(Exception):
@@ -20,7 +22,7 @@ class Field:
     Base field class
     """
 
-    kind = None      # Data class to cast values as or validate
+    kind = None       # Data class to cast values as or validate
 
     name = None       # Name used in models
     store = None      # Name to use when reading and writing
@@ -74,7 +76,7 @@ class Field:
         'delete'
     ]
 
-    def __init__(self, kind, *args, **kwargs):
+    def __init__(self, kind, *args, **kwargs): # pylint: disable=too-many-branches
         """
         Set the name and what to cast it as and everything else be free form
         """
