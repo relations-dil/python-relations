@@ -72,7 +72,7 @@ class ModelIdentity:
             if name.startswith('_') or name != name.lower():
                 continue # pragma: no cover
 
-            if attribute in [bool, int, float, str, dict, list]:
+            if attribute in [bool, int, float, str, list, dict]:
                 field = relations.Field(attribute)
             elif callable(attribute):
                 field = relations.Field(type(attribute()), default=attribute)
