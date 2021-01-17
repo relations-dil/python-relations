@@ -2,7 +2,7 @@
 Relations Module for handling models
 """
 
-# pylint: disable=unsupported-membership-test,too-few-public-methods
+# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements
 
 import copy
 
@@ -34,6 +34,8 @@ class ModelIdentity:
 
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
+    UNIQUE = None   # Unique indexes
+    INDEX = None    # Regular indexes
 
     PARENTS = None  # Parent relationships (many/one to one)
     CHILDREN = None # Child relationships (one to many/one)
@@ -42,6 +44,8 @@ class ModelIdentity:
 
     _id = None     # Name of id field
     _fields = None # Base record to create other records with
+    _unique = None # Actual unique indexes
+    _index = None  # Actual indexes
 
     @classmethod
     def _thyself(cls, self=None):
@@ -49,7 +53,7 @@ class ModelIdentity:
         Base identity to be known without instantiating the class
         """
 
-        # If self wasn't sent, we're jsut providing a shell of an instance
+        # If self wasn't sent, we're just providing a shell of an instance
 
         if self is None:
             self = ModelIdentity()
@@ -93,6 +97,60 @@ class ModelIdentity:
 
         if cls.ID is not None:
             setattr(self, '_id', self._field_name(cls.ID))
+
+        # Figure out indexes
+
+        unique = self.UNIQUE
+
+        if unique is None:
+            unique = []
+            for field in self._fields._order:
+                if self._id == field.name:
+                    continue
+                if field.kind in (int, str):
+                    unique.append(field.name)
+                if field.kind == str:
+                    break
+        elif not unique:
+            unique = {}
+
+        if isinstance(unique, str):
+            unique = [unique]
+
+        if isinstance(unique, list):
+            unique = {
+                "-".join(unique): unique
+            }
+
+        if isinstance(unique, dict):
+            self._unique = unique
+
+        # Make sure all the unique indexes check out
+
+        for unique in self._unique:
+            for field in self._unique[unique]:
+                if field not in self._fields:
+                    raise ModelError(self, f"cannot find field {field} from unique {unique}")
+
+        index = self.INDEX or {}
+
+        if isinstance(index, str):
+            index = [index]
+
+        if isinstance(index, list):
+            index = {
+                "-".join(index): index
+            }
+
+        if isinstance(index, dict):
+            self._index = index
+
+        # Make sure all the indexes check out
+
+        for index in self._index:
+            for field in self._index[index]:
+                if field not in self._fields:
+                    raise ModelError(self, f"cannot find field {field} from index {index}")
 
         # Initialize relation models
 
