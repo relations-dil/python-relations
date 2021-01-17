@@ -2,7 +2,7 @@
 Relations Module for handling models
 """
 
-# pylint: disable=unsupported-membership-test,too-few-public-methods
+# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements
 
 import copy
 
@@ -44,8 +44,8 @@ class ModelIdentity:
 
     _id = None     # Name of id field
     _fields = None # Base record to create other records with
-    _unqiue = None # Actual unique indexes
-    _index  = None # Actual indexes
+    _unique = None # Actual unique indexes
+    _index = None  # Actual indexes
 
     @classmethod
     def _thyself(cls, self=None):
@@ -53,7 +53,7 @@ class ModelIdentity:
         Base identity to be known without instantiating the class
         """
 
-        # If self wasn't sent, we're jsut providing a shell of an instance
+        # If self wasn't sent, we're just providing a shell of an instance
 
         if self is None:
             self = ModelIdentity()
