@@ -139,7 +139,7 @@ class MockSource(relations.Source):
         """
 
         if not field.readonly:
-            if field.replace:
+            if field.replace and not field.changed:
                 field.value = field.default() if callable(field.default) else field.default
             if changed is None or field.changed == changed:
                 values[field.store] = field.value
