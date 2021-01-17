@@ -9,7 +9,7 @@ class TestRecordError(unittest.TestCase):
 
     def test___init__(self):
 
-        error = relations.model.RecordError("unittest", "oops")
+        error = relations.RecordError("unittest", "oops")
 
         self.assertEqual(error.record, "unittest")
         self.assertEqual(error.message, "oops")
@@ -22,45 +22,45 @@ class TestRecord(unittest.TestCase):
 
         self.source = unittest.mock.MagicMock()
 
-        self.record = relations.model.Record()
+        self.record = relations.Record()
 
-        self.id = relations.model.Field(int, name="id", store="_id")
-        self.name = relations.model.Field(str, name="name", store="_name")
+        self.id = relations.Field(int, name="id", store="_id")
+        self.name = relations.Field(str, name="name", store="_name")
 
         self.record.append(self.id)
         self.record.append(self.name)
 
     def test___init__(self):
 
-        record = relations.model.Record()
+        record = relations.Record()
 
         self.assertEqual(record._order, [])
         self.assertEqual(record._names, {})
 
     def test_insert(self):
 
-        record = relations.model.Record()
+        record = relations.Record()
 
-        id = relations.model.Field(int, name="id", store="_id")
+        id = relations.Field(int, name="id", store="_id")
         record.insert(0, id)
         self.assertEqual(record._order, [id])
         self.assertEqual(record._names, {"id": id})
 
-        name = relations.model.Field(str, name="name", store="_name")
+        name = relations.Field(str, name="name", store="_name")
         record.insert(0, name)
         self.assertEqual(record._order, [name, id])
         self.assertEqual(record._names, {"id": id, "name": name})
 
     def test_append(self):
 
-        record = relations.model.Record()
+        record = relations.Record()
 
-        id = relations.model.Field(int, name="id", store="_id")
+        id = relations.Field(int, name="id", store="_id")
         record.append(id)
         self.assertEqual(record._order, [id])
         self.assertEqual(record._names, {"id": id})
 
-        name = relations.model.Field(str, name="name", store="_name")
+        name = relations.Field(str, name="name", store="_name")
         record.append(name)
         self.assertEqual(record._order, [id, name])
         self.assertEqual(record._names, {"id": id, "name": name})
@@ -110,7 +110,7 @@ class TestRecord(unittest.TestCase):
         def nope():
             self.record['nope'] = 1
 
-        self.assertRaisesRegex(relations.model.RecordError, "unknown field 'nope'", nope)
+        self.assertRaisesRegex(relations.RecordError, "unknown field 'nope'", nope)
 
     def test___getitem__(self):
 
@@ -121,7 +121,7 @@ class TestRecord(unittest.TestCase):
         def nope():
             self.record['nope']
 
-        self.assertRaisesRegex(relations.model.RecordError, "unknown field 'nope'", nope)
+        self.assertRaisesRegex(relations.RecordError, "unknown field 'nope'", nope)
 
     def test_filter(self):
 
@@ -134,7 +134,7 @@ class TestRecord(unittest.TestCase):
         self.record.filter("id__ne", "2")
         self.assertEqual(self.id.criteria["ne"], [2])
 
-        self.assertRaisesRegex(relations.model.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
+        self.assertRaisesRegex(relations.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 
     def test_satisfy(self):
 

@@ -4,7 +4,7 @@ Module for Model Relations
 
 # pylint: disable=too-few-public-methods
 
-import relations.model
+import relations
 
 class Relation:
     """
@@ -40,7 +40,7 @@ class Relation:
         if model_id in relative._fields and (cls.SAME or model_id != relative._field_name(relative.ID)):
             return model_id
 
-        raise relations.model.ModelError(model, f"cannot determine field for {model.NAME} in {relative.NAME}")
+        raise relations.ModelError(model, f"cannot determine field for {model.NAME} in {relative.NAME}")
 
 class OneTo(Relation):
     """

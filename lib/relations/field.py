@@ -2,6 +2,8 @@
 Relations Module for handling fields
 """
 
+import re
+
 class FieldError(Exception):
     """
     Field Error class that captures the field
@@ -18,25 +20,27 @@ class Field:
     Base field class
     """
 
-    name = None     # Name used in models
-    kind = None     # Data class to cast values as or validate
-    store = None    # Name to use when reading and writing
-    value = None    # Value of the field
-    changed = None  # Whether the values been changed since creation, retrieving
-    criteria = None # Values for searching
+    kind = None      # Data class to cast values as or validate
 
-    strict = True     # Whether or not to cast on set
-    length = None     # Length of the value
+    name = None       # Name used in models
+    store = None      # Name to use when reading and writing
+
     default = None    # Default value
-    not_null = None   # Whether to allow nulls (None)
+    none = None       # Whether to allow None (nulls)
+    options = None    # Possible values (if not None)
+    validation = None # How to validate values (if not None)
     readonly = None   # Whether this field is readonly
+    length = None     # Length of the value
+
+    value = None      # Value of the field
+    changed = None    # Whether the values been changed since creation, retrieving
+    criteria = None   # Values for searching
 
     # Operators supported and whether allwo multiple values
 
     ATTRIBUTES = [
         'default',
-        'not_null',
-        'readonly'
+        'none'
     ]
 
     OPERATORS = {
@@ -84,6 +88,24 @@ class Field:
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
 
+        if "none" not in kwargs:
+            if self.default is None and self.options is None and self.validation is None:
+                self.none = True
+            else:
+                self.none = False
+
+        if self.default is not None and not callable(self.default):
+            if not isinstance(self.default, self.kind):
+                raise FieldError(self, f"{self.default} default not {self.kind} for {self.name}")
+
+        if self.options is not None:
+            for option in self.options: # pylint: disable=not-an-iterable
+                if not isinstance(option, self.kind):
+                    raise FieldError(self, f"{option} option not {self.kind} for {self.name}")
+
+        if self.validation is not None and not isinstance(self.validation, str) and not callable(self.validation):
+            raise FieldError(self, f"{self.validation} validation not regex or method for {self.name}")
+
     def __setattr__(self, name, value):
         """
         Use to set field values so everything is cost correctly
@@ -95,11 +117,9 @@ class Field:
 
             if value in self.RESERVED:
                 error = "is reserved"
-
-            if "__" in value:
+            elif "__" in value:
                 error = "cannot contain '__'"
-
-            if value[0] == '_':
+            elif value[0] == '_':
                 error = "cannot start with '_'"
 
             if error:
@@ -109,63 +129,42 @@ class Field:
                 self.store = value
 
         if name == "value":
-            value = self.set(value)
+            value = self.valid(value)
             self.changed = True
 
         object.__setattr__(self, name, value)
 
     def __getattribute__(self, name):
         """
-        Use to set field values so everything is cost correctly
+        Use to set field values so everything is cast correctly
         """
-
-        if name == "value":
-            return self.get(object.__getattribute__(self, "value"))
 
         return object.__getattribute__(self, name)
 
-    def set(self, value):
+    def valid(self, value):
         """
-        Returns the value to set
+        Returns the valid value, raising issues if invalid
         """
 
-        if not self.strict: # pylint: disable=no-else-return
+        # none rules all
 
+        if value is None:
+            if not self.none:
+                raise FieldError(self, f"None not allowed for {self.name}")
             return value
 
-        elif value is None:
+        value = self.kind(value)
 
-            if not self.not_null:
-                return value
+        if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
+            raise FieldError(self, f"{value} not in {self.options} for {self.name}")
 
-            raise FieldError(self, f"{value} not allowed for {self.name}")
-
-        elif isinstance(self.kind, list):
-
-            for option in self.kind:
-                if option == value:
-                    return option
-
-            raise FieldError(self, f"{value} not in {self.kind} for {self.name}")
-
-        return self.kind(value)
-
-    def get(self, value):
-        """
-        Gets the value
-        """
-
-        if value is None or not self.strict: # pylint: disable=no-else-return
-
-            return value
-
-        elif isinstance(self.kind, list):
-
-            for option in self.kind:
-                if option == value:
-                    return option
-
-            raise FieldError(self, f"{value} not in {self.kind} for {self.name}")
+        if self.validation is not None:
+            if isinstance(self.validation, str):
+                if not re.match(self.validation, value):
+                    raise FieldError(self, f"{value} doesn't match {self.validation} for {self.name}")
+            elif callable(self.validation):
+                if not self.validation(value): # pylint: disable=not-callable
+                    raise FieldError(self, f"{value} invalid for {self.name}")
 
         return value
 
@@ -187,18 +186,18 @@ class Field:
             if not isinstance(value, list):
                 value = [value]
 
-            self.criteria[operator].extend([self.set(item) for item in value])
+            self.criteria[operator].extend([self.valid(item) for item in value])
 
         else:
 
-            self.criteria[operator] = self.set(value)
+            self.criteria[operator] = self.valid(value)
 
     def satisfy(self, values):
         """
         Check if this value satisfies our criteria
         """
 
-        value = self.set(values.get(self.store))
+        value = self.valid(values.get(self.store))
 
         for operator, satisfy in (self.criteria or {}).items():
             if (
@@ -219,7 +218,7 @@ class Field:
         Loads the value from storage
         """
 
-        self.value = values.get(self.store)
+        self.value = self.valid(values.get(self.store))
         self.changed = False
 
     def write(self, values):
@@ -228,5 +227,5 @@ class Field:
         """
 
         if not self.readonly:
-            values[self.store] = self.value
+            values[self.store] = self.valid(self.value)
             self.changed = False
