@@ -7,6 +7,7 @@ setup(
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',
+        'relations.source',
         'relations.sql',
         'relations.query',
         'relations.unittest',
