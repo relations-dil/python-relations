@@ -167,8 +167,18 @@ class TestSource(unittest.TestCase):
         self.assertEqual(values, {"id": 1})
         self.assertFalse(field.changed)
 
+        # replace
+
+        field = relations.Field(int, name="id", default=-1, replace=True)
+        field.value = 1
+        values = {}
+        self.source.field_update(field, values)
+        self.assertEqual(values, {'id': -1})
+        self.assertEqual(field.value, -1)
+
         # not changed
 
+        field = relations.Field(int, name="id")
         values = {}
         self.source.field_update(field, values, changed=True)
         self.assertEqual(values, {})

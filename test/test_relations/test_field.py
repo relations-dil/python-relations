@@ -40,6 +40,15 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.unit, "test")
         self.assertTrue(field.none)
 
+        field = relations.Field(int, {"unit": "test"})
+        self.assertEqual(field.kind, int)
+        self.assertEqual(field.unit, "test")
+        self.assertTrue(field.none)
+
+        field = relations.Field(int, False)
+        self.assertEqual(field.kind, int)
+        self.assertFalse(field.none)
+
         field = relations.Field(int, 0)
         self.assertEqual(field.kind, int)
         self.assertEqual(field.default, 0)
@@ -194,13 +203,19 @@ class TestField(unittest.TestCase):
 
     def test_write(self):
 
-        field = relations.Field(int, store="_id")
+        field = relations.Field(int, store="_id", default=-1, replace=True)
 
         field.value = 1
         values = {}
         field.write(values)
         self.assertEqual(values, {'_id': 1})
         self.assertFalse(field.changed)
+
+        field.value = 1
+        values = {}
+        field.write(values, update=True)
+        self.assertEqual(values, {'_id': -1})
+        self.assertEqual(field.value, -1)
 
         field.value = 0
         field.readonly = True

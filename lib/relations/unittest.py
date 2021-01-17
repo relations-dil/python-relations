@@ -138,9 +138,12 @@ class MockSource(relations.Source):
         Updates values with the field's that changed
         """
 
-        if not field.readonly and (changed is None or field.changed == changed):
-            values[field.store] = field.value
-            field.changed = False
+        if not field.readonly:
+            if field.replace:
+                field.value = field.default() if callable(field.default) else field.default
+            if changed is None or field.changed == changed:
+                values[field.store] = field.value
+                field.changed = False
 
     def model_update(self, model):
         """
