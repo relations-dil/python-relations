@@ -2,12 +2,11 @@ import unittest
 import unittest.mock
 
 import relations
-import relations.model
-import relations.model.relation
+import relations.relation
 
-class UnitTest(relations.model.Model):
+class UnitTest(relations.Model):
     id = (int,)
-    name = relations.model.Field(str, default="unittest")
+    name = relations.Field(str, default="unittest")
     nope = False
 
 class TestRelation(unittest.TestCase):
@@ -25,38 +24,38 @@ class TestRelation(unittest.TestCase):
 
     def test_relative_field(self):
 
-        class TestUnit(relations.model.Model):
+        class TestUnit(relations.Model):
             id = int
             name = str
             ident = int
 
-        class Test(relations.model.Model):
+        class Test(relations.Model):
             ident = int
             unit_id = int
             name = str
 
-        class Unit(relations.model.Model):
+        class Unit(relations.Model):
             id = int
             testunit_id = int
             test_ident = int
             name = str
 
-        class Equal(relations.model.Relation):
+        class Equal(relations.Relation):
             SAME = True
 
-        class Unequal(relations.model.Relation):
+        class Unequal(relations.Relation):
             SAME = False
 
         testunit = TestUnit()
         test = Test()
         unit = Unit()
 
-        self.assertEqual(relations.model.Relation.relative_field(testunit, unit), "testunit_id")
-        self.assertEqual(relations.model.Relation.relative_field(test, unit), "test_ident")
-        self.assertEqual(relations.model.Relation.relative_field(test, testunit), "ident")
+        self.assertEqual(relations.Relation.relative_field(testunit, unit), "testunit_id")
+        self.assertEqual(relations.Relation.relative_field(test, unit), "test_ident")
+        self.assertEqual(relations.Relation.relative_field(test, testunit), "ident")
         self.assertEqual(Equal.relative_field(unit, testunit), "id")
 
-        self.assertRaisesRegex(relations.model.ModelError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
+        self.assertRaisesRegex(relations.ModelError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
 
 class TestOneTo(unittest.TestCase):
 
@@ -64,18 +63,18 @@ class TestOneTo(unittest.TestCase):
 
     def test___init__(self):
 
-        class Mom(relations.model.Model):
+        class Mom(relations.Model):
             id = int
             name = str
             ident = int
 
-        class Son(relations.model.Model):
+        class Son(relations.Model):
             id = int
             mom_id = int
             name = str
             mom_ident = int
 
-        relation = relations.model.OneTo(Mom, Son)
+        relation = relations.OneTo(Mom, Son)
 
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)
@@ -85,7 +84,7 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(relation.parent_field, "id")
         self.assertEqual(relation.child_field, "mom_id")
 
-        relation = relations.model.OneTo(Mom, Son, "sons", "mommy", "ident", "mom_ident")
+        relation = relations.OneTo(Mom, Son, "sons", "mommy", "ident", "mom_ident")
 
         self.assertEqual(relation.parent_child, "sons")
         self.assertEqual(relation.child_parent, "mommy")
@@ -98,16 +97,16 @@ class TestOneToMany(unittest.TestCase):
 
     def test___init__(self):
 
-        class Mom(relations.model.Model):
+        class Mom(relations.Model):
             id = int
             name = str
 
-        class Son(relations.model.Model):
+        class Son(relations.Model):
             id = int
             mom_id = int
             name = str
 
-        relation = relations.model.OneToMany(Mom, Son)
+        relation = relations.OneToMany(Mom, Son)
 
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)
@@ -123,15 +122,15 @@ class TestOneToOne(unittest.TestCase):
 
     def test___init__(self):
 
-        class Mom(relations.model.Model):
+        class Mom(relations.Model):
             id = int
             name = str
 
-        class Son(relations.model.Model):
+        class Son(relations.Model):
             id = int
             name = str
 
-        relation = relations.model.OneToOne(Mom, Son)
+        relation = relations.OneToOne(Mom, Son)
 
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)

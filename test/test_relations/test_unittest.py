@@ -1,10 +1,9 @@
 import unittest
 import unittest.mock
 
-import relations.model
 import relations.unittest
 
-class SourceModel(relations.model.Model):
+class SourceModel(relations.Model):
     SOURCE = "UnittestSource"
 
 class Simple(SourceModel):
@@ -16,7 +15,7 @@ class Plain(SourceModel):
     simple_id = int
     name = str
 
-relations.model.OneToMany(Simple, Plain)
+relations.OneToMany(Simple, Plain)
 
 class Unit(SourceModel):
     id = int
@@ -32,8 +31,8 @@ class Case(SourceModel):
     test_id = int
     name = str
 
-relations.model.OneToMany(Unit, Test)
-relations.model.OneToOne(Test, Case)
+relations.OneToMany(Unit, Test)
+relations.OneToOne(Test, Case)
 
 class TestSource(unittest.TestCase):
 
@@ -63,7 +62,7 @@ class TestSource(unittest.TestCase):
 
     def test_model_init(self):
 
-        class Check(relations.model.Model):
+        class Check(relations.Model):
             id = int
             name = str
 
@@ -78,7 +77,7 @@ class TestSource(unittest.TestCase):
 
     def test_field_define(self):
 
-        field = relations.model.Field(int, store="_id")
+        field = relations.Field(int, store="_id")
         self.source.field_init(field)
         definitions = {}
         self.source.field_define(field, definitions)
@@ -132,10 +131,10 @@ class TestSource(unittest.TestCase):
         Unit([["people"], ["stuff"]]).create()
 
         models = Unit.one(name__in=["people", "stuff"])
-        self.assertRaisesRegex(relations.model.ModelError, "unit: more than one retrieved", models.retrieve)
+        self.assertRaisesRegex(relations.ModelError, "unit: more than one retrieved", models.retrieve)
 
         model = Unit.one(name="things")
-        self.assertRaisesRegex(relations.model.ModelError, "unit: none retrieved", model.retrieve)
+        self.assertRaisesRegex(relations.ModelError, "unit: none retrieved", model.retrieve)
 
         self.assertIsNone(model.retrieve(False))
 
@@ -160,7 +159,7 @@ class TestSource(unittest.TestCase):
 
         # Standard
 
-        field = relations.model.Field(int, name="id")
+        field = relations.Field(int, name="id")
         self.source.field_init(field)
         values = {}
         field.value = 1
@@ -177,7 +176,7 @@ class TestSource(unittest.TestCase):
 
         # readonly
 
-        field = relations.model.Field(int, name="id", readonly=True)
+        field = relations.Field(int, name="id", readonly=True)
         self.source.field_init(field)
         values = {}
         field.value = 1
@@ -203,7 +202,7 @@ class TestSource(unittest.TestCase):
         self.assertEqual(unit.test[0].name, "moar")
 
         plain = Plain.one()
-        self.assertRaisesRegex(relations.model.ModelError, "plain: nothing to update from", plain.update)
+        self.assertRaisesRegex(relations.ModelError, "plain: nothing to update from", plain.update)
 
     def test_model_delete(self):
 
@@ -220,4 +219,4 @@ class TestSource(unittest.TestCase):
         self.assertEqual(len(Test.many()), 0)
 
         plain = Plain().create()
-        self.assertRaisesRegex(relations.model.ModelError, "plain: nothing to delete from", plain.delete)
+        self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)

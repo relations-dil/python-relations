@@ -3,10 +3,9 @@ import unittest.mock
 import relations.unittest
 
 import relations
-import relations.model
 
 
-class Whoops(relations.model.Model):
+class Whoops(relations.Model):
     id = int
     name = str
 
@@ -16,36 +15,36 @@ class TestModelError(unittest.TestCase):
 
     def test___init__(self):
 
-        error = relations.model.ModelError("unittest", "oops")
+        error = relations.ModelError("unittest", "oops")
 
         self.assertEqual(error.model, "unittest")
         self.assertEqual(error.message, "oops")
 
     def test___str__(self):
 
-        error = relations.model.ModelError(Whoops(), "adaisy")
+        error = relations.ModelError(Whoops(), "adaisy")
 
         self.assertEqual(str(error), "whoops: adaisy")
 
 
-class People(relations.model.ModelIdentity):
+class People(relations.ModelIdentity):
     id = int
     name = str
 
 def stuffit():
     return "things"
 
-class Stuff(relations.model.ModelIdentity):
+class Stuff(relations.ModelIdentity):
 
     NAME = "stuffins"
     ID = "name"
 
     id = (int,)
-    name = relations.model.Field(str, default="unittest")
+    name = str, "unittest"
     nope = False
     people = stuffit
 
-class Things(relations.model.ModelIdentity):
+class Things(relations.ModelIdentity):
 
     ID = None
 
@@ -94,9 +93,9 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._field_name("id"), "id")
         self.assertEqual(stuff._field_name(1), "name")
 
-        self.assertRaisesRegex(relations.model.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
 
-class ModelTest(relations.model.Model):
+class ModelTest(relations.Model):
 
     SOURCE = "TestModel"
 
@@ -105,7 +104,7 @@ def unit():
 
 class UnitTest(ModelTest):
     id = int
-    name = relations.model.Field(str, default="unittest")
+    name = relations.Field(str, default="unittest")
     nope = False
     deffer = unit
 
@@ -123,8 +122,15 @@ class Case(ModelTest):
     test_id = int
     name = str
 
-relations.model.OneToMany(Unit, Test)
-relations.model.OneToOne(Test, Case)
+class Run(ModelTest):
+    id = int
+    test_id = int
+    name = str
+    status = ["pass", "fail"]
+
+relations.OneToMany(Unit, Test)
+relations.OneToOne(Test, Case)
+relations.OneToOne(Test, Run)
 
 class TestModel(unittest.TestCase):
 
@@ -145,8 +151,8 @@ class TestModel(unittest.TestCase):
             "things": 1
         }
 
-        self.assertEqual(relations.model.Model._extract(kwargs, "people"), 3)
-        self.assertEqual(relations.model.Model._extract(kwargs, "stuff", 2), 2)
+        self.assertEqual(relations.Model._extract(kwargs, "people"), 3)
+        self.assertEqual(relations.Model._extract(kwargs, "stuff", 2), 2)
         self.assertEqual(kwargs, {"things": 1})
 
     def test___init__(self):
@@ -171,9 +177,14 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model._fields._names["name"].kind, str)
         self.assertNotIn("nope", model._fields)
 
+        # options
+
+        model = Run()
+        self.assertEqual(model._record._names["status"].options, ["pass", "fail"])
+
         # read
 
-        model = UnitTest(_read={"id": 1, "name": "unit"})
+        model = UnitTest(_read={"id": 1, "name": "unit", "deffer": "test"})
 
         self.assertEqual(model._record["id"], 1)
         self.assertEqual(model._record["name"], "unit")
@@ -282,7 +293,7 @@ class TestModel(unittest.TestCase):
 
             models.id = 4
 
-        self.assertRaisesRegex(relations.model.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
 
         # child
 
@@ -294,7 +305,7 @@ class TestModel(unittest.TestCase):
 
             test.case.name = "nope"
 
-        self.assertRaisesRegex(relations.model.ModelError, "case: no record", nope)
+        self.assertRaisesRegex(relations.ModelError, "case: no record", nope)
 
         # one to one. with record
 
@@ -325,7 +336,7 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(test.unit.name, "ya")
         self.assertEqual(test.unit.test.name, ["sure"])
-        self.assertRaisesRegex(relations.model.ModelError, "no record")
+        self.assertRaisesRegex(relations.ModelError, "no record")
 
         test.case.add("whatever")
         test.update()
@@ -360,7 +371,7 @@ class TestModel(unittest.TestCase):
 
             models.name
 
-        self.assertRaisesRegex(relations.model.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
 
         # child
 
@@ -372,7 +383,7 @@ class TestModel(unittest.TestCase):
 
             test.case.name
 
-        self.assertRaisesRegex(relations.model.ModelError, "case: no record", nope)
+        self.assertRaisesRegex(relations.ModelError, "case: no record", nope)
 
         # one to one. with record
 
@@ -487,7 +498,7 @@ class TestModel(unittest.TestCase):
 
         # many, VERBOTTEN
 
-        self.assertRaisesRegex(relations.model.ModelError, "no keys with many", UnitTest([]).keys)
+        self.assertRaisesRegex(relations.ModelError, "no keys with many", UnitTest([]).keys)
 
         # single
 
@@ -566,7 +577,7 @@ class TestModel(unittest.TestCase):
         def nope():
             models[0] = 1
 
-        self.assertRaisesRegex(relations.model.ModelError, "unittest: no override", nope)
+        self.assertRaisesRegex(relations.ModelError, "unittest: no override", nope)
 
         # multiple, no records
 
@@ -576,7 +587,7 @@ class TestModel(unittest.TestCase):
 
             models['id'] = 4
 
-        self.assertRaisesRegex(relations.model.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
 
         # child
 
@@ -588,7 +599,7 @@ class TestModel(unittest.TestCase):
 
             test.case['name'] = "nope"
 
-        self.assertRaisesRegex(relations.model.ModelError, "case: no record", nope)
+        self.assertRaisesRegex(relations.ModelError, "case: no record", nope)
 
         # one to one. with record
 
@@ -630,7 +641,7 @@ class TestModel(unittest.TestCase):
 
             models['name']
 
-        self.assertRaisesRegex(relations.model.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
 
         # child
 
@@ -642,7 +653,7 @@ class TestModel(unittest.TestCase):
 
             test.case['name']
 
-        self.assertRaisesRegex(relations.model.ModelError, "case: no record", nope)
+        self.assertRaisesRegex(relations.ModelError, "case: no record", nope)
 
         # one to one. with record
 
@@ -662,7 +673,7 @@ class TestModel(unittest.TestCase):
 
     def test__parent(self):
 
-        class TestUnit(relations.model.Model):
+        class TestUnit(relations.Model):
             pass
 
         relation = unittest.mock.MagicMock()
@@ -674,7 +685,7 @@ class TestModel(unittest.TestCase):
 
     def test__child(self):
 
-        class TestUnit(relations.model.Model):
+        class TestUnit(relations.Model):
             pass
 
         relation = unittest.mock.MagicMock()
@@ -686,7 +697,7 @@ class TestModel(unittest.TestCase):
 
     def test__sister(self):
 
-        class TestUnit(relations.model.Model):
+        class TestUnit(relations.Model):
             pass
 
         relation = unittest.mock.MagicMock()
@@ -698,7 +709,7 @@ class TestModel(unittest.TestCase):
 
     def test__brother(self):
 
-        class TestUnit(relations.model.Model):
+        class TestUnit(relations.Model):
             pass
 
         relation = unittest.mock.MagicMock()
@@ -899,10 +910,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(record.name, "unittest")
         self.assertEqual(record.deffer, "test")
 
-        record = model._build("create", _defaults=False, _read={"id": 2})
+        record = model._build("create", _defaults=False, _read={"id": 2, "name": "test", "deffer": "unit"})
         self.assertEqual(record.id, 2)
-        self.assertIsNone(record.name)
-        self.assertIsNone(record.deffer)
 
         model._related = {"id": 3}
         record = model._build("create", _defaults=False)
@@ -918,7 +927,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(units.name, ["ya", "sure", "whatever"])
 
         units = units.many(name="sure").set(name="shore")
-        self.assertRaisesRegex(relations.model.ModelError, "unit: need to update", units._ensure)
+        self.assertRaisesRegex(relations.ModelError, "unit: need to update", units._ensure)
 
     def test__each(self):
 
@@ -999,7 +1008,7 @@ class TestModel(unittest.TestCase):
         model = UnitTest(name="unit")
         self.assertEqual(model.name, "unit")
 
-        self.assertRaisesRegex(relations.model.ModelError, "only one allowed", model.add)
+        self.assertRaisesRegex(relations.ModelError, "only one allowed", model.add)
 
         models = UnitTest([{"name": "unit"}])
         models = models.add(_count=2, name="more")
@@ -1007,7 +1016,7 @@ class TestModel(unittest.TestCase):
 
         test = Test()
 
-        self.assertRaisesRegex(relations.model.ModelError, "only one allowed", test.case.add, _count=2)
+        self.assertRaisesRegex(relations.ModelError, "only one allowed", test.case.add, _count=2)
 
         test.case.add("sure")
         self.assertEqual(test.case.name, "sure")
@@ -1029,7 +1038,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(Unit.one(name="yep").id, 1)
 
         unit = Unit.one(0)
-        self.assertRaisesRegex(relations.model.ModelError, "unit: cannot create during retrieve", unit.create)
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot create during retrieve", unit.create)
 
     def test_retrieve(self):
 
@@ -1039,7 +1048,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(Unit.one(name="yep").retrieve().id, 1)
 
         unit = Unit("sure")
-        self.assertRaisesRegex(relations.model.ModelError, "unit: cannot retrieve during create", unit.retrieve)
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot retrieve during create", unit.retrieve)
 
     def test_update(self):
 
@@ -1052,7 +1061,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(Unit.one(name="sure").set(name="whatever").update(), 1)
 
         unit = Unit("sure")
-        self.assertRaisesRegex(relations.model.ModelError, "unit: cannot update during create", unit.update)
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot update during create", unit.update)
 
     def test_delete(self):
 
@@ -1065,4 +1074,4 @@ class TestModel(unittest.TestCase):
         self.assertEqual(Unit.one(name="sure").delete(), 1)
 
         unit = Unit("sure")
-        self.assertRaisesRegex(relations.model.ModelError, "unit: cannot delete during create", unit.delete)
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot delete during create", unit.delete)

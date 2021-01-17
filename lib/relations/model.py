@@ -8,8 +8,6 @@ import copy
 
 import relations
 
-from relations.model import Field, Record
-
 class ModelError(Exception):
     """
     Generic model Error for easier tracing
@@ -63,7 +61,7 @@ class ModelIdentity:
 
         # Derive all the fields
 
-        fields = Record()
+        fields = relations.Record()
 
         for name, attribute in cls.__dict__.items():
 
@@ -71,14 +69,16 @@ class ModelIdentity:
                 continue # pragma: no cover
 
             if attribute in [int, float, str, dict, list]:
-                field = Field(attribute)
+                field = relations.Field(attribute)
             elif callable(attribute):
-                field = Field(type(attribute()), default=attribute)
+                field = relations.Field(type(attribute()), default=attribute)
+            elif isinstance(attribute, list):
+                field = relations.Field(type(attribute[0]), options=attribute)
             elif isinstance(attribute, tuple):
-                field = Field(*attribute)
+                field = relations.Field(*attribute)
             elif isinstance(attribute, dict):
-                field = Field(**attribute)
-            elif isinstance(attribute, Field):
+                field = relations.Field(**attribute)
+            elif isinstance(attribute, relations.Field):
                 field = attribute
             else:
                 continue # pragma: no cover
@@ -559,7 +559,8 @@ class Model(ModelIdentity):
 
         if _defaults:
             for field in record._order:
-                field.value = field.default() if callable(field.default) else field.default
+                if field.default is not None:
+                    field.value = field.default() if callable(field.default) else field.default
 
         if _read is not None:
             record.read(_read)
