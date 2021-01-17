@@ -31,6 +31,10 @@ class People(relations.ModelIdentity):
     id = int
     name = str
 
+    UNIQUE = "name"
+    INDEX = "name"
+
+
 def stuffit():
     return "things"
 
@@ -40,15 +44,26 @@ class Stuff(relations.ModelIdentity):
     ID = "name"
 
     id = (int,)
+    people_id = int
     name = str, "unittest"
     nope = False
     people = stuffit
+
+    INDEX = ["name", "people"]
+
 
 class Things(relations.ModelIdentity):
 
     ID = None
 
     name = {"kind": str, "storage": 'id'}
+
+    UNIQUE = False
+    INDEX = {
+        "no_name": ["name"]
+    }
+
+
 
 class TestModelIdentity(unittest.TestCase):
 
@@ -80,10 +95,30 @@ class TestModelIdentity(unittest.TestCase):
 
         things = Things._thyself()
         self.assertEqual(things.NAME, "things")
+        self.assertEqual(things._unique, {})
+        self.assertEqual(things._index, {
+            "no_name": ["name"]
+        })
         self.assertEqual(things._fields._names["name"].name, "name")
         self.assertEqual(things._fields._names["name"].kind, str)
         self.assertEqual(things._fields._names["name"].storage, "id")
         self.assertIsNone(things._id)
+
+        class Unique(relations.ModelIdentity):
+            id = int
+            name = str
+
+            UNIQUE = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique nope", Unique._thyself)
+
+        class Index(relations.ModelIdentity):
+            id = int
+            name = str
+
+            INDEX = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index._thyself)
 
     def test__field_name(self):
 
@@ -91,7 +126,7 @@ class TestModelIdentity(unittest.TestCase):
         Stuff._thyself(stuff)
 
         self.assertEqual(stuff._field_name("id"), "id")
-        self.assertEqual(stuff._field_name(1), "name")
+        self.assertEqual(stuff._field_name(2), "name")
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
 
