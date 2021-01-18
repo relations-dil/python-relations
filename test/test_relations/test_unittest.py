@@ -15,6 +15,13 @@ class Plain(SourceModel):
     simple_id = int
     name = str
 
+class Meta(SourceModel):
+    id = int
+    name = str
+    flag = bool
+    stuff = list
+    things = dict
+
 relations.OneToMany(Simple, Plain)
 
 class Unit(SourceModel):
@@ -106,9 +113,16 @@ class TestSource(unittest.TestCase):
         self.assertEqual(simple.plain._action, "update")
         self.assertEqual(simple.plain[0]._record._action, "update")
 
+        yep = Meta("yep", True, [1], {"a": 1}).create()
+        self.assertTrue(Meta.one(yep.id).flag)
+
+        nope = Meta("nope", False).create()
+        self.assertFalse(Meta.one(nope.id).flag)
+
         self.assertEqual(self.source.ids, {
             "simple": 1,
-            "plain": 1
+            "plain": 1,
+            "meta": 2
         })
 
         self.assertEqual(self.source.data, {
@@ -122,6 +136,22 @@ class TestSource(unittest.TestCase):
                 1: {
                     "simple_id": 1,
                     "name": "fine"
+                }
+            },
+            "meta": {
+                1: {
+                    "id": 1,
+                    "name": "yep",
+                    "flag": True,
+                    "stuff": [1],
+                    "things": {"a": 1}
+                },
+                2: {
+                    "id": 2,
+                    "name": "nope",
+                    "flag": False,
+                    "stuff": [],
+                    "things": {}
                 }
             }
         })

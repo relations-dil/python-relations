@@ -103,10 +103,16 @@ class Field:
             setattr(self, name, attribute)
 
         if self.none is None:
-            if self.default is None and self.options is None and self.validation is None:
+            if (
+                self.default is None and self.options is None and self.validation is None and
+                self.kind not in [list, dict]
+            ):
                 self.none = True
             else:
                 self.none = False
+
+        if self.kind in [list, dict] and not self.none and self.default is None:
+            self.default = self.kind
 
         if self.default is not None and not callable(self.default):
             if not isinstance(self.default, self.kind):
@@ -147,13 +153,6 @@ class Field:
             self.changed = True
 
         object.__setattr__(self, name, value)
-
-    def __getattribute__(self, name):
-        """
-        Use to set field values so everything is cast correctly
-        """
-
-        return object.__getattribute__(self, name)
 
     def valid(self, value):
         """
@@ -243,5 +242,5 @@ class Field:
         if not self.readonly:
             if update and self.replace and not self.changed:
                 self.value = self.default() if callable(self.default) else self.default
-            values[self.store] = self.valid(self.value)
+            values[self.store] = self.value
             self.changed = False
