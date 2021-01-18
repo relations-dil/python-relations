@@ -54,6 +54,26 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.default, 0)
         self.assertFalse(field.none)
 
+        field = relations.Field(list)
+        self.assertEqual(field.kind, list)
+        self.assertEqual(field.default, list)
+        self.assertFalse(field.none)
+
+        field = relations.Field(list, none=True)
+        self.assertEqual(field.kind, list)
+        self.assertIsNone(field.default)
+        self.assertTrue(field.none)
+
+        field = relations.Field(dict)
+        self.assertEqual(field.kind, dict)
+        self.assertEqual(field.default, dict)
+        self.assertFalse(field.none)
+
+        field = relations.Field(dict, none=True)
+        self.assertEqual(field.kind, dict)
+        self.assertIsNone(field.default)
+        self.assertTrue(field.none)
+
         field = relations.Field(int, options=[])
         self.assertEqual(field.kind, int)
         self.assertFalse(field.none)
@@ -91,16 +111,6 @@ class TestField(unittest.TestCase):
         field.value = "1"
         self.assertEqual(field.value, 1)
         self.assertTrue(field.changed)
-
-        field.value = None
-        self.assertIsNone(field.value)
-
-    def test___getattribute__(self):
-
-        field = relations.Field(int)
-
-        field.value = "1"
-        self.assertEqual(field.value, 1)
 
         field.value = None
         self.assertIsNone(field.value)

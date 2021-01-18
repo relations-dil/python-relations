@@ -22,5 +22,13 @@ pipeline {
                 sh 'make verify'
             }
         }
+        stage('tag') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'make tag'
+            }
+        }
     }
 }
