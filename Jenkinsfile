@@ -32,5 +32,13 @@ pipeline {
                 sh 'make tag'
             }
         }
+        stage('tag') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'make tag'
+            }
+        }
     }
 }
