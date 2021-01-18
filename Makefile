@@ -12,7 +12,7 @@ ENVIRONMENT=-e PYTHONDONTWRITEBYTECODE=1 \
 			-e PYTHONUNBUFFERED=1 \
 			-e test="python -m unittest -v" \
 			-e debug="python -m ptvsd --host 0.0.0.0 --port 5678 --wait -m unittest -v"
-.PHONY: build shell debug test lint verify tag untag
+.PHONY: build shell debug test lint setup tag untag
 
 build:
 	docker build . -t $(ACCOUNT)/$(IMAGE):$(VERSION)
