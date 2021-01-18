@@ -109,6 +109,8 @@ class ModelIdentity:
                     continue
                 if field.kind in (int, str):
                     unique.append(field.name)
+                    if field.kind == str and field._none is None:
+                        field.none = False
                 if field.kind == str:
                     break
         elif not unique:
