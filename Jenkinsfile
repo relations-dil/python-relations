@@ -17,9 +17,19 @@ pipeline {
                 sh 'make lint'
             }
         }
-        stage('verify') {
+        stage('setup') {
             steps {
-                sh 'make verify'
+                sh 'make setup'
+            }
+        }
+        stage('tag') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'git config user.email "leeeeeeroy@jenkins.org"'
+                sh 'git config user.name "Jenkins"'
+                sh 'make tag'
             }
         }
     }
