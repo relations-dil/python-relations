@@ -29,6 +29,7 @@ class Field:
 
     default = None    # Default value
     none = None       # Whether to allow None (nulls)
+    _none = None      # Original setting before override
     options = None    # Possible values (if not None)
     validation = None # How to validate values (if not None)
     readonly = None   # Whether this field is readonly
@@ -101,6 +102,10 @@ class Field:
 
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
+
+        # Save the original if case explicit
+
+        self._none = self.none
 
         if self.none is None:
             if (

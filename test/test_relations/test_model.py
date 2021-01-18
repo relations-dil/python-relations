@@ -88,6 +88,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["id"].kind, int)
         self.assertEqual(stuff._fields._names["name"].name, "name")
         self.assertEqual(stuff._fields._names["name"].kind, str)
+        self.assertFalse(stuff._fields._names["name"].none)
         self.assertEqual(stuff._fields._names["people"].name, "people")
         self.assertEqual(stuff._fields._names["people"].kind, str)
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
