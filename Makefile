@@ -30,7 +30,6 @@ lint:
 	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "pylint --rcfile=.pylintrc lib/"
 
 setup:
-	[[ `grep version setup.py | sed 's/ *version="\(.*\)",/\1/g'` = "$(VERSION)" ]] || (echo "version mismatch" && exit 1)
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
 	python setup.py install && \
 	python -m relations.source && \
