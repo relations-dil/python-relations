@@ -64,7 +64,6 @@ class Things(relations.ModelIdentity):
     }
 
 
-
 class TestModelIdentity(unittest.TestCase):
 
     def test__thyself(self):

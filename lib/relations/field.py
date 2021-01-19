@@ -103,21 +103,26 @@ class Field:
         for name, attribute in kwargs.items():
             setattr(self, name, attribute)
 
-        # Save the original if case explicit
+        # Save the original for creating unique index by default
 
         self._none = self.none
 
+        # If we're list or dict, we can't be None and our default is
+        # our type, so it's always a list or dict
+
+        if self.kind in [list, dict]:
+            self.none = False
+            if self.default is None:
+                self.default = self.kind
+
+        # If none isn't set, and there's no default, options, or validation, then
+        # it's fine to be none. Else assume not None
+
         if self.none is None:
-            if (
-                self.default is None and self.options is None and self.validation is None and
-                self.kind not in [list, dict]
-            ):
+            if self.default is None and self.options is None and self.validation is None:
                 self.none = True
             else:
                 self.none = False
-
-        if self.kind in [list, dict] and not self.none and self.default is None:
-            self.default = self.kind
 
         if self.default is not None and not callable(self.default):
             if not isinstance(self.default, self.kind):

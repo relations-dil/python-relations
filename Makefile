@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.2.7
+VERSION?=0.2.8
 DEBUG_PORT=5678
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/lib:/opt/service/lib \
@@ -30,6 +30,7 @@ lint:
 	docker run $(TTY) $(VOLUMES) $(ENVIRONMENT) $(ACCOUNT)/$(IMAGE):$(VERSION) sh -c "pylint --rcfile=.pylintrc lib/"
 
 setup:
+	[[ `grep version setup.py | sed 's/ *version="\(.*\)",/\1/g'` = "$(VERSION)" ]] || (echo "version mismatch" && exit 1)
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
 	python setup.py install && \
 	python -m relations.source && \

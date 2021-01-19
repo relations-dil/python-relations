@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import setup
 setup(
     name="relations",
-    version="0.2.7",
+    version="0.2.8",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',

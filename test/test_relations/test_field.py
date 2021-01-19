@@ -60,20 +60,10 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.default, list)
         self.assertFalse(field.none)
 
-        field = relations.Field(list, none=True)
-        self.assertEqual(field.kind, list)
-        self.assertIsNone(field.default)
-        self.assertTrue(field.none)
-
         field = relations.Field(dict)
         self.assertEqual(field.kind, dict)
         self.assertEqual(field.default, dict)
         self.assertFalse(field.none)
-
-        field = relations.Field(dict, none=True)
-        self.assertEqual(field.kind, dict)
-        self.assertIsNone(field.default)
-        self.assertTrue(field.none)
 
         field = relations.Field(int, options=[])
         self.assertEqual(field.kind, int)
