@@ -1,6 +1,7 @@
 """
 Main relations module
 """
+import inspect
 
 from relations.source import Source
 from relations.field import Field, FieldError
@@ -9,6 +10,7 @@ from relations.model import Model, ModelIdentity, ModelError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany
 
 SOURCES = {}  # Sources reference to use
+
 
 def register(new_source):
     """
@@ -24,3 +26,22 @@ def source(name):
     """
 
     return SOURCES.get(name)
+
+
+def models(module, from_base=None):
+    """
+    Returns all models
+    Args:
+        module (str): Python module in which to search.
+        from_base (type, optional): Base class from which to filter children of
+    """
+    from_base = from_base or Model
+    return [
+        m[1]
+        for m in inspect.getmembers(
+            module,
+            lambda model: inspect.isclass(model)
+            and issubclass(model, from_base)
+            and model is not from_base,
+        )
+    ]
