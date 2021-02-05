@@ -66,9 +66,9 @@ class Things(relations.ModelIdentity):
 
 class TestModelIdentity(unittest.TestCase):
 
-    def test__thyself(self):
+    def test_thy(self):
 
-        people = People._thyself()
+        people = People.thy()
         self.assertEqual(people.NAME, "people")
         self.assertEqual(people.PARENTS, {})
         self.assertEqual(people.CHILDREN, {})
@@ -81,7 +81,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._id, "id")
 
         stuff = Stuff()
-        Stuff._thyself(stuff)
+        Stuff.thy(stuff)
         self.assertEqual(stuff.NAME, "stuffins")
         self.assertEqual(stuff._fields._names["id"].name, "id")
         self.assertEqual(stuff._fields._names["id"].kind, int)
@@ -93,7 +93,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
 
-        things = Things._thyself()
+        things = Things.thy()
         self.assertEqual(things.NAME, "things")
         self.assertEqual(things._unique, {})
         self.assertEqual(things._index, {
@@ -110,7 +110,7 @@ class TestModelIdentity(unittest.TestCase):
 
             UNIQUE = "nope"
 
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique nope", Unique._thyself)
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique nope", Unique.thy)
 
         class Index(relations.ModelIdentity):
             id = int
@@ -118,12 +118,12 @@ class TestModelIdentity(unittest.TestCase):
 
             INDEX = "nope"
 
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index._thyself)
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
 
     def test__field_name(self):
 
         stuff = Stuff()
-        Stuff._thyself(stuff)
+        Stuff.thy(stuff)
 
         self.assertEqual(stuff._field_name("id"), "id")
         self.assertEqual(stuff._field_name(2), "name")

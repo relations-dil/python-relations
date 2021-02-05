@@ -48,7 +48,7 @@ class ModelIdentity:
     _index = None  # Actual indexes
 
     @classmethod
-    def _thyself(cls, self=None):
+    def thy(cls, self=None):
         """
         Base identity to be known without instantiating the class
         """
@@ -219,7 +219,7 @@ class Model(ModelIdentity):
 
         # Know thyself
 
-        self._thyself(self)
+        self.thy(self)
 
         # Initialize relation models
 

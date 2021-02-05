@@ -55,7 +55,7 @@ class MockSource(relations.Source):
         define the model
         """
 
-        model = cls._thyself()
+        model = cls.thy()
 
         definitions = {}
 
