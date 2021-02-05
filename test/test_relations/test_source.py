@@ -3,30 +3,6 @@ import unittest.mock
 
 import relations
 
-class TestRelations(unittest.TestCase):
-
-    maxDiff = None
-
-    @unittest.mock.patch("relations.SOURCES", {})
-    def test_register(self):
-
-        source = unittest.mock.MagicMock()
-        source.name = "a"
-
-        relations.register(source)
-
-        self.assertEqual(relations.SOURCES, {"a": source})
-
-    @unittest.mock.patch("relations.SOURCES", {})
-    def test_source(self):
-
-        source = unittest.mock.MagicMock()
-
-        relations.SOURCES["a"] = source
-
-        self.assertEqual(relations.source("a"), source)
-
-
 class TestSource(unittest.TestCase):
 
     maxDiff = None
