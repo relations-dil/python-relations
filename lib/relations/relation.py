@@ -59,8 +59,8 @@ class OneTo(Relation):
         self.Parent = Parent
         self.Child = Child
 
-        parent = self.Parent._thyself()
-        child = self.Child._thyself()
+        parent = self.Parent.thy()
+        child = self.Child.thy()
 
         self.parent_child = parent_child if parent_child is not None else child.NAME
         self.child_parent = child_parent if child_parent is not None else parent.NAME
