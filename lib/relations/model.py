@@ -196,6 +196,8 @@ class Model(ModelIdentity):
 
     _role = None     # Whether we're a model, parent or child
     _mode = None     # Whether we're dealing with one or many
+    _bulk = None     # Whether we're bulk inserting
+    _size = None     # When to auto insert
     _action = None   # Overall action of this model
     _related = None  # Which fields will be set automatically
 
@@ -289,17 +291,23 @@ class Model(ModelIdentity):
 
         elif self._action == "create":
 
-            self._mode = self._extract(kwargs, '_mode', "many" if args and isinstance(args[0], list) else "one")
+            self._bulk = self._extract(kwargs, '_bulk', False)
+            self._size = self._extract(kwargs, '_size', 100)
+
+            mode = "many" if self._bulk or (args and isinstance(args[0], list)) else "one"
+
+            self._mode = self._extract(kwargs, '_mode', mode)
             self._related = self._extract(kwargs, '_related', {})
 
             if self._mode == "many":
 
                 self._models = []
 
-                for each in args[0]:
-                    eargs = each if isinstance(each, list) else []
-                    ekwargs = each if isinstance(each, dict) else {}
-                    self._models.append(self.__class__(*eargs, **ekwargs))
+                if args:
+                    for each in args[0]:
+                        eargs = each if isinstance(each, list) else []
+                        ekwargs = each if isinstance(each, dict) else {}
+                        self._models.append(self.__class__(*eargs, **ekwargs))
 
             else:
 
@@ -680,6 +688,14 @@ class Model(ModelIdentity):
         return self
 
     @classmethod
+    def bulk(cls, size=100):
+        """
+        For retrieving a single record
+        """
+
+        return cls(_action="create", _mode="many", _bulk=True, _size=size)
+
+    @classmethod
     def one(cls, *args, **kwargs):
         """
         For retrieving a single record
@@ -741,6 +757,9 @@ class Model(ModelIdentity):
 
             for _ in range(_count):
                 self._models.append(self.__class__(_action="create", _related=self._related, *args, **kwargs))
+
+            if self._bulk and len(self._models) >= self._size:
+                self.create()
 
         return self
 

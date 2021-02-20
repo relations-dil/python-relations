@@ -82,14 +82,19 @@ class MockSource(relations.Source):
 
             self.data[model.NAME][self.ids[model.NAME]] = values
 
-            for parent_child in creating.CHILDREN:
-                if creating._children.get(parent_child):
-                    creating._children[parent_child].create()
+            if not model._bulk:
 
-            creating._action = "update"
-            creating._record._action = "update"
+                for parent_child in creating.CHILDREN:
+                    if creating._children.get(parent_child):
+                        creating._children[parent_child].create()
 
-        model._action = "update"
+                creating._action = "update"
+                creating._record._action = "update"
+
+        if model._bulk:
+            model._models = []
+        else:
+            model._action = "update"
 
         return model
 
