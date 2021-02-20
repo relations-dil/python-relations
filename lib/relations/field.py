@@ -58,23 +58,25 @@ class Field:
     }
 
     RESERVED = [
-        'define',
-        'filter',
-        'satisfy',
-        'prepare',
-        'read',
-        'write',
-        'append',
-        'insert',
         'action',
+        'add',
+        'append',
+        'bulk',
+        'create',
+        'define',
+        'delete',
+        'filter',
+        'insert',
         'many',
         'one',
-        'set',
-        'add',
-        'create',
+        'prepare',
+        'read',
         'retrieve',
+        'satisfy',
+        'set',
+        'thy',
         'update',
-        'delete'
+        'write'
     ]
 
     def __init__(self, kind, *args, **kwargs): # pylint: disable=too-many-branches

@@ -303,6 +303,18 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._action, "create")
         self.assertEqual(models._related, {})
 
+        # Create bulk
+
+        models = UnitTest(_bulk=True, _size=4)
+        self.assertEqual(models._models, [])
+
+        self.assertEqual(models._role, "model")
+        self.assertEqual(models._mode, "many")
+        self.assertEqual(models._action, "create")
+        self.assertEqual(models._related, {})
+        self.assertTrue(models._bulk)
+        self.assertEqual(models._size, 4)
+
     def test___setattr__(self):
 
         # model
@@ -1013,6 +1025,18 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
         self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
 
+    def test_bulk(self):
+
+        models = UnitTest.bulk(4)
+
+        self.assertEqual(models._models, [])
+        self.assertEqual(models._role, "model")
+        self.assertEqual(models._mode, "many")
+        self.assertEqual(models._action, "create")
+        self.assertEqual(models._related, {})
+        self.assertTrue(models._bulk)
+        self.assertEqual(models._size, 4)
+
     def test_one(self):
 
         models = UnitTest.one(1)
@@ -1055,6 +1079,18 @@ class TestModel(unittest.TestCase):
 
         test.case.add("sure")
         self.assertEqual(test.case.name, "sure")
+
+        models = UnitTest.bulk(2)
+
+        models.add("unit")
+
+        self.assertIsNone(UnitTest.one().retrieve(False))
+
+        models.add("test")
+
+        self.assertEqual(models._models, [])
+
+        self.assertEqual(len(UnitTest.many()), 2)
 
     def test_define(self):
 

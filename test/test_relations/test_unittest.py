@@ -113,6 +113,10 @@ class TestSource(unittest.TestCase):
         self.assertEqual(simple.plain._action, "update")
         self.assertEqual(simple.plain[0]._record._action, "update")
 
+        simples = Simple.bulk().add("ya").create()
+
+        self.assertEqual(simples._models, [])
+
         yep = Meta("yep", True, [1], {"a": 1}).create()
         self.assertTrue(Meta.one(yep.id).flag)
 
@@ -120,7 +124,7 @@ class TestSource(unittest.TestCase):
         self.assertFalse(Meta.one(nope.id).flag)
 
         self.assertEqual(self.source.ids, {
-            "simple": 1,
+            "simple": 2,
             "plain": 1,
             "meta": 2
         })
@@ -130,6 +134,10 @@ class TestSource(unittest.TestCase):
                 1: {
                     "id": 1,
                     "name": "sure"
+                },
+                2: {
+                    "id": 2,
+                    "name": "ya"
                 }
             },
             "plain": {
