@@ -2,7 +2,7 @@
 Relations Module for handling models
 """
 
-# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements
+# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements,too-many-instance-attributes
 
 import copy
 
