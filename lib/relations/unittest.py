@@ -136,6 +136,13 @@ class MockSource(relations.Source):
 
         model._action = "update"
 
+        if model._mode == "many":
+
+            sort = model._sort or model._order
+
+            if sort:
+                model.sort(*sort)._sort = None
+
         return model
 
     def field_update(self, field, values, changed=None):

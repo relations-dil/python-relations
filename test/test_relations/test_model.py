@@ -50,6 +50,7 @@ class Stuff(relations.ModelIdentity):
     people = stuffit
 
     INDEX = ["name", "people"]
+    ORDER = "name"
 
 
 class Things(relations.ModelIdentity):
@@ -79,6 +80,8 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[1].name, "name")
         self.assertEqual(people._fields._order[1].kind, str)
         self.assertEqual(people._id, "id")
+        self.assertEqual(people._unique, {"name": ["name"]})
+        self.assertEqual(people._order, ["name"])
 
         stuff = Stuff()
         Stuff.thy(stuff)
@@ -92,6 +95,8 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].kind, str)
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
+        self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
+        self.assertEqual(stuff._order, ["name"])
 
         things = Things.thy()
         self.assertEqual(things.NAME, "things")
@@ -119,6 +124,14 @@ class TestModelIdentity(unittest.TestCase):
             INDEX = "nope"
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
+
+        class Order(relations.ModelIdentity):
+            id = int
+            name = str
+
+            ORDER = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope in order", Order.thy)
 
     def test__field_name(self):
 
@@ -971,7 +984,7 @@ class TestModel(unittest.TestCase):
 
         units = Unit.many()
         units._ensure()
-        self.assertEqual(units.name, ["ya", "sure", "whatever"])
+        self.assertEqual(units.name, ["sure", "whatever", "ya"])
 
         units = units.many(name="sure").set(name="shore")
         self.assertRaisesRegex(relations.ModelError, "unit: need to update", units._ensure)
@@ -1015,16 +1028,6 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], [1])
 
-    def test_many(self):
-
-        models = UnitTest.many(1, name__ne="unittest")
-
-        self.assertEqual(models._mode, "many")
-        self.assertEqual(models._action, "retrieve")
-        self.assertEqual(models._record._action, "retrieve")
-        self.assertEqual(models._record._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
-
     def test_bulk(self):
 
         models = UnitTest.bulk(4)
@@ -1045,6 +1048,28 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._action, "retrieve")
         self.assertEqual(models._record._action, "retrieve")
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
+
+    def test_many(self):
+
+        models = UnitTest.many(1, name__ne="unittest")
+
+        self.assertEqual(models._mode, "many")
+        self.assertEqual(models._action, "retrieve")
+        self.assertEqual(models._record._action, "retrieve")
+        self.assertEqual(models._record._names["id"].criteria["eq"], 1)
+        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
+
+    def test_sort(self):
+
+        models = Unit.many().sort("id").sort("-name")
+
+        self.assertEqual(models._sort, ["+id", "-name"])
+
+        units = Unit([["ya"], ["sure"], ["whatever"]]).create().sort("name")
+        self.assertEqual(units.name, ["sure", "whatever", "ya"])
+
+        self.assertRaisesRegex(relations.ModelError, "unit: unknown sort field nope", Unit.many().sort, "nope")
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot sort one", Unit.one(name="ya").retrieve().sort)
 
     def test_set(self):
 

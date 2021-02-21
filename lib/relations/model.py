@@ -6,6 +6,8 @@ Relations Module for handling models
 
 import copy
 
+import functools
+
 import relations
 
 class ModelError(Exception):
@@ -37,6 +39,8 @@ class ModelIdentity:
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
 
+    ORDER = None    # Default sort order
+
     PARENTS = None  # Parent relationships (many/one to one)
     CHILDREN = None # Child relationships (one to many/one)
     SISTERS = None  # Sister relationships (many to many)
@@ -46,6 +50,7 @@ class ModelIdentity:
     _fields = None # Base record to create other records with
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
+    _order = None  # Default sort order
 
     @classmethod
     def thy(cls, self=None):
@@ -154,6 +159,22 @@ class ModelIdentity:
                 if field not in self._fields:
                     raise ModelError(self, f"cannot find field {field} from index {index}")
 
+        # Determine default sort order (if desired)
+
+        if self.ORDER:
+            self._order = self.ORDER
+        elif self.ORDER is None and len(self._unique) == 1:
+            self._order = list(self._unique.values())[0]
+        else:
+            self._order = []
+
+        if isinstance(self._order, str):
+            self._order = [self._order]
+
+        for field in self._order:
+            if field not in self._fields:
+                raise ModelError(self, f"cannot find field {field} in order {self._order}")
+
         # Initialize relation models
 
         self.PARENTS = cls.PARENTS or {}
@@ -198,6 +219,7 @@ class Model(ModelIdentity):
     _mode = None     # Whether we're dealing with one or many
     _bulk = None     # Whether we're bulk inserting
     _size = None     # When to auto insert
+    _sort = None     # What to sort by
     _action = None   # Overall action of this model
     _related = None  # Which fields will be set automatically
 
@@ -690,7 +712,7 @@ class Model(ModelIdentity):
     @classmethod
     def bulk(cls, size=100):
         """
-        For retrieving a single record
+        For inserting multiple records without getting id's
         """
 
         return cls(_action="create", _mode="many", _bulk=True, _size=size)
@@ -710,6 +732,44 @@ class Model(ModelIdentity):
         """
 
         return cls(_action="retrieve", _mode="many", *args, **kwargs)
+
+    def sort(self, *args):
+        """
+        Adding sorting to filtering or sorts existing records
+        """
+
+        sorting = []
+
+        for sort in args:
+
+            field = sort[1:] if sort[0] in ['-', '+'] else sort
+
+            if field not in self._fields:
+                raise ModelError(self, f"unknown sort field {field}")
+
+            sorting.append(sort if sort[0] == '-' else f"+{sort}")
+
+        # If we're retrieving, just add to existing
+
+        if self._action == "retrieve":
+
+            self._sort = self._sort or []
+            self._sort.extend(sorting)
+
+        elif self._mode == "one":
+
+            raise ModelError(self, "cannot sort one")
+
+        else:
+
+            def compare(model1, model2):
+                for sort in sorting:
+                    cmp = (model1[sort[1:]] > model2[sort[1:]]) - (model1[sort[1:]] < model2[sort[1:]])
+                    return cmp if sort[0] == '+' else -cmp
+
+            self._models = sorted(self._models, key=functools.cmp_to_key(compare))
+
+        return self
 
     def set(self, *args, **kwargs):
         """

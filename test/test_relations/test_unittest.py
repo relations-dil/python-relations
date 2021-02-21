@@ -166,7 +166,7 @@ class TestSource(unittest.TestCase):
 
     def test_model_retrieve(self):
 
-        Unit([["people"], ["stuff"]]).create()
+        Unit([["stuff"], ["people"]]).create()
 
         models = Unit.one(name__in=["people", "stuff"])
         self.assertRaisesRegex(relations.ModelError, "unit: more than one retrieved", models.retrieve)
@@ -178,7 +178,7 @@ class TestSource(unittest.TestCase):
 
         unit = Unit.one(name="people")
 
-        self.assertEqual(unit.id, 1)
+        self.assertEqual(unit.id, 2)
         self.assertEqual(unit._action, "update")
         self.assertEqual(unit._record._action, "update")
 
@@ -187,11 +187,14 @@ class TestSource(unittest.TestCase):
 
         model = Unit.many(test__name="things")
 
-        self.assertEqual(model.id, [1])
+        self.assertEqual(model.id, [2])
         self.assertEqual(model[0]._action, "update")
         self.assertEqual(model[0]._record._action, "update")
         self.assertEqual(model[0].test[0].id, 1)
         self.assertEqual(model[0].test[0].case.name, "persons")
+
+        self.assertEqual(Unit.many().name, ["people", "stuff"])
+        self.assertEqual(Unit.many().sort("-name").name, ["stuff", "people"])
 
     def test_field_update(self):
 
