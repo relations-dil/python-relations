@@ -81,7 +81,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[1].kind, str)
         self.assertEqual(people._id, "id")
         self.assertEqual(people._unique, {"name": ["name"]})
-        self.assertEqual(people._order, ["name"])
+        self.assertEqual(people._order, ["+name"])
 
         stuff = Stuff()
         Stuff.thy(stuff)
@@ -96,7 +96,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
         self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
-        self.assertEqual(stuff._order, ["name"])
+        self.assertEqual(stuff._order, ["+name"])
 
         things = Things.thy()
         self.assertEqual(things.NAME, "things")
@@ -125,14 +125,6 @@ class TestModelIdentity(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
 
-        class Order(relations.ModelIdentity):
-            id = int
-            name = str
-
-            ORDER = "nope"
-
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope in order", Order.thy)
-
     def test__field_name(self):
 
         stuff = Stuff()
@@ -142,6 +134,16 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._field_name(2), "name")
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
+
+    def test_ordering(self):
+
+        stuff = Stuff()
+        Stuff.thy(stuff)
+
+        self.assertEqual(stuff._ordering("id"), ["+id"])
+        self.assertEqual(stuff._ordering("-name"), ["-name"])
+
+        self.assertRaisesRegex(relations.ModelError, "unknown sort field nope", stuff._ordering, "nope")
 
 class ModelTest(relations.Model):
 

@@ -52,6 +52,7 @@ class ModelIdentity:
     _index = None  # Actual indexes
     _order = None  # Default sort order
 
+
     @classmethod
     def thy(cls, self=None):
         """
@@ -162,18 +163,11 @@ class ModelIdentity:
         # Determine default sort order (if desired)
 
         if self.ORDER:
-            self._order = self.ORDER
+            self._order = self._ordering(self.ORDER)
         elif self.ORDER is None and len(self._unique) == 1:
-            self._order = list(self._unique.values())[0]
+            self._order = self._ordering(list(self._unique.values())[0])
         else:
             self._order = []
-
-        if isinstance(self._order, str):
-            self._order = [self._order]
-
-        for field in self._order:
-            if field not in self._fields:
-                raise ModelError(self, f"cannot find field {field} in order {self._order}")
 
         # Initialize relation models
 
@@ -201,6 +195,27 @@ class ModelIdentity:
             return field
 
         return self._fields._order[field].name
+
+    def _ordering(self, order):
+        """
+        Creates a prefix sorting list, including field checks
+        """
+
+        if isinstance(order, str):
+            order = [order]
+
+        ordering = []
+
+        for sort in order:
+
+            field = sort[1:] if sort[0] in ['-', '+'] else sort
+
+            if field not in self._fields:
+                raise ModelError(self, f"unknown sort field {field}")
+
+            ordering.append(sort if sort != field else f"+{sort}")
+
+        return ordering
 
 class Model(ModelIdentity):
     """
@@ -738,16 +753,7 @@ class Model(ModelIdentity):
         Adding sorting to filtering or sorts existing records
         """
 
-        sorting = []
-
-        for sort in args:
-
-            field = sort[1:] if sort[0] in ['-', '+'] else sort
-
-            if field not in self._fields:
-                raise ModelError(self, f"unknown sort field {field}")
-
-            sorting.append(sort if sort[0] == '-' else f"+{sort}")
+        sorting = self._ordering(args)
 
         # If we're retrieving, just add to existing
 
