@@ -74,6 +74,7 @@ class Field:
         'retrieve',
         'satisfy',
         'set',
+        'sort',
         'thy',
         'update',
         'write'
