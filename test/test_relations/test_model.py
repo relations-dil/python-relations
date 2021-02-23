@@ -1073,6 +1073,28 @@ class TestModel(unittest.TestCase):
         self.assertRaisesRegex(relations.ModelError, "unit: unknown sort field nope", Unit.many().sort, "nope")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot sort one", Unit.one(name="ya").retrieve().sort)
 
+    def test_limt(self):
+
+        models = Unit.many().limit()
+        self.assertEqual(models._limit, 100)
+        self.assertEqual(models._offset, 0)
+
+        models = Unit.many().limit(5, 2)
+
+        self.assertEqual(models._limit, 5)
+        self.assertEqual(models._offset, 2)
+
+        models = Unit.many().limit(5, page=4)
+
+        self.assertEqual(models._limit, 5)
+        self.assertEqual(models._offset, 15)
+
+        Unit([["ya"], ["sure"], ["whatever"]]).create()
+        units = Unit.many().sort("name").limit(2)
+        self.assertEqual(units.name, ["sure", "whatever"])
+
+        self.assertRaisesRegex(relations.ModelError, "unit: can only limit retrieve", Unit.one(name="ya").retrieve().limit)
+
     def test_set(self):
 
         model = UnitTest().set("unit")
