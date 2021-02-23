@@ -429,6 +429,8 @@ class TestModel(unittest.TestCase):
 
         models = UnitTest([])
 
+        models._models = None
+
         def nope():
 
             models.name
