@@ -411,7 +411,7 @@ class Model(ModelIdentity):
             if self._mode == "one":
                 return self._record[name]
 
-            if not self._models:
+            if self._models is None:
                 raise ModelError(self, "no records")
 
             return [getattr(model, name) for model in self._models]
