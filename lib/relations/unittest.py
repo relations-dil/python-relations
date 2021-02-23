@@ -143,6 +143,9 @@ class MockSource(relations.Source):
             if sort:
                 model.sort(*sort)._sort = None
 
+            if model._limit:
+                model._models = model._models[model._offset:model._offset + model._limit]
+
         return model
 
     def field_update(self, field, values, changed=None):

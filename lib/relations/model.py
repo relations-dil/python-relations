@@ -235,6 +235,8 @@ class Model(ModelIdentity):
     _bulk = None     # Whether we're bulk inserting
     _size = None     # When to auto insert
     _sort = None     # What to sort by
+    _limit = None    # If we're limiting, how much
+    _offset = None   # If we're limiting, where to start
     _action = None   # Overall action of this model
     _related = None  # Which fields will be set automatically
 
@@ -774,6 +776,22 @@ class Model(ModelIdentity):
                     return cmp if sort[0] == '+' else -cmp
 
             self._models = sorted(self._models, key=functools.cmp_to_key(compare))
+
+        return self
+
+    def limit(self, limit=100, start=0, page=None):
+        """
+        Adding sorting to filtering or sorts existing records
+        """
+
+        # If we're not retrieving, there's no point in limiting
+
+        if self._action != "retrieve":
+
+            raise ModelError(self, "can only limit retrieve")
+
+        self._limit = limit
+        self._offset = (page - 1) * self._limit if page is not None else start
 
         return self
 
