@@ -30,6 +30,7 @@ class TestModelError(unittest.TestCase):
 class People(relations.ModelIdentity):
     id = int
     name = str
+    gender = ["free", "male", "female"]
 
     UNIQUE = "name"
     INDEX = "name"
@@ -79,6 +80,10 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[0].kind, int)
         self.assertEqual(people._fields._order[1].name, "name")
         self.assertEqual(people._fields._order[1].kind, str)
+        self.assertEqual(people._fields._order[2].name, "gender")
+        self.assertEqual(people._fields._order[2].kind, str)
+        self.assertEqual(people._fields._order[2].options, ["free", "male", "female"])
+        self.assertEqual(people._fields._order[2].default, "free")
         self.assertEqual(people._id, "id")
         self.assertEqual(people._unique, {"name": ["name"]})
         self.assertEqual(people._order, ["+name"])

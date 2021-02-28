@@ -83,7 +83,7 @@ class ModelIdentity:
             elif callable(attribute):
                 field = relations.Field(type(attribute()), default=attribute)
             elif isinstance(attribute, list):
-                field = relations.Field(type(attribute[0]), options=attribute)
+                field = relations.Field(type(attribute[0]), default=attribute[0], options=attribute)
             elif isinstance(attribute, tuple):
                 field = relations.Field(*attribute)
             elif isinstance(attribute, dict):
