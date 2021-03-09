@@ -67,6 +67,7 @@ class Field:
         'delete',
         'filter',
         'insert',
+        'limit',
         'many',
         'one',
         'prepare',
