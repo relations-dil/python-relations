@@ -52,6 +52,21 @@ class ModelIdentity:
     _index = None  # Actual indexes
     _order = None  # Default sort order
 
+    @staticmethod
+    def underscore(name):
+        """
+        Turns camel case to underscored
+        """
+        underscored = []
+        previous = True
+        for letter in name:
+            lowered = letter.lower()
+            if not previous and lowered != letter:
+                underscored.append('_')
+            underscored.append(lowered)
+            previous = (lowered != letter)
+
+        return ''.join(underscored)
 
     @classmethod
     def thy(cls, self=None):
@@ -67,7 +82,7 @@ class ModelIdentity:
 
         # Use NAME if set, else use class name
 
-        setattr(self, 'NAME', cls.NAME or cls.__name__.lower())
+        setattr(self, 'NAME', cls.NAME or cls.underscore(cls.__name__))
 
         # Derive all the fields
 

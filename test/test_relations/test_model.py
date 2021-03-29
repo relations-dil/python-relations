@@ -68,6 +68,12 @@ class Things(relations.ModelIdentity):
 
 class TestModelIdentity(unittest.TestCase):
 
+    def test_underscore(self):
+
+        self.assertEqual(People.underscore("SomePeople"), "some_people")
+        self.assertEqual(People.underscore("SomePEOPLE"), "some_people")
+        self.assertEqual(People.underscore("SOMEPEOPLE"), "somepeople")
+
     def test_thy(self):
 
         people = People.thy()
@@ -113,6 +119,12 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(things._fields._names["name"].kind, str)
         self.assertEqual(things._fields._names["name"].storage, "id")
         self.assertIsNone(things._id)
+
+        class SomePeople(relations.ModelIdentity):
+
+            id = int
+
+        self.assertEqual(SomePeople.thy().NAME, "some_people")
 
         class Unique(relations.ModelIdentity):
             id = int
@@ -360,7 +372,7 @@ class TestModel(unittest.TestCase):
 
             models.id = 4
 
-        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unit_test: no records", nope)
 
         # child
 
@@ -440,7 +452,7 @@ class TestModel(unittest.TestCase):
 
             models.name
 
-        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unit_test: no records", nope)
 
         # child
 
@@ -646,7 +658,7 @@ class TestModel(unittest.TestCase):
         def nope():
             models[0] = 1
 
-        self.assertRaisesRegex(relations.ModelError, "unittest: no override", nope)
+        self.assertRaisesRegex(relations.ModelError, "unit_test: no override", nope)
 
         # multiple, no records
 
@@ -656,7 +668,7 @@ class TestModel(unittest.TestCase):
 
             models['id'] = 4
 
-        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unit_test: no records", nope)
 
         # child
 
@@ -710,7 +722,7 @@ class TestModel(unittest.TestCase):
 
             models['name']
 
-        self.assertRaisesRegex(relations.ModelError, "unittest: no records", nope)
+        self.assertRaisesRegex(relations.ModelError, "unit_test: no records", nope)
 
         # child
 
