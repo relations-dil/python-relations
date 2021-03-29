@@ -36,7 +36,7 @@ class TestRelation(unittest.TestCase):
 
         class Unit(relations.Model):
             id = int
-            testunit_id = int
+            test_unit_id = int
             test_ident = int
             name = str
 
@@ -50,12 +50,12 @@ class TestRelation(unittest.TestCase):
         test = Test()
         unit = Unit()
 
-        self.assertEqual(relations.Relation.relative_field(testunit, unit), "testunit_id")
+        self.assertEqual(relations.Relation.relative_field(testunit, unit), "test_unit_id")
         self.assertEqual(relations.Relation.relative_field(test, unit), "test_ident")
         self.assertEqual(relations.Relation.relative_field(test, testunit), "ident")
         self.assertEqual(Equal.relative_field(unit, testunit), "id")
 
-        self.assertRaisesRegex(relations.ModelError, "cannot determine field for unit in testunit", Unequal.relative_field, unit, testunit)
+        self.assertRaisesRegex(relations.ModelError, "cannot determine field for unit in test_unit", Unequal.relative_field, unit, testunit)
 
 class TestOneTo(unittest.TestCase):
 
