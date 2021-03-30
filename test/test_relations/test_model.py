@@ -1103,7 +1103,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._limit, 5)
         self.assertEqual(models._offset, 2)
 
-        models = Unit.many().limit(5, page=4)
+        models = Unit.many().limit(page=4, per_page=5)
 
         self.assertEqual(models._limit, 5)
         self.assertEqual(models._offset, 15)
