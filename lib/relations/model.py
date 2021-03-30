@@ -796,7 +796,7 @@ class Model(ModelIdentity):
 
         return self
 
-    def limit(self, limit=100, start=0, page=None):
+    def limit(self, limit=100, start=0, page=None, per_page=None):
         """
         Adding sorting to filtering or sorts existing records
         """
@@ -807,7 +807,7 @@ class Model(ModelIdentity):
 
             raise ModelError(self, "can only limit retrieve")
 
-        self._limit = limit
+        self._limit = per_page if per_page is not None else limit
         self._offset = (page - 1) * self._limit if page is not None else start
 
         return self
