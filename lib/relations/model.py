@@ -770,6 +770,12 @@ class Model(ModelIdentity):
         Adding sorting to filtering or sorts existing records
         """
 
+        if self._mode == "one":
+            raise ModelError(self, "cannot sort one")
+
+        if not args:
+            return self
+
         sorting = self._ordering(args)
 
         # If we're retrieving, just add to existing
@@ -778,10 +784,6 @@ class Model(ModelIdentity):
 
             self._sort = self._sort or []
             self._sort.extend(sorting)
-
-        elif self._mode == "one":
-
-            raise ModelError(self, "cannot sort one")
 
         else:
 
