@@ -1082,7 +1082,7 @@ class TestModel(unittest.TestCase):
 
     def test_sort(self):
 
-        models = Unit.many().sort("id").sort("-name")
+        models = Unit.many().sort().sort("id").sort("-name")
 
         self.assertEqual(models._sort, ["+id", "-name"])
 
