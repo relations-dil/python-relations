@@ -34,6 +34,7 @@ class ModelIdentity:
 
     SOURCE = None   # Data source
 
+    TITLE = None    # Label of the Model
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
     UNIQUE = None   # Unique indexes
@@ -80,9 +81,10 @@ class ModelIdentity:
             self = ModelIdentity()
             self.__dict__.update(cls.__dict__)
 
-        # Use NAME if set, else use class name
+        # Use TITLE, NAME if set, else use class name
 
-        setattr(self, 'NAME', cls.NAME or cls.underscore(cls.__name__))
+        setattr(self, 'TITLE', cls.TITLE or cls.__name__)
+        setattr(self, 'NAME', cls.NAME or cls.underscore(self.TITLE))
 
         # Derive all the fields
 
