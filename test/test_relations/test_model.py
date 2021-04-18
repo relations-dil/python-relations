@@ -41,6 +41,7 @@ def stuffit():
 
 class Stuff(relations.ModelIdentity):
 
+    TITLE = "StuffIns"
     NAME = "stuffins"
     ID = "name"
 
@@ -77,6 +78,7 @@ class TestModelIdentity(unittest.TestCase):
     def test_thy(self):
 
         people = People.thy()
+        self.assertEqual(people.TITLE, "People")
         self.assertEqual(people.NAME, "people")
         self.assertEqual(people.PARENTS, {})
         self.assertEqual(people.CHILDREN, {})
@@ -96,6 +98,7 @@ class TestModelIdentity(unittest.TestCase):
 
         stuff = Stuff()
         Stuff.thy(stuff)
+        self.assertEqual(stuff.TITLE, "StuffIns")
         self.assertEqual(stuff.NAME, "stuffins")
         self.assertEqual(stuff._fields._names["id"].name, "id")
         self.assertEqual(stuff._fields._names["id"].kind, int)
