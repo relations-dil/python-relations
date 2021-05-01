@@ -144,7 +144,7 @@ class ModelIdentity:
 
         if isinstance(unique, list):
             unique = {
-                "-".join(unique): unique
+                "label": unique
             }
 
         if isinstance(unique, dict):

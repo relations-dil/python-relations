@@ -93,7 +93,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[2].options, ["free", "male", "female"])
         self.assertEqual(people._fields._order[2].default, "free")
         self.assertEqual(people._id, "id")
-        self.assertEqual(people._unique, {"name": ["name"]})
+        self.assertEqual(people._unique, {"label": ["name"]})
         self.assertEqual(people._order, ["+name"])
 
         stuff = Stuff()
@@ -109,7 +109,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].kind, str)
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
-        self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
+        self.assertEqual(stuff._unique, {"label": ["id", "people_id", "people"]})
         self.assertEqual(stuff._order, ["+name"])
 
         things = Things.thy()
@@ -135,7 +135,7 @@ class TestModelIdentity(unittest.TestCase):
 
             UNIQUE = "nope"
 
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique nope", Unique.thy)
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique label", Unique.thy)
 
         class Index(relations.ModelIdentity):
             id = int
