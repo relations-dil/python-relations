@@ -197,6 +197,12 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Unit.many().sort("-name").limit(1).name, ["stuff"])
         self.assertEqual(Unit.many().sort("-name").limit(0).name, [])
 
+        model = Unit.many(like="p")
+        self.assertEqual(model.name, ["people"])
+
+        model = Test.many(like="p").retrieve()
+        self.assertEqual(model.name, ["things"])
+
     def test_field_update(self):
 
         # Standard

@@ -52,9 +52,10 @@ class Field:
         'ne': True,
         'eq': False,
         'gt': False,
-        'ge': False,
+        'gte': False,
         'lt': False,
-        'le': False
+        'lte': False,
+        'like': False
     }
 
     RESERVED = [
@@ -67,8 +68,10 @@ class Field:
         'delete',
         'filter',
         'insert',
+        'like',
         'limit',
         'many',
+        'match',
         'one',
         'prepare',
         'read',
@@ -232,13 +235,26 @@ class Field:
                 (operator in "ne" and value in satisfy) or
                 (operator == "eq" and value != satisfy) or
                 (operator == "gt" and value <= satisfy) or
-                (operator == "ge" and value < satisfy) or
+                (operator == "gte" and value < satisfy) or
                 (operator == "lt" and value >= satisfy) or
-                (operator == "le" and value > satisfy)
+                (operator == "lte" and value > satisfy) or
+                (operator == "like" and str(satisfy).lower() not in str(value).lower())
             ):
                 return False
 
         return True
+
+    def match(self, values, like, parents):
+        """
+        Check if this value matchees a model's like or parents match
+        """
+
+        value = self.valid(values.get(self.store))
+
+        if self.store in parents:
+            return value in parents[self.store]
+
+        return str(like).lower() in str(value).lower()
 
     def read(self, values):
         """

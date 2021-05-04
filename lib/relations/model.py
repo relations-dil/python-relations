@@ -34,9 +34,10 @@ class ModelIdentity:
 
     SOURCE = None   # Data source
 
-    TITLE = None    # Label of the Model
+    TITLE = None    # Title of the Model
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
+    LABEL = None    # Fields that make up the label of the model
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
 
@@ -48,6 +49,7 @@ class ModelIdentity:
     BROTHERS = None # Brother relationships (many to many)
 
     _id = None     # Name of id field
+    _label = None  # Actual fields of the label
     _fields = None # Base record to create other records with
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
@@ -121,21 +123,37 @@ class ModelIdentity:
         if cls.ID is not None:
             setattr(self, '_id', self._field_name(cls.ID))
 
-        # Figure out indexes
+        # Figure out the label
 
-        unique = self.UNIQUE
+        label = self.LABEL
 
-        if unique is None:
-            unique = []
+        if not label:
+            label = []
             for field in self._fields._order:
                 if self._id == field.name:
                     continue
                 if field.kind in (int, str):
-                    unique.append(field.name)
+                    label.append(field.name)
                     if field.kind == str and field._none is None:
                         field.none = False
                 if field.kind == str:
                     break
+
+        if isinstance(label, str):
+            label = [label]
+
+        self._label = label
+
+        for field in self._label:
+            if field not in self._fields:
+                raise ModelError(self, f"cannot find field {field} from label")
+
+        # Figure out unique indexes
+
+        unique = self.UNIQUE
+
+        if unique is None:
+            unique = self._label
         elif not unique:
             unique = {}
 
@@ -144,7 +162,7 @@ class ModelIdentity:
 
         if isinstance(unique, list):
             unique = {
-                "label": unique
+                "-".join(unique): unique
             }
 
         if isinstance(unique, dict):
@@ -251,6 +269,7 @@ class Model(ModelIdentity):
     _mode = None     # Whether we're dealing with one or many
     _bulk = None     # Whether we're bulk inserting
     _size = None     # When to auto insert
+    _like = None     # Current fuzzy match
     _sort = None     # What to sort by
     _limit = None    # If we're limiting, how much
     _offset = None   # If we're limiting, where to start
@@ -437,7 +456,7 @@ class Model(ModelIdentity):
 
     def __len__(self):
         """
-        Use for numnber of record
+        Use for number of records
         """
 
         self._ensure()
@@ -544,9 +563,11 @@ class Model(ModelIdentity):
             raise ModelError(self, "no record")
 
         if self._mode == "one":
+            if key in self.PARENTS or key in self.CHILDREN:
+                return self._relate(key)
             return self._record[key]
 
-        if not self._models:
+        if self._models is None:
             raise ModelError(self, "no records")
 
         if isinstance(key, int):
@@ -571,6 +592,8 @@ class Model(ModelIdentity):
 
         cls.CHILDREN = cls.CHILDREN or {}
         cls.CHILDREN[relation.parent_child] = relation
+
+    # These aren't used yet and might need to go
 
     @classmethod
     def _sister(cls, relation):
@@ -732,14 +755,20 @@ class Model(ModelIdentity):
 
         for name, value in kwargs.items():
 
-            pieces = name.split('__', 1)
+            if name == "like":
 
-            relation = self._relate(pieces[0])
+                self._like = value
 
-            if relation is not None:
-                relation.filter(**{pieces[1]: value})
             else:
-                self._record.filter(name, value)
+
+                pieces = name.split('__', 1)
+
+                relation = self._relate(pieces[0])
+
+                if relation is not None:
+                    relation.filter(**{pieces[1]: value})
+                else:
+                    self._record.filter(name, value)
 
         return self
 

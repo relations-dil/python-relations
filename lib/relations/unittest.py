@@ -98,16 +98,35 @@ class MockSource(relations.Source):
 
         return model
 
-    def model_retrieve(self, model, verify=True):
+    def model_retrieve(self, model, verify=True): # pylint: disable=too-many-branches
         """
         Executes the retrieve
         """
 
         model._collate()
 
+        if model._like is not None:
+
+            parents = {}
+
+            for field in model._label:
+                for relation in model.PARENTS.values():
+                    if field == relation.child_field:
+                        parents[model._fields._names[field].store] = relation.Parent.many(like=model._like)[relation.parent_field]
+
+            likes = []
+
+            for record in self.data[model.NAME].values():
+                if model._record.match(record, model._label, model._like, parents):
+                    likes.append(record)
+
+        else:
+
+            likes = self.data[model.NAME].values()
+
         matches = []
 
-        for record in self.data[model.NAME].values():
+        for record in likes:
             if model._record.satisfy(record):
                 matches.append(record)
 

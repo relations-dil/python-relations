@@ -64,7 +64,7 @@ class OneTo(Relation):
 
         self.parent_child = parent_child if parent_child is not None else child.NAME
         self.child_parent = child_parent if child_parent is not None else parent.NAME
-        self.parent_field = parent._field_name(parent_field if parent_field is not None else parent.ID)
+        self.parent_field = parent._field_name(parent_field if parent_field is not None else parent._id)
         self.child_field = child._field_name(child_field) if child_field is not None else self.relative_field(parent, child)
 
         self.Parent._child(self)

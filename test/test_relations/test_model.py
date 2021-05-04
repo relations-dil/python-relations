@@ -32,6 +32,7 @@ class People(relations.ModelIdentity):
     name = str
     gender = ["free", "male", "female"]
 
+    LABEL = "name"
     UNIQUE = "name"
     INDEX = "name"
 
@@ -65,105 +66,6 @@ class Things(relations.ModelIdentity):
     INDEX = {
         "no_name": ["name"]
     }
-
-
-class TestModelIdentity(unittest.TestCase):
-
-    def test_underscore(self):
-
-        self.assertEqual(People.underscore("SomePeople"), "some_people")
-        self.assertEqual(People.underscore("SomePEOPLE"), "some_people")
-        self.assertEqual(People.underscore("SOMEPEOPLE"), "somepeople")
-
-    def test_thy(self):
-
-        people = People.thy()
-        self.assertEqual(people.TITLE, "People")
-        self.assertEqual(people.NAME, "people")
-        self.assertEqual(people.PARENTS, {})
-        self.assertEqual(people.CHILDREN, {})
-        self.assertEqual(people.SISTERS, {})
-        self.assertEqual(people.BROTHERS, {})
-        self.assertEqual(people._fields._order[0].name, "id")
-        self.assertEqual(people._fields._order[0].kind, int)
-        self.assertEqual(people._fields._order[1].name, "name")
-        self.assertEqual(people._fields._order[1].kind, str)
-        self.assertEqual(people._fields._order[2].name, "gender")
-        self.assertEqual(people._fields._order[2].kind, str)
-        self.assertEqual(people._fields._order[2].options, ["free", "male", "female"])
-        self.assertEqual(people._fields._order[2].default, "free")
-        self.assertEqual(people._id, "id")
-        self.assertEqual(people._unique, {"label": ["name"]})
-        self.assertEqual(people._order, ["+name"])
-
-        stuff = Stuff()
-        Stuff.thy(stuff)
-        self.assertEqual(stuff.TITLE, "StuffIns")
-        self.assertEqual(stuff.NAME, "stuffins")
-        self.assertEqual(stuff._fields._names["id"].name, "id")
-        self.assertEqual(stuff._fields._names["id"].kind, int)
-        self.assertEqual(stuff._fields._names["name"].name, "name")
-        self.assertEqual(stuff._fields._names["name"].kind, str)
-        self.assertFalse(stuff._fields._names["name"].none)
-        self.assertEqual(stuff._fields._names["people"].name, "people")
-        self.assertEqual(stuff._fields._names["people"].kind, str)
-        self.assertEqual(stuff._fields._names["people"].default, stuffit)
-        self.assertEqual(stuff._id, "name")
-        self.assertEqual(stuff._unique, {"label": ["id", "people_id", "people"]})
-        self.assertEqual(stuff._order, ["+name"])
-
-        things = Things.thy()
-        self.assertEqual(things.NAME, "things")
-        self.assertEqual(things._unique, {})
-        self.assertEqual(things._index, {
-            "no_name": ["name"]
-        })
-        self.assertEqual(things._fields._names["name"].name, "name")
-        self.assertEqual(things._fields._names["name"].kind, str)
-        self.assertEqual(things._fields._names["name"].storage, "id")
-        self.assertIsNone(things._id)
-
-        class SomePeople(relations.ModelIdentity):
-
-            id = int
-
-        self.assertEqual(SomePeople.thy().NAME, "some_people")
-
-        class Unique(relations.ModelIdentity):
-            id = int
-            name = str
-
-            UNIQUE = "nope"
-
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique label", Unique.thy)
-
-        class Index(relations.ModelIdentity):
-            id = int
-            name = str
-
-            INDEX = "nope"
-
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
-
-    def test__field_name(self):
-
-        stuff = Stuff()
-        Stuff.thy(stuff)
-
-        self.assertEqual(stuff._field_name("id"), "id")
-        self.assertEqual(stuff._field_name(2), "name")
-
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
-
-    def test_ordering(self):
-
-        stuff = Stuff()
-        Stuff.thy(stuff)
-
-        self.assertEqual(stuff._ordering("id"), ["+id"])
-        self.assertEqual(stuff._ordering("-name"), ["-name"])
-
-        self.assertRaisesRegex(relations.ModelError, "unknown sort field nope", stuff._ordering, "nope")
 
 class ModelTest(relations.Model):
 
@@ -201,6 +103,117 @@ class Run(ModelTest):
 relations.OneToMany(Unit, Test)
 relations.OneToOne(Test, Case)
 relations.OneToOne(Test, Run)
+
+class TestModelIdentity(unittest.TestCase):
+
+    def test_underscore(self):
+
+        self.assertEqual(People.underscore("SomePeople"), "some_people")
+        self.assertEqual(People.underscore("SomePEOPLE"), "some_people")
+        self.assertEqual(People.underscore("SOMEPEOPLE"), "somepeople")
+
+    def test_thy(self):
+
+        people = People.thy()
+        self.assertEqual(people.TITLE, "People")
+        self.assertEqual(people.NAME, "people")
+        self.assertEqual(people.PARENTS, {})
+        self.assertEqual(people.CHILDREN, {})
+        self.assertEqual(people.SISTERS, {})
+        self.assertEqual(people.BROTHERS, {})
+        self.assertEqual(people._fields._order[0].name, "id")
+        self.assertEqual(people._fields._order[0].kind, int)
+        self.assertEqual(people._fields._order[1].name, "name")
+        self.assertEqual(people._fields._order[1].kind, str)
+        self.assertEqual(people._fields._order[2].name, "gender")
+        self.assertEqual(people._fields._order[2].kind, str)
+        self.assertEqual(people._fields._order[2].options, ["free", "male", "female"])
+        self.assertEqual(people._fields._order[2].default, "free")
+        self.assertEqual(people._id, "id")
+        self.assertEqual(people._label, ["name"])
+        self.assertEqual(people._unique, {"name": ["name"]})
+        self.assertEqual(people._order, ["+name"])
+
+        stuff = Stuff()
+        Stuff.thy(stuff)
+        self.assertEqual(stuff.TITLE, "StuffIns")
+        self.assertEqual(stuff.NAME, "stuffins")
+        self.assertEqual(stuff._fields._names["id"].name, "id")
+        self.assertEqual(stuff._fields._names["id"].kind, int)
+        self.assertEqual(stuff._fields._names["name"].name, "name")
+        self.assertEqual(stuff._fields._names["name"].kind, str)
+        self.assertFalse(stuff._fields._names["name"].none)
+        self.assertEqual(stuff._fields._names["people"].name, "people")
+        self.assertEqual(stuff._fields._names["people"].kind, str)
+        self.assertEqual(stuff._fields._names["people"].default, stuffit)
+        self.assertEqual(stuff._id, "name")
+        self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
+        self.assertEqual(stuff._order, ["+name"])
+
+        things = Things.thy()
+        self.assertEqual(things.NAME, "things")
+        self.assertEqual(things._unique, {})
+        self.assertEqual(things._index, {
+            "no_name": ["name"]
+        })
+        self.assertEqual(things._fields._names["name"].name, "name")
+        self.assertEqual(things._fields._names["name"].kind, str)
+        self.assertEqual(things._fields._names["name"].storage, "id")
+        self.assertIsNone(things._id)
+
+        test = Test.many()
+        self.assertEqual(test._label, ["unit_id", "name"])
+
+        class SomePeople(relations.ModelIdentity):
+
+            id = int
+
+        self.assertEqual(SomePeople.thy().NAME, "some_people")
+
+        class Label(relations.ModelIdentity):
+            id = int
+            name = str
+
+            LABEL = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from label", Label.thy)
+
+        class Unique(relations.ModelIdentity):
+            id = int
+            name = str
+
+            UNIQUE = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from unique nope", Unique.thy)
+
+        class Index(relations.ModelIdentity):
+            id = int
+            name = str
+
+            INDEX = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
+
+    def test__field_name(self):
+
+        stuff = Stuff()
+        Stuff.thy(stuff)
+
+        self.assertEqual(stuff._field_name("id"), "id")
+        self.assertEqual(stuff._field_name(2), "name")
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope in stuffins", stuff._field_name, "nope")
+
+    def test_ordering(self):
+
+        stuff = Stuff()
+        Stuff.thy(stuff)
+
+        self.assertEqual(stuff._ordering("id"), ["+id"])
+        self.assertEqual(stuff._ordering("-name"), ["-name"])
+
+        self.assertRaisesRegex(relations.ModelError, "unknown sort field nope", stuff._ordering, "nope")
+
 
 class TestModel(unittest.TestCase):
 
@@ -469,7 +482,7 @@ class TestModel(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, "case: no record", nope)
 
-        # one to one. with record
+        # one to one, with record
 
         test.case.add()
 
@@ -720,6 +733,7 @@ class TestModel(unittest.TestCase):
         # multiple, no records
 
         models = UnitTest([])
+        models._models = None
 
         def nope():
 
@@ -754,6 +768,17 @@ class TestModel(unittest.TestCase):
         unit = Unit.one(1)
 
         self.assertEqual(unit['name'], "sure")
+
+        unit = Unit("ya")
+        unit.test.add("sure")[0]
+        unit.create()
+
+        # All id's will be 1
+
+        test = Test.one(1)
+
+        self.assertEqual(test['unit'].name, "ya")
+        self.assertEqual(test['unit']['test'].name, ["sure"])
 
     def test__parent(self):
 
@@ -1048,9 +1073,14 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
         self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
 
-        unit = Unit.many().filter(test__id__in=[1])
+        unit = Unit.many().filter(test__id__in=[1], like="fuzzy")
 
         self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], [1])
+        self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], [1])
+
+        test = Test.many().filter(like="fuzzy")
+
+        self.assertEqual(test._like, "fuzzy")
 
     def test_bulk(self):
 
