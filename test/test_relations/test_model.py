@@ -260,9 +260,10 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model._fields._names["name"].kind, str)
         self.assertNotIn("nope", model._fields)
 
-        # options
+        # chunk and options
 
-        model = Run()
+        model = Run(_chunk=5)
+        self.assertEqual(model._chunk, 5)
         self.assertEqual(model._record._names["status"].options, ["pass", "fail"])
 
         # read
@@ -940,6 +941,20 @@ class TestModel(unittest.TestCase):
         self.assertEqual(test._record._names['unit_id'].criteria["in"], [1])
         self.assertEqual(test._record._names['id'].criteria["in"], [2])
         self.assertEqual(test.case[0].id, 1)
+
+        test = Test.one()
+
+        self.assertFalse(test.overflow)
+
+        test = Test.one(unit__name="ya", _chunk=1)
+        test._collate()
+
+        self.assertTrue(test.overflow)
+
+        test = Test.one(case__name="whatever", _chunk=1)
+        test._collate()
+
+        self.assertTrue(test.overflow)
 
     def test__propagate(self):
 

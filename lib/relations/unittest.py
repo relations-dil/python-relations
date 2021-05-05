@@ -112,7 +112,9 @@ class MockSource(relations.Source):
             for field in model._label:
                 for relation in model.PARENTS.values():
                     if field == relation.child_field:
-                        parents[model._fields._names[field].store] = relation.Parent.many(like=model._like)[relation.parent_field]
+                        parent = relation.Parent.many(like=model._like).limit(model._chunk)
+                        parents[model._fields._names[field].store] = parent[relation.parent_field]
+                        model.overflow = model.overflow or parent.overflow
 
             likes = []
 
@@ -163,6 +165,7 @@ class MockSource(relations.Source):
                 model.sort(*sort)._sort = None
 
             if model._limit is not None:
+                model.overflow = len(model._models) >= model._limit
                 model._models = model._models[model._offset:model._offset + model._limit]
 
         return model

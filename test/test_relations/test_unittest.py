@@ -182,6 +182,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(unit._action, "update")
         self.assertEqual(unit._record._action, "update")
 
+        self.assertTrue(Unit.many(name="people").limit(1).retrieve().overflow)
+        self.assertFalse(Unit.many(name="people").limit(2).retrieve().overflow)
+
         unit.test.add("things")[0].case.add("persons")
         unit.update()
 
@@ -202,6 +205,11 @@ class TestSource(unittest.TestCase):
 
         model = Test.many(like="p").retrieve()
         self.assertEqual(model.name, ["things"])
+        self.assertFalse(model.overflow)
+
+        model = Test.many(like="p", _chunk=1).retrieve()
+        self.assertEqual(model.name, ["things"])
+        self.assertTrue(model.overflow)
 
     def test_field_update(self):
 
