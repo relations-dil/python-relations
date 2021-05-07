@@ -140,8 +140,8 @@ class MockSource(relations.Source):
         if model._limit is None:
             return
 
-        model.overflow = model.overflow or len(model._models) >= model._limit
         model._models = model._models[model._offset:model._offset + model._limit]
+        model.overflow = model.overflow or len(model._models) >= model._limit
 
     def model_retrieve(self, model, verify=True):
         """
