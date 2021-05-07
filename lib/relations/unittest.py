@@ -98,37 +98,63 @@ class MockSource(relations.Source):
 
         return model
 
-    def model_retrieve(self, model, verify=True): # pylint: disable=too-many-branches
+    def model_like(self, model):
+        """
+        Gets the like matching records
+        """
+
+        parents = {}
+
+        for field in model._label:
+            for relation in model.PARENTS.values():
+                if field == relation.child_field:
+                    parent = relation.Parent.many(like=model._like).limit(model._chunk)
+                    parents[model._fields._names[field].store] = parent[relation.parent_field]
+                    model.overflow = model.overflow or parent.overflow
+
+        likes = []
+
+        for record in self.data[model.NAME].values():
+            if model._record.match(record, model._label, model._like, parents):
+                likes.append(record)
+
+        return likes
+
+    @staticmethod
+    def model_sort(model):
+        """
+        Sorts the resuls
+        """
+
+        sort = model._sort or model._order
+
+        if sort:
+            model.sort(*sort)._sort = None
+
+    @staticmethod
+    def model_limit(model):
+        """
+        Limits the results
+        """
+
+        if model._limit is None:
+            return
+
+        model.overflow = model.overflow or len(model._models) >= model._limit
+        model._models = model._models[model._offset:model._offset + model._limit]
+
+    def model_retrieve(self, model, verify=True):
         """
         Executes the retrieve
         """
 
         model._collate()
 
-        if model._like is not None:
-
-            parents = {}
-
-            for field in model._label:
-                for relation in model.PARENTS.values():
-                    if field == relation.child_field:
-                        parent = relation.Parent.many(like=model._like).limit(model._chunk)
-                        parents[model._fields._names[field].store] = parent[relation.parent_field]
-                        model.overflow = model.overflow or parent.overflow
-
-            likes = []
-
-            for record in self.data[model.NAME].values():
-                if model._record.match(record, model._label, model._like, parents):
-                    likes.append(record)
-
-        else:
-
-            likes = self.data[model.NAME].values()
+        values = self.model_like(model) if model._like is not None else self.data[model.NAME].values()
 
         matches = []
 
-        for record in likes:
+        for record in values:
             if model._record.satisfy(record):
                 matches.append(record)
 
@@ -158,15 +184,8 @@ class MockSource(relations.Source):
         model._action = "update"
 
         if model._mode == "many":
-
-            sort = model._sort or model._order
-
-            if sort:
-                model.sort(*sort)._sort = None
-
-            if model._limit is not None:
-                model.overflow = len(model._models) >= model._limit
-                model._models = model._models[model._offset:model._offset + model._limit]
+            self.model_sort(model)
+            self.model_limit(model)
 
         return model
 
