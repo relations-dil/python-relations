@@ -157,6 +157,17 @@ class Record:
 
         return True
 
+    def match(self, values, label, like, parents):
+        """
+        Sees if a record satisfies criteria in a dict
+        """
+
+        for field in label:
+            if self._names[field].match(values, like, parents):
+                return True
+
+        return False
+
     def read(self, values):
         """
         Loads the value from storage

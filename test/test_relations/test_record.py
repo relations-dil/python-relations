@@ -145,6 +145,12 @@ class TestRecord(unittest.TestCase):
         self.assertFalse(self.record.satisfy({"_id": 2, "_name": "unit"}))
         self.assertFalse(self.record.satisfy({"_id": 1, "_name": "test"}))
 
+    def test_match(self):
+
+        self.assertTrue(self.record.match({"_id": 1, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
+        self.assertTrue(self.record.match({"_id": 2, "_name": "unit"}, ["id", "name"], "unit", {'_id': [1]}))
+        self.assertFalse(self.record.match({"_id": 2, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
+
     def test_read(self):
 
         self.record.read({"_id": 1, "_name": "unit"})

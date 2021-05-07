@@ -147,14 +147,17 @@ class TestField(unittest.TestCase):
         field.filter("1", "gt")
         self.assertEqual(field.criteria["gt"], 1)
 
-        field.filter("1", "ge")
-        self.assertEqual(field.criteria["ge"], 1)
+        field.filter("1", "gte")
+        self.assertEqual(field.criteria["gte"], 1)
 
         field.filter("1", "lt")
         self.assertEqual(field.criteria["lt"], 1)
 
-        field.filter("1", "le")
-        self.assertEqual(field.criteria["le"], 1)
+        field.filter("1", "lte")
+        self.assertEqual(field.criteria["lte"], 1)
+
+        field.filter("1", "like")
+        self.assertEqual(field.criteria["like"], 1)
 
         self.assertRaisesRegex(relations.FieldError, "unknown operator 'nope'", field.filter, 0, "nope")
 
@@ -181,7 +184,7 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.satisfy({"_id": '1'}))
 
         field = relations.Field(int, store="_id")
-        field.filter("1", "ge")
+        field.filter("1", "gte")
         self.assertTrue(field.satisfy({"_id": '1'}))
         self.assertFalse(field.satisfy({"_id": '0'}))
 
@@ -191,9 +194,27 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.satisfy({"_id": '1'}))
 
         field = relations.Field(int, store="_id")
-        field.filter("1", "le")
+        field.filter("1", "lte")
         self.assertTrue(field.satisfy({"_id": '1'}))
         self.assertFalse(field.satisfy({"_id": '2'}))
+
+        field = relations.Field(str, store="name")
+        field.filter("Yes", "like")
+        self.assertTrue(field.satisfy({"name": ' yES adsfadsf'}))
+        self.assertFalse(field.satisfy({"name": 'no'}))
+
+    def test_match(self):
+
+        field = relations.Field(int, store="_id")
+        self.assertTrue(field.match({"_id": '1'}, 1, {}))
+        self.assertFalse(field.match({"_id": '2'}, 1, {}))
+        self.assertTrue(field.match({"_id": '1'}, None, {'_id': [1]}))
+        self.assertFalse(field.match({"_id": '2'}, None, {'_id': [1]}))
+
+        field = relations.Field(str, store="name")
+        field.filter("Yes", "like")
+        self.assertTrue(field.match({"name": ' yES adsfadsf'}, "Yes", {}))
+        self.assertFalse(field.match({"name": 'no'}, "Yes", {}))
 
     def test_read(self):
 

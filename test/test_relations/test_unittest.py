@@ -164,6 +164,76 @@ class TestSource(unittest.TestCase):
             }
         })
 
+    def test_model_like(self):
+
+        Unit([["stuff"], ["people"]]).create()
+
+        unit = Unit.one(like="p")
+
+        self.assertEqual(self.source.model_like(unit), [{
+            "id": 2,
+            "name": "people"
+        }])
+
+        unit.test.add("things")[0]
+        unit.update()
+
+        test = Test.many(like="p")
+        self.assertEqual(self.source.model_like(test), [{
+            "id": 1,
+            "unit_id": 2,
+            "name": "things"
+        }])
+        self.assertFalse(test.overflow)
+
+        test = Test.many(like="p", _chunk=1)
+        self.assertEqual(self.source.model_like(test), [{
+            "id": 1,
+            "unit_id": 2,
+            "name": "things"
+        }])
+        self.assertTrue(test.overflow)
+
+    def test_model_sort(self):
+
+        unit = Unit([["stuff"], ["people"], ["things"]]).create()
+
+        self.source.model_sort(unit)
+        self.assertEqual(unit.name, ["people", "stuff", "things"])
+
+        unit._sort = ['-id']
+        self.source.model_sort(unit)
+        self.assertEqual(unit.name, ["things", "people", "stuff"])
+        self.assertIsNone(unit._sort)
+
+    def test_model_limit(self):
+
+        unit = Unit.many()
+
+        unit._models = [1, 2, 3]
+        self.source.model_limit(unit)
+        self.assertEqual(unit._models, [1, 2, 3])
+        self.assertFalse(unit.overflow)
+
+        unit._models = [1, 2, 3]
+        unit._limit = 4
+        unit._offset = 0
+        self.source.model_limit(unit)
+        self.assertEqual(unit._models, [1, 2, 3])
+        self.assertFalse(unit.overflow)
+
+        unit._models = [1, 2, 3]
+        unit._limit = 2
+        self.source.model_limit(unit)
+        self.assertEqual(unit._models, [1, 2])
+        self.assertTrue(unit.overflow)
+
+        unit._models = [1, 2, 3]
+        unit._offset = 1
+        self.source.model_limit(unit)
+        self.assertEqual(unit._models, [2, 3])
+        self.assertTrue(unit.overflow)
+
     def test_model_retrieve(self):
 
         Unit([["stuff"], ["people"]]).create()
@@ -182,6 +252,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(unit._action, "update")
         self.assertEqual(unit._record._action, "update")
 
+        self.assertTrue(Unit.many(name="people").limit(1).retrieve().overflow)
+        self.assertFalse(Unit.many(name="people").limit(2).retrieve().overflow)
+
         unit.test.add("things")[0].case.add("persons")
         unit.update()
 
@@ -196,6 +269,17 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Unit.many().name, ["people", "stuff"])
         self.assertEqual(Unit.many().sort("-name").limit(1).name, ["stuff"])
         self.assertEqual(Unit.many().sort("-name").limit(0).name, [])
+
+        model = Unit.many(like="p")
+        self.assertEqual(model.name, ["people"])
+
+        model = Test.many(like="p").retrieve()
+        self.assertEqual(model.name, ["things"])
+        self.assertFalse(model.overflow)
+
+        model = Test.many(like="p", _chunk=1).retrieve()
+        self.assertEqual(model.name, ["things"])
+        self.assertTrue(model.overflow)
 
     def test_field_update(self):
 

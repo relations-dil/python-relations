@@ -34,13 +34,15 @@ class ModelIdentity:
 
     SOURCE = None   # Data source
 
-    TITLE = None    # Label of the Model
+    TITLE = None    # Title of the Model
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
+    LABEL = None    # Fields that make up the label of the model
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
 
     ORDER = None    # Default sort order
+    CHUNK = 100     # Default chunk
 
     PARENTS = None  # Parent relationships (many/one to one)
     CHILDREN = None # Child relationships (one to many/one)
@@ -48,6 +50,7 @@ class ModelIdentity:
     BROTHERS = None # Brother relationships (many to many)
 
     _id = None     # Name of id field
+    _label = None  # Actual fields of the label
     _fields = None # Base record to create other records with
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
@@ -121,21 +124,37 @@ class ModelIdentity:
         if cls.ID is not None:
             setattr(self, '_id', self._field_name(cls.ID))
 
-        # Figure out indexes
+        # Figure out the label
 
-        unique = self.UNIQUE
+        label = self.LABEL
 
-        if unique is None:
-            unique = []
+        if not label:
+            label = []
             for field in self._fields._order:
                 if self._id == field.name:
                     continue
                 if field.kind in (int, str):
-                    unique.append(field.name)
+                    label.append(field.name)
                     if field.kind == str and field._none is None:
                         field.none = False
                 if field.kind == str:
                     break
+
+        if isinstance(label, str):
+            label = [label]
+
+        self._label = label
+
+        for field in self._label:
+            if field not in self._fields:
+                raise ModelError(self, f"cannot find field {field} from label")
+
+        # Figure out unique indexes
+
+        unique = self.UNIQUE
+
+        if unique is None:
+            unique = self._label
         elif not unique:
             unique = {}
 
@@ -144,7 +163,7 @@ class ModelIdentity:
 
         if isinstance(unique, list):
             unique = {
-                "label": unique
+                "-".join(unique): unique
             }
 
         if isinstance(unique, dict):
@@ -250,12 +269,16 @@ class Model(ModelIdentity):
     _role = None     # Whether we're a model, parent or child
     _mode = None     # Whether we're dealing with one or many
     _bulk = None     # Whether we're bulk inserting
+    _chunk = None    # Default chunk size
     _size = None     # When to auto insert
+    _like = None     # Current fuzzy match
     _sort = None     # What to sort by
     _limit = None    # If we're limiting, how much
     _offset = None   # If we're limiting, where to start
     _action = None   # Overall action of this model
     _related = None  # Which fields will be set automatically
+
+    overflow = False # Whether our overflow limt was reached
 
     @staticmethod
     def _extract(kwargs, name, default=None):
@@ -301,6 +324,8 @@ class Model(ModelIdentity):
 
         self._role = "model"
         self._action = self._extract(kwargs, '_action', "create")
+
+        self._chunk = self._extract(kwargs, '_chunk', self.CHUNK)
 
         # If we're being created from reading from a source
 
@@ -348,7 +373,7 @@ class Model(ModelIdentity):
         elif self._action == "create":
 
             self._bulk = self._extract(kwargs, '_bulk', False)
-            self._size = self._extract(kwargs, '_size', 100)
+            self._size = self._extract(kwargs, '_size', self._chunk)
 
             mode = "many" if self._bulk or (args and isinstance(args[0], list)) else "one"
 
@@ -437,7 +462,7 @@ class Model(ModelIdentity):
 
     def __len__(self):
         """
-        Use for numnber of record
+        Use for number of records
         """
 
         self._ensure()
@@ -544,9 +569,11 @@ class Model(ModelIdentity):
             raise ModelError(self, "no record")
 
         if self._mode == "one":
+            if key in self.PARENTS or key in self.CHILDREN:
+                return self._relate(key)
             return self._record[key]
 
-        if not self._models:
+        if self._models is None:
             raise ModelError(self, "no records")
 
         if isinstance(key, int):
@@ -571,6 +598,8 @@ class Model(ModelIdentity):
 
         cls.CHILDREN = cls.CHILDREN or {}
         cls.CHILDREN[relation.parent_child] = relation
+
+    # These aren't used yet and might need to go
 
     @classmethod
     def _sister(cls, relation):
@@ -601,7 +630,7 @@ class Model(ModelIdentity):
 
             if self._parents.get(name) is None:
                 if self._action == "retrieve":
-                    self._parents[name] = relation.Parent.many()
+                    self._parents[name] = relation.Parent.many().limit(self._chunk)
                 else:
                     self._parents[name] = relation.Parent(_child={relation.parent_field: self[relation.child_field]})
 
@@ -613,7 +642,7 @@ class Model(ModelIdentity):
 
             if self._children.get(name) is None:
                 if self._action == "retrieve":
-                    self._children[name] = relation.Child.many()
+                    self._children[name] = relation.Child.many().limit(self._chunk)
                 else:
                     self._children[name] = relation.Child(
                         _parent={relation.child_field: self._record[relation.parent_field]}, _mode=relation.MODE
@@ -631,10 +660,12 @@ class Model(ModelIdentity):
         for child_parent, relation in self.PARENTS.items():
             if self._parents.get(child_parent) is not None:
                 self._record.filter(f"{relation.child_field}__in", self._parents[child_parent][relation.parent_field])
+                self.overflow = self.overflow or self._parents[child_parent].overflow
 
         for parent_child, relation in self.CHILDREN.items():
             if self._children.get(parent_child) is not None:
                 self._record.filter(f"{relation.parent_field}__in", self._children[parent_child][relation.child_field])
+                self.overflow = self.overflow or self._children[parent_child].overflow
 
     def _propagate(self, field, value):
         """
@@ -732,24 +763,30 @@ class Model(ModelIdentity):
 
         for name, value in kwargs.items():
 
-            pieces = name.split('__', 1)
+            if name == "like":
 
-            relation = self._relate(pieces[0])
+                self._like = value
 
-            if relation is not None:
-                relation.filter(**{pieces[1]: value})
             else:
-                self._record.filter(name, value)
+
+                pieces = name.split('__', 1)
+
+                relation = self._relate(pieces[0])
+
+                if relation is not None:
+                    relation.filter(**{pieces[1]: value})
+                else:
+                    self._record.filter(name, value)
 
         return self
 
     @classmethod
-    def bulk(cls, size=100):
+    def bulk(cls, size=None):
         """
         For inserting multiple records without getting id's
         """
 
-        return cls(_action="create", _mode="many", _bulk=True, _size=size)
+        return cls(_action="create", _mode="many", _bulk=True, _size=size or cls.CHUNK)
 
     @classmethod
     def one(cls, *args, **kwargs):
@@ -798,10 +835,13 @@ class Model(ModelIdentity):
 
         return self
 
-    def limit(self, limit=100, start=0, page=None, per_page=None):
+    def limit(self, limit=None, start=0, page=None, per_page=None):
         """
         Adding sorting to filtering or sorts existing records
         """
+
+        if limit is None:
+            limit = self.CHUNK
 
         # If we're not retrieving, there's no point in limiting
 
