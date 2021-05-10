@@ -2,6 +2,8 @@
 relations module for storing sources
 """
 
+# pylint: disable=too-many-public-methods
+
 import relations
 
 class Source:
