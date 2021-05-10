@@ -12,7 +12,7 @@ class Labels:
 
     ids = None
     labels = None
-    format = None
+    style = None
     parents = None
 
     def __init__(self, model):
@@ -22,16 +22,16 @@ class Labels:
 
         self.ids = []
         self.labels = {}
-        self.format = []
+        self.style = []
         self.parents = {}
 
         for field in self.label:
             relation = model._ancestor(field)
             if relation is not None:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
-                self.format.extend(self.parents[field].format)
+                self.style.extend(self.parents[field].style)
             else:
-                self.format.append(model._fields._names[field].format)
+                self.style.append(model._fields._names[field].style)
 
     def __len__(self):
         """
@@ -92,7 +92,7 @@ class Labels:
                 if values[field] in self.parents[field]:
                     label.extend(self.parents[field][values[field]])
                 else:
-                    label.extend([None for each in self.parents[field].format])
+                    label.extend([None for each in self.parents[field].style])
             else:
                 label.append(values[field])
 

@@ -13,12 +13,12 @@ class LabelsModel(relations.Model):
 
 class Unit(LabelsModel):
     id = int
-    name = str, {"format": "fancy"}
+    name = str, {"style": "fancy"}
 
 class Test(LabelsModel):
     id = int
     unit_id = int
-    name = str, {"format": "shmancy"}
+    name = str, {"style": "shmancy"}
 
 relations.OneToMany(Unit, Test)
 
@@ -48,7 +48,7 @@ class TestLabels(unittest.TestCase):
         self.assertEqual(labels.label, ["name"])
 
         self.assertEqual(labels.parents, {})
-        self.assertEqual(labels.format, ["fancy"])
+        self.assertEqual(labels.style, ["fancy"])
 
         labels = relations.Labels(Test.many())
 
@@ -58,9 +58,9 @@ class TestLabels(unittest.TestCase):
         self.assertEqual(labels.parents["unit_id"].id, "id")
         self.assertEqual(labels.parents["unit_id"].label, ["name"])
         self.assertEqual(labels.parents["unit_id"].parents, {})
-        self.assertEqual(labels.parents["unit_id"].format, ["fancy"])
+        self.assertEqual(labels.parents["unit_id"].style, ["fancy"])
 
-        self.assertEqual(labels.format, ["fancy", "shmancy"])
+        self.assertEqual(labels.style, ["fancy", "shmancy"])
 
     def test___len__(self):
 

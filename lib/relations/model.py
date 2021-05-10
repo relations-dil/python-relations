@@ -29,7 +29,7 @@ class ModelError(Exception):
 
 class ModelIdentity:
     """
-    Intermiedate statuc type class for constructing mode information with a full model
+    Intermiedate statuc type class for constructing mode instyleion with a full model
     """
 
     SOURCE = None   # Data source
