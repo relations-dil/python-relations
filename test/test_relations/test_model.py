@@ -32,10 +32,6 @@ class People(relations.ModelIdentity):
     name = str
     gender = ["free", "male", "female"]
 
-    LABEL = "name"
-    UNIQUE = "name"
-    INDEX = "name"
-
 
 def stuffit():
     return "things"
@@ -131,6 +127,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[2].default, "free")
         self.assertEqual(people._id, "id")
         self.assertEqual(people._label, ["name"])
+        self.assertEqual(people._list, ["id", "name"])
         self.assertEqual(people._unique, {"name": ["name"]})
         self.assertEqual(people._order, ["+name"])
 
@@ -177,6 +174,14 @@ class TestModelIdentity(unittest.TestCase):
             LABEL = "nope"
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope from label", Label.thy)
+
+        class Label(relations.ModelIdentity):
+            id = int
+            name = str
+
+            LIST = "nope"
+
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from list", Label.thy)
 
         class Unique(relations.ModelIdentity):
             id = int
@@ -929,6 +934,13 @@ class TestModel(unittest.TestCase):
         self.assertEqual(test.case._models[0]._action, "update")
         self.assertIsNone(test.case._models[0]._record._names["test_id"].criteria)
 
+    def test__ancestor(self):
+
+        test = Test()
+
+        self.assertEqual(test._ancestor("unit_id").Parent, Unit)
+        self.assertIsNone(test._ancestor("nope"))
+
     def test__collate(self):
 
         unit = Unit("ya")
@@ -1236,6 +1248,14 @@ class TestModel(unittest.TestCase):
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot retrieve during create", unit.retrieve)
+
+    def test_labels(self):
+
+        Unit("yep").create()
+        self.assertEqual(Unit.one(name="yep").labels().ids, [1])
+
+        unit = Unit("sure")
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot labels during create", unit.labels)
 
     def test_update(self):
 

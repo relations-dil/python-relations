@@ -105,6 +105,11 @@ class Source:
         retrieve the model
         """
 
+    def model_labels(self, model):
+        """
+        labels of the model
+        """
+
     def field_update(self, field, *args, **kwargs):
         """
         update the field
