@@ -274,6 +274,17 @@ class ModelIdentity:
 
         return ordering
 
+    def _ancestor(self, field):
+        """
+        Looks up a parent class for a field
+        """
+
+        for relation in self.PARENTS.values():
+            if field == relation.child_field:
+                return relation
+
+        return None
+
 class Model(ModelIdentity):
     """
     Main model class
@@ -670,17 +681,6 @@ class Model(ModelIdentity):
                     )
 
             return self._children[name]
-
-        return None
-
-    def _ancestor(self, field):
-        """
-        Looks up a parent class for a field
-        """
-
-        for relation in self.PARENTS.values():
-            if field == relation.child_field:
-                return relation
 
         return None
 

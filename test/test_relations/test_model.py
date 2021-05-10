@@ -219,6 +219,13 @@ class TestModelIdentity(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, "unknown sort field nope", stuff._ordering, "nope")
 
+    def test__ancestor(self):
+
+        test = Test.thy()
+
+        self.assertEqual(test._ancestor("unit_id").Parent, Unit)
+        self.assertIsNone(test._ancestor("nope"))
+
 
 class TestModel(unittest.TestCase):
 
@@ -933,13 +940,6 @@ class TestModel(unittest.TestCase):
         self.assertEqual(test.case._action, "update")
         self.assertEqual(test.case._models[0]._action, "update")
         self.assertIsNone(test.case._models[0]._record._names["test_id"].criteria)
-
-    def test__ancestor(self):
-
-        test = Test()
-
-        self.assertEqual(test._ancestor("unit_id").Parent, Unit)
-        self.assertIsNone(test._ancestor("nope"))
 
     def test__collate(self):
 
