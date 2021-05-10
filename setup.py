@@ -12,6 +12,7 @@ setup(
         'relations.query',
         'relations.unittest',
         'relations.field',
+        'relations.labels',
         'relations.model',
         'relations.record',
         'relations.relation'

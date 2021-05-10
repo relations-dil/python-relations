@@ -37,6 +37,7 @@ setup:
 	python -m relations.query && \
 	python -m relations.unittest && \
 	python -m relations.field && \
+	python -m relations.labels && \
 	python -m relations.model && \
 	python -m relations.record && \
 	python -m relations.relation"
