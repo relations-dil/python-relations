@@ -34,7 +34,7 @@ class Field:
     validation = None # How to validate values (if not None)
     readonly = None   # Whether this field is readonly
     length = None     # Length of the value
-    style = None      # How to style the value instructions
+    format = None     # How to format the value instructions
 
     value = None      # Value of the field
     changed = None    # Whether the values been changed since creation, retrieving

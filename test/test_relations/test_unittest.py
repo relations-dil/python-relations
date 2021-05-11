@@ -26,12 +26,12 @@ relations.OneToMany(Simple, Plain)
 
 class Unit(SourceModel):
     id = int
-    name = str, {"style": "fancy"}
+    name = str, {"format": "fancy"}
 
 class Test(SourceModel):
     id = int
     unit_id = int
-    name = str, {"style": "shmancy"}
+    name = str, {"format": "shmancy"}
 
 class Case(SourceModel):
     id = int
@@ -290,7 +290,7 @@ class TestSource(unittest.TestCase):
         self.assertEqual(labels.id, "id")
         self.assertEqual(labels.label, ["name"])
         self.assertEqual(labels.parents, {})
-        self.assertEqual(labels.style, ["fancy"])
+        self.assertEqual(labels.format, ["fancy"])
 
         self.assertEqual(labels.ids, [1])
         self.assertEqual(labels.labels,{1: ["people"]})
@@ -303,9 +303,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(labels.parents["unit_id"].id, "id")
         self.assertEqual(labels.parents["unit_id"].label, ["name"])
         self.assertEqual(labels.parents["unit_id"].parents, {})
-        self.assertEqual(labels.parents["unit_id"].style, ["fancy"])
+        self.assertEqual(labels.parents["unit_id"].format, ["fancy"])
 
-        self.assertEqual(labels.style, ["fancy", "shmancy"])
+        self.assertEqual(labels.format, ["fancy", "shmancy"])
 
         self.assertEqual(labels.ids, [1, 2])
         self.assertEqual(labels.labels, {
