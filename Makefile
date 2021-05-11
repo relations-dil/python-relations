@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.4.1
+VERSION?=0.4.2
 DEBUG_PORT=5678
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/lib:/opt/service/lib \
@@ -37,6 +37,7 @@ setup:
 	python -m relations.query && \
 	python -m relations.unittest && \
 	python -m relations.field && \
+	python -m relations.labels && \
 	python -m relations.model && \
 	python -m relations.record && \
 	python -m relations.relation"

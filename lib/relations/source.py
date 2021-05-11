@@ -2,6 +2,8 @@
 relations module for storing sources
 """
 
+# pylint: disable=too-many-public-methods
+
 import relations
 
 class Source:
@@ -103,6 +105,11 @@ class Source:
     def model_retrieve(self, model, verify=True):
         """
         retrieve the model
+        """
+
+    def model_labels(self, model):
+        """
+        labels of the model
         """
 
     def field_update(self, field, *args, **kwargs):

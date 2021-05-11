@@ -106,11 +106,11 @@ class MockSource(relations.Source):
         parents = {}
 
         for field in model._label:
-            for relation in model.PARENTS.values():
-                if field == relation.child_field:
-                    parent = relation.Parent.many(like=model._like).limit(model._chunk)
-                    parents[model._fields._names[field].store] = parent[relation.parent_field]
-                    model.overflow = model.overflow or parent.overflow
+            relation = model._ancestor(field)
+            if relation:
+                parent = relation.Parent.many(like=model._like).limit(model._chunk)
+                parents[model._fields._names[field].store] = parent[relation.parent_field]
+                model.overflow = model.overflow or parent.overflow
 
         likes = []
 
@@ -188,6 +188,21 @@ class MockSource(relations.Source):
             self.model_limit(model)
 
         return model
+
+    def model_labels(self, model):
+        """
+        Creates the labels structure
+        """
+
+        if model._action == "retrieve":
+            self.model_retrieve(model)
+
+        labels = relations.Labels(model)
+
+        for labeling in model._each():
+            labels.add(labeling)
+
+        return labels
 
     def field_update(self, field, values, changed=None):
         """

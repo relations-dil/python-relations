@@ -38,8 +38,10 @@ class ModelIdentity:
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
     LABEL = None    # Fields that make up the label of the model
+    LIST = None     # Default fields to list
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
+
 
     ORDER = None    # Default sort order
     CHUNK = 100     # Default chunk
@@ -49,9 +51,10 @@ class ModelIdentity:
     SISTERS = None  # Sister relationships (many to many)
     BROTHERS = None # Brother relationships (many to many)
 
+    _fields = None # Base record to create other records with
     _id = None     # Name of id field
     _label = None  # Actual fields of the label
-    _fields = None # Base record to create other records with
+    _list = None   # Actual fields to list
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
     _order = None  # Default sort order
@@ -148,6 +151,24 @@ class ModelIdentity:
         for field in self._label:
             if field not in self._fields:
                 raise ModelError(self, f"cannot find field {field} from label")
+
+        # Figure out the list
+
+        if self.LIST:
+            self._list = self.LIST
+        else:
+            self._list = list(self._label)
+            if self._id and self._id not in self._list:
+                self._list.insert(0, self._id)
+
+        if isinstance(self._list, str):
+            self._list = [self._list]
+
+        # Make sure all the list checks out
+
+        for field in self._list:
+            if field not in self._fields:
+                raise ModelError(self, f"cannot find field {field} from list")
 
         # Figure out unique indexes
 
@@ -252,6 +273,17 @@ class ModelIdentity:
             ordering.append(sort if sort != field else f"+{sort}")
 
         return ordering
+
+    def _ancestor(self, field):
+        """
+        Looks up a parent class for a field
+        """
+
+        for relation in self.PARENTS.values():
+            if field == relation.child_field:
+                return relation
+
+        return None
 
 class Model(ModelIdentity):
     """
@@ -932,6 +964,16 @@ class Model(ModelIdentity):
             raise ModelError(self, f"cannot retrieve during {self._action}")
 
         return relations.source(self.SOURCE).model_retrieve(self, verify, *args, **kwargs)
+
+    def labels(self, *args, **kwargs):
+        """
+        retrieve the model
+        """
+
+        if self._action not in ["update", "retrieve"]:
+            raise ModelError(self, f"cannot labels during {self._action}")
+
+        return relations.source(self.SOURCE).model_labels(self, *args, **kwargs)
 
     def update(self, *args, **kwargs):
         """
