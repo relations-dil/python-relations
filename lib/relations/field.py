@@ -245,7 +245,7 @@ class Field:
             else:
                 self.criteria[path] = self.valid(value)
 
-    def satisfy(self, values):
+    def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
         Check if this value satisfies our criteria
         """
