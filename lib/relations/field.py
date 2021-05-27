@@ -263,14 +263,14 @@ class Field:
 
                     if index == len(path) - 1:
                         default = None
-                    elif path[index+1][0] == '_':
+                    elif re.match(r'^\d+$', path[index+1]):
                         default = []
                     else:
                         default = {}
 
-                    if place[0] == '_':
+                    if re.match(r'^\d+$', place):
 
-                        place = int(place[1:])
+                        place = int(place)
 
                         if place < len(value):
                             value = value[place]
@@ -278,6 +278,9 @@ class Field:
                             value = default
 
                     else:
+
+                        if place[0] == '_':
+                            place = place[1:]
 
                         value = value.get(place, default)
 

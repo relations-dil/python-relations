@@ -281,12 +281,27 @@ class TestSource(unittest.TestCase):
         self.assertEqual(model.name, ["things"])
         self.assertTrue(model.overflow)
 
-        Meta("dive", things={"a": 1}).create()
+        Meta("dive", stuff=[1, 2, 3], things={"a": {"b": [1], "c": "sure"}}).create()
 
-        model = Meta.many(things__a=1)
+        model = Meta.many(stuff__1=2)
         self.assertEqual(model[0].name, "dive")
 
-        model = Meta.many(things__a__gt=1)
+        model = Meta.many(things__a__b__0=1)
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__a__c__like="su")
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__a__d__null=True)
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__a__b__0__gt=1)
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things__a__c__notlike="su")
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things__a__d__null=False)
         self.assertEqual(len(model), 0)
 
     def test_model_labels(self):
