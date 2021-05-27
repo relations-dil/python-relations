@@ -272,6 +272,12 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.satisfy({"meta": {}}))
 
         field = relations.Field(dict, store="meta")
+        field.filter(1, "_1__in")
+        self.assertTrue(field.satisfy({"meta": {"1": 1}}))
+        self.assertFalse(field.satisfy({"meta": {"1": '1'}}))
+        self.assertFalse(field.satisfy({"meta": {}}))
+
+        field = relations.Field(dict, store="meta")
         field.filter(1, "a__b__1__null")
         self.assertTrue(field.satisfy({"meta": {"a": {"b": [0, None]}}}))
         self.assertTrue(field.satisfy({"meta": {}}))
