@@ -125,6 +125,9 @@ class TestRecord(unittest.TestCase):
 
     def test_filter(self):
 
+        self.meta = relations.Field(dict, name="meta")
+        self.record.append(self.meta)
+
         self.record.filter(0, "0")
         self.assertEqual(self.id.criteria["eq"], 0)
 
@@ -133,6 +136,9 @@ class TestRecord(unittest.TestCase):
 
         self.record.filter("id__ne", "2")
         self.assertEqual(self.id.criteria["ne"], [2])
+
+        self.record.filter("meta__a__ne", 2)
+        self.assertEqual(self.meta.criteria["a__ne"], [2])
 
         self.assertRaisesRegex(relations.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 

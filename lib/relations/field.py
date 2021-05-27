@@ -56,7 +56,9 @@ class Field:
         'gte': False,
         'lt': False,
         'lte': False,
-        'like': False
+        'like': False,
+        'notlike': False,
+        'null': False
     }
 
     RESERVED = [
@@ -206,43 +208,107 @@ class Field:
         Set a criterion in criteria
         """
 
+        path = operator
+
         if operator not in self.OPERATORS:
-            raise FieldError(self, f"unknown operator '{operator}'")
+
+            if self.kind in [bool, int, float, str]:
+                raise FieldError(self, f"unknown operator '{operator}'")
+
+            operator = operator.split("__")[-1]
+
+            if operator not in self.OPERATORS:
+                operator = "eq"
+                path = f"{path}__eq"
 
         if self.criteria is None:
             self.criteria = {}
 
         if self.OPERATORS[operator]:
 
-            self.criteria.setdefault(operator, [])
+            self.criteria.setdefault(path, [])
 
             if not isinstance(value, list):
                 value = [value]
 
-            self.criteria[operator].extend([self.valid(item) for item in value])
+            if path != operator:
+                self.criteria[path].extend(value)
+            else:
+                self.criteria[path].extend([self.valid(item) for item in value])
 
         else:
 
-            self.criteria[operator] = self.valid(value)
+            if operator == "null":
+                self.criteria[path] = not (value == "false" or value == "no" or value == "0" or value == 0 or not value)
+            elif path != operator:
+                self.criteria[path] = value
+            else:
+                self.criteria[path] = self.valid(value)
 
     def satisfy(self, values):
         """
         Check if this value satisfies our criteria
         """
 
-        value = self.valid(values.get(self.store))
-
         for operator, satisfy in (self.criteria or {}).items():
-            if (
-                (operator == "in" and value not in satisfy) or # pylint: disable=too-many-boolean-expressions
-                (operator in "ne" and value in satisfy) or
-                (operator == "eq" and value != satisfy) or
-                (operator == "gt" and value <= satisfy) or
-                (operator == "gte" and value < satisfy) or
-                (operator == "lt" and value >= satisfy) or
-                (operator == "lte" and value > satisfy) or
-                (operator == "like" and str(satisfy).lower() not in str(value).lower())
-            ):
+
+            value = self.valid(values.get(self.store))
+
+            if operator not in self.OPERATORS:
+
+                path = operator.split("__")
+                operator = path.pop()
+
+                for index, place in enumerate(path):
+
+                    if index == len(path) - 1:
+                        default = None
+                    elif path[index+1][0] == '['  and path[index+1][-1] == ']':
+                        default = []
+                    else:
+                        default = {}
+
+                    if place[0] == '[' and place[-1] == ']':
+
+                        place = int(place[1:-1])
+
+                        if place < len(value):
+                            value = value[place]
+                        else:
+                            value = default
+
+                    else:
+
+                        value = value.get(place, default)
+
+            if operator == "in" and value not in satisfy:
+                return False
+
+            if operator in "ne" and value in satisfy:
+                return False
+
+            if operator == "eq" and value != satisfy:
+                return False
+
+            if operator == "gt" and value <= satisfy:
+                return False
+
+            if operator == "gte" and value < satisfy:
+                return False
+
+            if operator == "lt" and value >= satisfy:
+                return False
+
+            if operator == "lte" and value > satisfy:
+                return False
+
+            if operator == "like" and str(satisfy).lower() not in str(value).lower():
+                return False
+
+            if operator == "notlike" and str(satisfy).lower() in str(value).lower():
+                return False
+
+            if operator == "null" and satisfy != (value is None):
                 return False
 
         return True

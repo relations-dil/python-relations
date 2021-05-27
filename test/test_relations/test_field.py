@@ -159,7 +159,33 @@ class TestField(unittest.TestCase):
         field.filter("1", "like")
         self.assertEqual(field.criteria["like"], 1)
 
+        field.filter("true", "null")
+        self.assertEqual(field.criteria["null"], True)
+
+        field.filter("false", "null")
+        self.assertEqual(field.criteria["null"], False)
+
+        field.filter("no", "null")
+        self.assertEqual(field.criteria["null"], False)
+
+        field.filter("0", "null")
+        self.assertEqual(field.criteria["null"], False)
+
+        field.filter(0, "null")
+        self.assertEqual(field.criteria["null"], False)
+
+        field.filter(False, "null")
+        self.assertEqual(field.criteria["null"], False)
+
         self.assertRaisesRegex(relations.FieldError, "unknown operator 'nope'", field.filter, 0, "nope")
+
+        field = relations.Field(dict)
+        field.filter("1", "a")
+        self.assertEqual(field.criteria["a__eq"], "1")
+
+        field = relations.Field(dict)
+        field.filter("1", "a__in")
+        self.assertEqual(field.criteria["a__in"], ["1"])
 
     def test_satisfy(self):
 
@@ -202,6 +228,60 @@ class TestField(unittest.TestCase):
         field.filter("Yes", "like")
         self.assertTrue(field.satisfy({"name": ' yES adsfadsf'}))
         self.assertFalse(field.satisfy({"name": 'no'}))
+
+        field = relations.Field(str, store="name")
+        field.filter("Yes", "notlike")
+        self.assertTrue(field.satisfy({"name": 'no'}))
+        self.assertFalse(field.satisfy({"name": ' yES adsfadsf'}))
+
+        field = relations.Field(str, store="name")
+        field.filter("yes", "null")
+        self.assertTrue(field.satisfy({"name": None}))
+        self.assertFalse(field.satisfy({"name": ''}))
+
+        field = relations.Field(str, store="name")
+        field.filter("no", "null")
+        self.assertTrue(field.satisfy({"name": ''}))
+        self.assertFalse(field.satisfy({"name": None}))
+
+        field = relations.Field(dict, store="meta")
+        field.filter(1, "a")
+        self.assertTrue(field.satisfy({"meta": {"a": 1}}))
+        self.assertFalse(field.satisfy({"meta": {"a": '1'}}))
+
+        field = relations.Field(dict, store="meta")
+        field.filter(1, "a__in")
+        self.assertTrue(field.satisfy({"meta": {"a": 1}}))
+        self.assertFalse(field.satisfy({"meta": {"a": '1'}}))
+
+        field = relations.Field(dict, store="meta")
+        field.filter(1, "a__ne")
+        self.assertTrue(field.satisfy({"meta": {"a": '1'}}))
+        self.assertFalse(field.satisfy({"meta": {"a": 1}}))
+
+        field = relations.Field(dict, store="meta")
+        field.filter(1, "a__b__[1]__in")
+        self.assertTrue(field.satisfy({"meta": {"a": {"b": [0, 1]}}}))
+        self.assertFalse(field.satisfy({"meta": {"a": {"b": ['0', '1']}}}))
+        self.assertFalse(field.satisfy({"meta": {}}))
+
+        field = relations.Field(dict, store="meta")
+        field.filter(1, "a__b__[1]__null")
+        self.assertTrue(field.satisfy({"meta": {"a": {"b": [0, None]}}}))
+        self.assertTrue(field.satisfy({"meta": {}}))
+        self.assertFalse(field.satisfy({"meta": {"a": {"b": ['0', '1']}}}))
+
+        field = relations.Field(list, store="meta")
+        field.filter(1, "[1]__in")
+        self.assertTrue(field.satisfy({"meta": [0, 1]}))
+        self.assertFalse(field.satisfy({"meta": ['0', '1']}))
+        self.assertFalse(field.satisfy({"meta": []}))
+
+        field = relations.Field(list, store="meta")
+        field.filter(1, "[1]__null")
+        self.assertTrue(field.satisfy({"meta": [0, None]}))
+        self.assertTrue(field.satisfy({"meta": []}))
+        self.assertFalse(field.satisfy({"meta": ['0', '1']}))
 
     def test_match(self):
 

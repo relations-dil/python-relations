@@ -138,7 +138,7 @@ class Record:
                 return self._order[criterion].filter(value)
         else:
             if '__' in criterion:
-                name, operator = criterion.split("__")
+                name, operator = criterion.split("__", 1)
                 if name in self._names:
                     return self._names[name].filter(value, operator)
             if criterion in self._names:
