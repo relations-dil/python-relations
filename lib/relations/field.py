@@ -263,14 +263,14 @@ class Field:
 
                     if index == len(path) - 1:
                         default = None
-                    elif path[index+1][0] == '['  and path[index+1][-1] == ']':
+                    elif path[index+1][0] == '_':
                         default = []
                     else:
                         default = {}
 
-                    if place[0] == '[' and place[-1] == ']':
+                    if place[0] == '_':
 
-                        place = int(place[1:-1])
+                        place = int(place[1:])
 
                         if place < len(value):
                             value = value[place]
