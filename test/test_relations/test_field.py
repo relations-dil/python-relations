@@ -83,14 +83,15 @@ class TestField(unittest.TestCase):
         self.assertTrue(field.none)
         self.assertEqual(field.attr, {"compressed": "compressed"})
         self.assertEqual(field.init, {"compressed": "compressed"})
-        self.assertEqual(field.label, {"compressed": "compressed"})
+        self.assertEqual(field.label, ["compressed"])
+        self.assertEqual(field.format, [None])
 
         field = relations.Field(ipaddress.IPv4Address, attr="compressed", init="exploded", label="packed")
         self.assertEqual(field.kind, ipaddress.IPv4Address)
         self.assertTrue(field.none)
         self.assertEqual(field.attr, {"compressed": "compressed"})
         self.assertEqual(field.init, {"exploded": "exploded"})
-        self.assertEqual(field.label, {"packed": "packed"})
+        self.assertEqual(field.label, ["packed"])
 
         self.assertRaisesRegex(relations.FieldError, "1 default not <class 'str'> for opt", relations.Field, str, name="opt", default=1)
         self.assertRaisesRegex(relations.FieldError, "1 option not <class 'str'> for opt", relations.Field, str, name="opt", options=[1])
@@ -331,7 +332,7 @@ class TestField(unittest.TestCase):
         self.assertTrue(field.match({"name": ' yES adsfadsf'}, "Yes", {}))
         self.assertFalse(field.match({"name": 'no'}, "Yes", {}))
 
-        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"})
+        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, label="address")
         self.assertTrue(field.match({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}))
         self.assertFalse(field.match({"ip": {"address": '1.2.3.4'}}, "1.3.2.", {}))
         self.assertFalse(field.match({}, "1.3.2.4", {}))
@@ -377,7 +378,7 @@ class TestField(unittest.TestCase):
 
             return values
 
-        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr=hurl)
+        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr=hurl, label="address")
         field.value = ipaddress.IPv4Network('1.2.3.0/24')
         self.assertEqual(field.export(), {
             "address": "1.2.3.0/24",

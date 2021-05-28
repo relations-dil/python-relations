@@ -47,7 +47,7 @@ class Net(SourceModel):
     ip = ipaddress.IPv4Address, {"attr": {"compressed": "address", "__int__": "value"}, "init": "address", "label": "address"}
     subnet = ipaddress.IPv4Network, {"attr": subnet_attr, "init": "address", "label": "address"}
 
-    LABEL = "ip__address"
+    LABEL = "ip"
     UNIQUE = False
 
 class Unit(SourceModel):
@@ -339,6 +339,9 @@ class TestSource(unittest.TestCase):
         Net("crawl", ip="1.2.3.4", subnet="1.2.3.0/24").create()
         Net("web").create()
 
+        model = Net.many(like='1.2.3.')
+        self.assertEqual(model[0].name, "crawl")
+
         model = Net.many(ip__address__like='1.2.3.')
         self.assertEqual(model[0].name, "crawl")
 
@@ -400,7 +403,6 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.many().labels().labels, {
             1: ["1.2.3.4"]
         })
-
 
     def test_field_update(self):
 

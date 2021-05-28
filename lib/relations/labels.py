@@ -33,7 +33,10 @@ class Labels:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
                 self.format.extend(self.parents[field].format)
             elif field in model._fields._names:
-                self.format.append(model._fields._names[field].format)
+                if isinstance(model._fields._names[field].format, list):
+                    self.format.extend(model._fields._names[field].format)
+                else:
+                    self.format.append(model._fields._names[field].format)
             else:
                 self.format.append(None)
 
@@ -104,7 +107,7 @@ class Labels:
 
                 field, path = name.split('__', 1)
 
-                if isinstance(values, (list, dict)):
+                if isinstance(values, dict):
                     label.append(relations.Field.walk(path, values[field]))
                 else:
 
@@ -113,10 +116,34 @@ class Labels:
                     if isinstance(field.value, (list, dict)):
                         label.append(relations.Field.walk(path, field.value))
                     else:
-                        label.append(relations.Field.walk(path, field.export()))
-
+                        if field.value is not None:
+                            export = field.export()
+                            for piece in field.label:
+                                label.append(relations.Field.walk(path, export))
+                        else:
+                            for piece in field.label:
+                                label.append(None)
             else:
 
-                label.append(values[name])
+                if isinstance(values, dict):
+
+                    label.append(values[name])
+
+                else:
+
+                    field = values._record._names[name]
+
+                    if field.kind in [bool, int, float, str, list, dict]:
+
+                        label.append(field.value)
+
+                    else:
+                        if field.value is not None:
+                            export = field.export()
+                            for piece in field.label:
+                                label.append(export[piece])
+                        else:
+                            for piece in field.label:
+                                label.append(None)
 
         self[values[self.id]] = label

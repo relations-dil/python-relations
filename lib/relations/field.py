@@ -28,7 +28,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     store = None      # Name to use when reading and writing
     attr = None       # Attributes to store in JSON
     init = None       # Attributes to create with JSON
-    label = None       # Attributes to label with JSON
+    label = None      # Attributes to label with JSON
 
     default = None    # Default value
     none = None       # Whether to allow None (nulls)
@@ -156,6 +156,16 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.kind not in [bool, int, float, str, list, dict] and self.attr is None:
             raise FieldError(self, f"{self.kind.__name__} requires at least attr")
 
+       # if there's attr and no label, assume label is attr
+
+        if self.attr is not None and self.label is None:
+            self.label = self.attr
+
+       # if there's attr and no init, assume init is attr
+
+        if self.attr is not None and self.init is None:
+            self.init = self.attr
+
         # Get attr into a dict
 
         if isinstance(self.attr, str):
@@ -163,11 +173,6 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if isinstance(self.attr, list):
             self.attr = {attr: attr for attr in self.attr}
-
-       # if there's attr and no init, assume init is attr
-
-        if self.attr is not None and self.init is None:
-            self.init = self.attr
 
         # Get init into a dict
 
@@ -177,18 +182,13 @@ class Field: # pylint: disable=too-many-instance-attributes
         if isinstance(self.init, list):
             self.init = {init: init for init in self.init}
 
-       # if there's attr and no label, assume label is attr
-
-        if self.attr is not None and self.label is None:
-            self.label = self.attr
-
-        # Get label into a dict
+        # Get label into a list
 
         if isinstance(self.label, str):
             self.label = [self.label]
 
-        if isinstance(self.label, list):
-            self.label = {label: label for label in self.label}
+        if self.format is None and self.label is not None:
+            self.format = [None for _ in self.label]
 
     def __setattr__(self, name, value):
         """
@@ -394,7 +394,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.label is not None:
             if not value:
                 return False
-            for store in self.label.values():
+            for store in self.label:
                 if str(like).lower() in str(value[store]).lower():
                     return True
             return False

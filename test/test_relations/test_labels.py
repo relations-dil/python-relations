@@ -55,7 +55,7 @@ class Net(LabelsModel):
     ip = ipaddress.IPv4Address, {"attr": {"compressed": "address", "__int__": "value"}, "init": "address", "label": "address"}
     subnet = ipaddress.IPv4Network, {"attr": subnet_attr, "init": "address", "label": "address"}
 
-    LABEL = "ip__address"
+    LABEL = ["ip", "subnet__address"]
     UNIQUE = False
 
 class TestLabels(unittest.TestCase):
@@ -97,6 +97,12 @@ class TestLabels(unittest.TestCase):
         self.assertEqual(labels.parents["unit_id"].format, ["fancy"])
 
         self.assertEqual(labels.format, ["fancy", "shmancy"])
+
+        labels = relations.Labels(Meta.many())
+        self.assertEqual(labels.format, [None])
+
+        labels = relations.Labels(Net.many())
+        self.assertEqual(labels.format, [None, None])
 
     def test___len__(self):
 
@@ -169,8 +175,10 @@ class TestLabels(unittest.TestCase):
 
         labels = relations.Labels(Net.many())
         labels.add(Net("special", ip="1.2.3.4").create())
+        labels.add(Net("special", subnet="1.2.3.0/24").create())
 
-        self.assertEqual(labels.ids, [1])
+        self.assertEqual(labels.ids, [1, 2])
         self.assertEqual(labels.labels, {
-            1: ["1.2.3.4"]
+            1: ["1.2.3.4", None],
+            2: [None, "1.2.3.0/24"]
         })
