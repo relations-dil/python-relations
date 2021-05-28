@@ -362,6 +362,31 @@ class TestField(unittest.TestCase):
         self.assertEqual(str(field.value), '1.2.3.0/24')
         self.assertFalse(field.changed)
 
+    def test_export(self):
+        def hurl(value):
+
+            values = {}
+
+            values["address"] = str(value)
+            min_ip = value[0]
+            max_ip = value[-1]
+            values["min_address"] = str(min_ip)
+            values["min_value"] = int(min_ip)
+            values["max_address"] = str(max_ip)
+            values["max_value"] = int(max_ip)
+
+            return values
+
+        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr=hurl)
+        field.value = ipaddress.IPv4Network('1.2.3.0/24')
+        self.assertEqual(field.export(), {
+            "address": "1.2.3.0/24",
+            "min_address": "1.2.3.0",
+            "min_value": 16909056,
+            "max_address": "1.2.3.255",
+            "max_value": 16909311
+        })
+
     def test_write(self):
 
         field = relations.Field(int, store="_id", default=-1, replace=True)
@@ -406,30 +431,3 @@ class TestField(unittest.TestCase):
         field.write(values)
         self.assertEqual(values, {})
         self.assertTrue(field.changed)
-
-        def hurl(value):
-
-            values = {}
-
-            values["address"] = str(value)
-            min_ip = value[0]
-            max_ip = value[-1]
-            values["min_address"] = str(min_ip)
-            values["min_value"] = int(min_ip)
-            values["max_address"] = str(max_ip)
-            values["max_value"] = int(max_ip)
-
-            return values
-
-        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr=hurl)
-        field.value = ipaddress.IPv4Network('1.2.3.0/24')
-        values = {}
-        field.write(values)
-        self.assertEqual(values, {'subnet': {
-            "address": "1.2.3.0/24",
-            "min_address": "1.2.3.0",
-            "min_value": 16909056,
-            "max_address": "1.2.3.255",
-            "max_value": 16909311
-        }})
-        self.assertFalse(field.changed)

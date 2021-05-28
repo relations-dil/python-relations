@@ -5,6 +5,8 @@ Unittests for Labels
 import unittest
 import unittest.mock
 
+import ipaddress
+
 import relations
 import relations.unittest
 
@@ -30,6 +32,30 @@ class Meta(LabelsModel):
     things = dict
 
     LABEL = "things__a__b__0___1"
+    UNIQUE = False
+
+def subnet_attr(value):
+
+    values = {}
+
+    values["address"] = str(value)
+    min_ip = value[0]
+    max_ip = value[-1]
+    values["min_address"] = str(min_ip)
+    values["min_value"] = int(min_ip)
+    values["max_address"] = str(max_ip)
+    values["max_value"] = int(max_ip)
+
+    return values
+
+class Net(LabelsModel):
+
+    id = int
+    name = str
+    ip = ipaddress.IPv4Address, {"attr": {"compressed": "address", "__int__": "value"}, "init": "address", "label": "address"}
+    subnet = ipaddress.IPv4Network, {"attr": subnet_attr, "init": "address", "label": "address"}
+
+    LABEL = "ip__address"
     UNIQUE = False
 
 class TestLabels(unittest.TestCase):
@@ -130,11 +156,21 @@ class TestLabels(unittest.TestCase):
         })
 
         labels = relations.Labels(Meta.many())
-        labels.add({"id": 1, "things": {"a":{"b": [{"1": "yep"}]}}})
-        labels.add({"id": 2, "things": {}})
+        labels.add(Meta("special", things={"a":{"b": [{"1": "sure"}]}}).create())
+        labels.add({"id": 2, "things": {"a":{"b": [{"1": "yep"}]}}})
+        labels.add({"id": 3, "things": {}})
 
-        self.assertEqual(labels.ids, [1, 2])
+        self.assertEqual(labels.ids, [1, 2, 3])
         self.assertEqual(labels.labels, {
-            1: ["yep"],
-            2: [None]
+            1: ["sure"],
+            2: ["yep"],
+            3: [None]
+        })
+
+        labels = relations.Labels(Net.many())
+        labels.add(Net("special", ip="1.2.3.4").create())
+
+        self.assertEqual(labels.ids, [1])
+        self.assertEqual(labels.labels, {
+            1: ["1.2.3.4"]
         })

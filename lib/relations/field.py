@@ -297,6 +297,8 @@ class Field: # pylint: disable=too-many-instance-attributes
         if isinstance(path, str):
             path = path.split('__')
 
+        value = value or {}
+
         for index, place in enumerate(path):
 
             if index == len(path) - 1:
@@ -423,6 +425,22 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         self.changed = False
 
+    def export(self):
+        """
+        Create a dictionary of object attributes
+        """
+
+        if callable(self.attr):
+            return  self.attr(self.value)
+
+        values = {}
+
+        for attr, store in self.attr.items():
+            attr = getattr(self.value, attr)
+            values[store] = attr() if callable(attr) else attr
+
+        return values
+
     def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
@@ -433,13 +451,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if self.attr is not None:
                 if not self.value:
                     return
-                values[self.store] = {}
-                if callable(self.attr):
-                    values[self.store] = self.attr(self.value)
-                else:
-                    for attr, store in self.attr.items():
-                        attr = getattr(self.value, attr)
-                        values[self.store][store] = attr() if callable(attr) else attr
+                values[self.store] = self.export()
             else:
                 if update and self.replace and not self.changed:
                     self.value = self.default() if callable(self.default) else self.default

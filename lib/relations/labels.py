@@ -91,21 +91,32 @@ class Labels:
 
         label = []
 
-        for field in self.label:
+        for name in self.label:
 
-            if field in self.parents:
+            if name in self.parents:
 
-                if values[field] in self.parents[field]:
-                    label.extend(self.parents[field][values[field]])
+                if values[name] in self.parents[name]:
+                    label.extend(self.parents[name][values[name]])
                 else:
-                    label.extend([None for each in self.parents[field].format])
+                    label.extend([None for each in self.parents[name].format])
 
-            elif '__' in field:
+            elif '__' in name:
 
-                label.append(relations.Field.walk(field, values))
+                field, path = name.split('__', 1)
+
+                if isinstance(values, (list, dict)):
+                    label.append(relations.Field.walk(path, values[field]))
+                else:
+
+                    field = values._record._names[field]
+
+                    if isinstance(field.value, (list, dict)):
+                        label.append(relations.Field.walk(path, field.value))
+                    else:
+                        label.append(relations.Field.walk(path, field.export()))
 
             else:
 
-                label.append(values[field])
+                label.append(values[name])
 
         self[values[self.id]] = label

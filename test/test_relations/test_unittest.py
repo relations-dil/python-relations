@@ -47,6 +47,9 @@ class Net(SourceModel):
     ip = ipaddress.IPv4Address, {"attr": {"compressed": "address", "__int__": "value"}, "init": "address", "label": "address"}
     subnet = ipaddress.IPv4Network, {"attr": subnet_attr, "init": "address", "label": "address"}
 
+    LABEL = "ip__address"
+    UNIQUE = False
+
 class Unit(SourceModel):
     id = int
     name = str, {"format": "fancy"}
@@ -391,6 +394,13 @@ class TestSource(unittest.TestCase):
             1: ["people", "stuff"],
             2: ["people", "things"]
         })
+
+        Net("crawl", ip="1.2.3.4", subnet="1.2.3.0/24").create()
+
+        self.assertEqual(Net.many().labels().labels, {
+            1: ["1.2.3.4"]
+        })
+
 
     def test_field_update(self):
 
