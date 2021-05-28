@@ -288,6 +288,42 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
+    @staticmethod
+    def walk(path, value):
+        """
+        Retrieve value at path filling in what's expected
+        """
+
+        if isinstance(path, str):
+            path = path.split('__')
+
+        for index, place in enumerate(path):
+
+            if index == len(path) - 1:
+                default = None
+            elif re.match(r'^\d+$', path[index+1]):
+                default = []
+            else:
+                default = {}
+
+            if re.match(r'^\d+$', place):
+
+                place = int(place)
+
+                if place < len(value):
+                    value = value[place]
+                else:
+                    value = default
+
+            else:
+
+                if place[0] == '_':
+                    place = place[1:]
+
+                value = value.get(place, default)
+
+        return value
+
     def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
         Check if this value satisfies our criteria
@@ -307,35 +343,12 @@ class Field: # pylint: disable=too-many-instance-attributes
                 path = operator.split("__")
                 operator = path.pop()
 
-                for index, place in enumerate(path):
-
-                    if index == len(path) - 1:
-                        default = None
-                    elif re.match(r'^\d+$', path[index+1]):
-                        default = []
-                    else:
-                        default = {}
-
-                    if re.match(r'^\d+$', place):
-
-                        place = int(place)
-
-                        if place < len(value):
-                            value = value[place]
-                        else:
-                            value = default
-
-                    else:
-
-                        if place[0] == '_':
-                            place = place[1:]
-
-                        value = value.get(place, default)
+                value = self.walk(path, value)
 
             if operator == "null":
                 if satisfy != (value is None):
                     return False
-                continue
+                continue # pragma: no cover
 
             if value is None:
                 return False
@@ -379,8 +392,6 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.label is not None:
             if not value:
                 return False
-            if callable(self.label):
-                return self.label(value, like)
             for store in self.label.values():
                 if str(like).lower() in str(value[store]).lower():
                     return True

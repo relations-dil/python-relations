@@ -149,7 +149,7 @@ class ModelIdentity:
         self._label = label
 
         for field in self._label:
-            if field not in self._fields:
+            if field.split('__', 1)[0] not in self._fields:
                 raise ModelError(self, f"cannot find field {field} from label")
 
         # Figure out the list
@@ -167,7 +167,7 @@ class ModelIdentity:
         # Make sure all the list checks out
 
         for field in self._list:
-            if field not in self._fields:
+            if field.split('__', 1)[0] not in self._fields:
                 raise ModelError(self, f"cannot find field {field} from list")
 
         # Figure out unique indexes

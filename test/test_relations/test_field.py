@@ -207,6 +207,11 @@ class TestField(unittest.TestCase):
         field.filter("1", "a__in")
         self.assertEqual(field.criteria["a__in"], ["1"])
 
+    def test_walk(self):
+
+        field = relations.Field(dict, store="meta")
+        self.assertEqual(relations.Field.walk("things__a__b__0___1", {"things": {"a":{"b": [{"1": "yep"}]}}}), "yep")
+
     def test_satisfy(self):
 
         field = relations.Field(int, store="_id")
@@ -330,15 +335,6 @@ class TestField(unittest.TestCase):
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"})
         self.assertTrue(field.match({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}))
         self.assertFalse(field.match({"ip": {"address": '1.2.3.4'}}, "1.3.2.", {}))
-        self.assertFalse(field.match({}, "1.3.2.4", {}))
-
-        def yessah(value, like):
-
-            return value.get('addy', '').startswith(like)
-
-        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr={"__str__": "address"}, label=yessah)
-        self.assertTrue(field.match({"subnet": {"addy": '1.2.3.4'}}, "1.2.3.", {}))
-        self.assertFalse(field.match({"subnet": {"addy": '1.2.3.4'}}, "1.3.2.", {}))
         self.assertFalse(field.match({}, "1.3.2.4", {}))
 
     def test_read(self):

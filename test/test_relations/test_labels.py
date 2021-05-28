@@ -22,6 +22,16 @@ class Test(LabelsModel):
 
 relations.OneToMany(Unit, Test)
 
+class Meta(LabelsModel):
+    id = int
+    name = str
+    flag = bool
+    stuff = list
+    things = dict
+
+    LABEL = "things__a__b__0___1"
+    UNIQUE = False
+
 class TestLabels(unittest.TestCase):
 
     maxDiff = None
@@ -117,4 +127,14 @@ class TestLabels(unittest.TestCase):
         self.assertEqual(labels.labels, {
             1: ["people", "stuff"],
             2: [None, "things"]
+        })
+
+        labels = relations.Labels(Meta.many())
+        labels.add({"id": 1, "things": {"a":{"b": [{"1": "yep"}]}}})
+        labels.add({"id": 2, "things": {}})
+
+        self.assertEqual(labels.ids, [1, 2])
+        self.assertEqual(labels.labels, {
+            1: ["yep"],
+            2: [None]
         })

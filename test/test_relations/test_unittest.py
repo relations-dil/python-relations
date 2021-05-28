@@ -17,6 +17,14 @@ class Plain(SourceModel):
     simple_id = int
     name = str
 
+relations.OneToMany(Simple, Plain)
+
+class Meta(SourceModel):
+    id = int
+    name = str
+    flag = bool
+    stuff = list
+    things = dict
 
 def subnet_attr(value):
 
@@ -32,16 +40,12 @@ def subnet_attr(value):
 
     return values
 
-class Meta(SourceModel):
+class Net(SourceModel):
+
     id = int
     name = str
-    flag = bool
-    stuff = list
-    things = dict
     ip = ipaddress.IPv4Address, {"attr": {"compressed": "address", "__int__": "value"}, "init": "address", "label": "address"}
     subnet = ipaddress.IPv4Network, {"attr": subnet_attr, "init": "address", "label": "address"}
-
-relations.OneToMany(Simple, Plain)
 
 class Unit(SourceModel):
     id = int
@@ -329,30 +333,31 @@ class TestSource(unittest.TestCase):
         model = Meta.many(things___4=6)
         self.assertEqual(len(model), 0)
 
-        Meta("net", ip="1.2.3.4", subnet="1.2.3.0/24").create()
+        Net("crawl", ip="1.2.3.4", subnet="1.2.3.0/24").create()
+        Net("web").create()
 
-        model = Meta.many(ip__address__like='1.2.3.')
-        self.assertEqual(model[0].name, "net")
+        model = Net.many(ip__address__like='1.2.3.')
+        self.assertEqual(model[0].name, "crawl")
 
-        model = Meta.many(ip__value__gt=int(ipaddress.IPv4Address('1.2.3.0')))
-        self.assertEqual(model[0].name, "net")
+        model = Net.many(ip__value__gt=int(ipaddress.IPv4Address('1.2.3.0')))
+        self.assertEqual(model[0].name, "crawl")
 
-        model = Meta.many(subnet__address__like='1.2.3.')
-        self.assertEqual(model[0].name, "net")
+        model = Net.many(subnet__address__like='1.2.3.')
+        self.assertEqual(model[0].name, "crawl")
 
-        model = Meta.many(subnet__min_value=int(ipaddress.IPv4Address('1.2.3.0')))
-        self.assertEqual(model[0].name, "net")
+        model = Net.many(subnet__min_value=int(ipaddress.IPv4Address('1.2.3.0')))
+        self.assertEqual(model[0].name, "crawl")
 
-        model = Meta.many(ip__address__notlike='1.2.3.')
+        model = Net.many(ip__address__notlike='1.2.3.')
         self.assertEqual(len(model), 0)
 
-        model = Meta.many(ip__value__lt=int(ipaddress.IPv4Address('1.2.3.0')))
+        model = Net.many(ip__value__lt=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
-        model = Meta.many(subnet__address__notlike='1.2.3.')
+        model = Net.many(subnet__address__notlike='1.2.3.')
         self.assertEqual(len(model), 0)
 
-        model = Meta.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
+        model = Net.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
     def test_model_labels(self):

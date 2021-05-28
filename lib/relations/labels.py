@@ -2,6 +2,8 @@
 Relations Module for handling labels
 """
 
+import relations
+
 class Labels:
     """
     Labels container
@@ -30,8 +32,10 @@ class Labels:
             if relation is not None:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
                 self.format.extend(self.parents[field].format)
-            else:
+            elif field in model._fields._names:
                 self.format.append(model._fields._names[field].format)
+            else:
+                self.format.append(None)
 
     def __len__(self):
         """
@@ -88,12 +92,20 @@ class Labels:
         label = []
 
         for field in self.label:
+
             if field in self.parents:
+
                 if values[field] in self.parents[field]:
                     label.extend(self.parents[field][values[field]])
                 else:
                     label.extend([None for each in self.parents[field].format])
+
+            elif '__' in field:
+
+                label.append(relations.Field.walk(field, values))
+
             else:
+
                 label.append(values[field])
 
         self[values[self.id]] = label
