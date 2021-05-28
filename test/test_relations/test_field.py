@@ -209,7 +209,6 @@ class TestField(unittest.TestCase):
 
     def test_walk(self):
 
-        field = relations.Field(dict, store="meta")
         self.assertEqual(relations.Field.walk("things__a__b__0___1", {"things": {"a":{"b": [{"1": "yep"}]}}}), "yep")
 
     def test_satisfy(self):
