@@ -5,6 +5,7 @@ Relations Module for handling fields
 # pylint: disable=not-callable
 
 import re
+import relations
 
 class FieldError(Exception):
     """
@@ -17,7 +18,7 @@ class FieldError(Exception):
         self.message = message
         super().__init__(self.message)
 
-class Field:
+class Field: # pylint: disable=too-many-instance-attributes
     """
     Base field class
     """
@@ -26,6 +27,9 @@ class Field:
 
     name = None       # Name used in models
     store = None      # Name to use when reading and writing
+    attr = None       # Attributes to store in JSON
+    init = None       # Attributes to create with JSON
+    label = None      # Attributes to label with JSON
 
     default = None    # Default value
     none = None       # Whether to allow None (nulls)
@@ -37,6 +41,7 @@ class Field:
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
+    data = None       # Data of the field for custom
     changed = None    # Whether the values been changed since creation, retrieving
     replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
@@ -148,6 +153,48 @@ class Field:
         if self.validation is not None and not isinstance(self.validation, str) and not callable(self.validation):
             raise FieldError(self, f"{self.validation} validation not regex or method for {self.name}")
 
+        # If the field isn't a standard type and lacks attr, throw an error
+
+        if self.kind not in [bool, int, float, str, list, dict] and self.attr is None:
+            raise FieldError(self, f"{self.kind.__name__} requires at least attr")
+
+       # if there's attr and no label, assume label is attr
+
+        if self.attr is not None and self.label is None:
+            self.label = self.attr
+
+       # if there's attr and no init, assume init is attr
+
+        if self.attr is not None and self.init is None:
+            self.init = self.attr
+
+        # Get attr into a dict
+
+        if isinstance(self.attr, str):
+            self.attr = [self.attr]
+
+        if isinstance(self.attr, list):
+            self.attr = {attr: attr for attr in self.attr}
+
+        # Get init into a dict
+
+        if isinstance(self.init, str):
+            self.init = [self.init]
+
+        if isinstance(self.init, list):
+            self.init = {init: init for init in self.init}
+
+        # Get label into a list
+
+        if isinstance(self.label, str):
+            self.label = [self.label]
+
+        if self.format is None and self.label is not None:
+            self.format = [None for _ in self.label]
+
+        if self.format is not None and not isinstance(self.format, list):
+            self.format = [self.format]
+
     def __setattr__(self, name, value):
         """
         Use to set field values so everything is cost correctly
@@ -188,7 +235,13 @@ class Field:
                 raise FieldError(self, f"None not allowed for {self.name}")
             return value
 
-        value = self.kind(value)
+        if not isinstance(value, self.kind):
+            if self.init is not None and callable(self.init):
+                value = self.init(value)
+            elif self.init is not None and isinstance(value, dict):
+                value = self.kind(**{init: value[store] for init, store in self.init.items()})
+            else:
+                value = self.kind(value)
 
         if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
             raise FieldError(self, f"{value} not in {self.options} for {self.name}")
@@ -245,6 +298,66 @@ class Field:
             else:
                 self.criteria[path] = self.valid(value)
 
+    def place(self, tree, path, value):
+        """
+        Set the value as a specific position for dicts only
+        """
+
+        if isinstance(path, str):
+            path = path.split('__')
+
+        for index, place in enumerate(path):
+
+            if relations.INDEX.match(place):
+                raise FieldError(self, f"numeric {place} not allowed")
+
+            if place[0] == '_':
+                place = place[1:]
+
+            if index < len(path) - 1:
+                tree.setdefault(place, {})
+                tree = tree[place]
+            else:
+                tree[place] = value
+
+    @staticmethod
+    def walk(tree, path):
+        """
+        Retrieve value at path filling in what's expected
+        """
+
+        if isinstance(path, str):
+            path = path.split('__')
+
+        tree = tree or {}
+
+        for index, place in enumerate(path):
+
+            if index == len(path) - 1:
+                default = None
+            elif relations.INDEX.match(path[index+1]):
+                default = []
+            else:
+                default = {}
+
+            if relations.INDEX.match(place):
+
+                place = int(place)
+
+                if place < len(tree):
+                    tree = tree[place]
+                else:
+                    tree = default
+
+            else:
+
+                if place[0] == '_':
+                    place = place[1:]
+
+                tree = tree.get(place, default)
+
+        return tree
+
     def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
         Check if this value satisfies our criteria
@@ -252,37 +365,27 @@ class Field:
 
         for operator, satisfy in (self.criteria or {}).items():
 
-            value = self.valid(values.get(self.store))
+            value = values.get(self.store)
+
+            if self.kind in [bool, int, float, str, list, dict]:
+                value = self.valid(value)
+            elif not value:
+                value = value or {}
 
             if operator not in self.OPERATORS:
 
                 path = operator.split("__")
                 operator = path.pop()
 
-                for index, place in enumerate(path):
+                value = self.walk(value, path)
 
-                    if index == len(path) - 1:
-                        default = None
-                    elif re.match(r'^\d+$', path[index+1]):
-                        default = []
-                    else:
-                        default = {}
+            if operator == "null":
+                if satisfy != (value is None):
+                    return False
+                continue # pragma: no cover
 
-                    if re.match(r'^\d+$', place):
-
-                        place = int(place)
-
-                        if place < len(value):
-                            value = value[place]
-                        else:
-                            value = default
-
-                    else:
-
-                        if place[0] == '_':
-                            place = place[1:]
-
-                        value = value.get(place, default)
+            if value is None:
+                return False
 
             if operator == "in" and value not in satisfy:
                 return False
@@ -311,9 +414,6 @@ class Field:
             if operator == "notlike" and str(satisfy).lower() in str(value).lower():
                 return False
 
-            if operator == "null" and satisfy != (value is None):
-                return False
-
         return True
 
     def match(self, values, like, parents):
@@ -321,7 +421,17 @@ class Field:
         Check if this value matchees a model's like or parents match
         """
 
-        value = self.valid(values.get(self.store))
+        value = values.get(self.store)
+
+        if self.label is not None:
+            if not value:
+                return False
+            for store in self.label:
+                if str(like).lower() in str(value[store]).lower():
+                    return True
+            return False
+
+        value = self.valid(value)
 
         if self.store in parents:
             return value in parents[self.store]
@@ -336,13 +446,61 @@ class Field:
         self.value = self.valid(values.get(self.store))
         self.changed = False
 
+    def export(self):
+        """
+        Create a dictionary of object attributes
+        """
+
+        if self.value is None:
+            return self.value
+
+        values = {}
+
+        if callable(self.attr):
+
+            self.attr(values, self.value)
+
+        else:
+
+            for attr, store in self.attr.items():
+                attr = getattr(self.value, attr)
+                self.place(values, store, attr() if callable(attr) else attr)
+
+        return values
+
     def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
         """
 
         if not self.readonly:
-            if update and self.replace and not self.changed:
-                self.value = self.default() if callable(self.default) else self.default
-            values[self.store] = self.value
+
+            if self.attr is not None:
+                values[self.store] = self.export()
+            else:
+                if update and self.replace and not self.changed:
+                    self.value = self.default() if callable(self.default) else self.default
+                values[self.store] = self.value
+
             self.changed = False
+
+    def labels(self, path=None):
+        """
+        Get label at path
+        """
+
+        if self.kind in [bool, int, float, str]:
+            return [self.value]
+
+        if path is None:
+            path = []
+
+        if self.kind in [list, dict]:
+            return [self.walk(self.value, path)]
+
+        values = self.export()
+
+        if path:
+            return [self.walk(values, path)]
+
+        return [self.walk(values, label) for label in self.label]

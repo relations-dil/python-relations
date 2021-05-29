@@ -30,8 +30,10 @@ class Labels:
             if relation is not None:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
                 self.format.extend(self.parents[field].format)
+            elif field in model._fields._names and model._fields._names[field].format is not None:
+                self.format.extend(model._fields._names[field].format)
             else:
-                self.format.append(model._fields._names[field].format)
+                self.format.append(None)
 
     def __len__(self):
         """
@@ -80,20 +82,27 @@ class Labels:
 
         del self.labels[id]
 
-    def add(self, values):
+    def add(self, model): # pylint: disable=too-many-branches
         """
-        Adds a label given values
+        Adds a label given a model
         """
 
         label = []
 
-        for field in self.label:
-            if field in self.parents:
-                if values[field] in self.parents[field]:
-                    label.extend(self.parents[field][values[field]])
-                else:
-                    label.extend([None for each in self.parents[field].format])
-            else:
-                label.append(values[field])
+        for name in self.label: # pylint: disable=too-many-nested-blocks
 
-        self[values[self.id]] = label
+            if name in self.parents:
+
+                if model[name] in self.parents[name]:
+                    label.extend(self.parents[name][model[name]])
+                else:
+                    label.extend([None for _ in self.parents[name].format])
+
+            else:
+
+                path = name.split('__')
+                field = path.pop(0)
+
+                label.extend(model._record._names[field].labels(path))
+
+        self[model[self.id]] = label
