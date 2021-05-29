@@ -34,9 +34,7 @@ class Meta(LabelsModel):
     LABEL = "things__a__b__0___1"
     UNIQUE = False
 
-def subnet_attr(value):
-
-    values = {}
+def subnet_attr(values, value):
 
     values["address"] = str(value)
     min_ip = value[0]
@@ -45,8 +43,6 @@ def subnet_attr(value):
     values["min_value"] = int(min_ip)
     values["max_address"] = str(max_ip)
     values["max_value"] = int(max_ip)
-
-    return values
 
 class Net(LabelsModel):
 
@@ -143,28 +139,28 @@ class TestLabels(unittest.TestCase):
 
         labels = relations.Labels(Unit.many())
 
-        labels.add({"id": 1, "name": "people"})
+        labels.add(Unit("people").create())
 
         self.assertEqual(labels.ids, [1])
         self.assertEqual(labels.labels, {1: ["people"]})
 
-        Unit("people").create().test.add("stuff").create()
+        Unit.one(name="people").test.add("stuff").create()
 
         labels = relations.Labels(Test.many())
 
-        labels.add({"id": 1, "unit_id": 1, "name": "stuff"})
-        labels.add({"id": 2, "unit_id": 2, "name": "things"})
+        labels.add(Test(unit_id=1, name="stuff").create())
+        labels.add(Test(unit_id=2, name="things").create())
 
-        self.assertEqual(labels.ids, [1, 2])
+        self.assertEqual(labels.ids, [2, 3])
         self.assertEqual(labels.labels, {
-            1: ["people", "stuff"],
-            2: [None, "things"]
+            2: ["people", "stuff"],
+            3: [None, "things"]
         })
 
         labels = relations.Labels(Meta.many())
         labels.add(Meta("special", things={"a":{"b": [{"1": "sure"}]}}).create())
-        labels.add({"id": 2, "things": {"a":{"b": [{"1": "yep"}]}}})
-        labels.add({"id": 3, "things": {}})
+        labels.add(Meta(things={"a":{"b": [{"1": "yep"}]}}).create())
+        labels.add(Meta(things={}).create())
 
         self.assertEqual(labels.ids, [1, 2, 3])
         self.assertEqual(labels.labels, {

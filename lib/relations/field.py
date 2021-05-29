@@ -40,6 +40,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
+    data = None       # Data of the field for custom
     changed = None    # Whether the values been changed since creation, retrieving
     replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
@@ -190,6 +191,9 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.format is None and self.label is not None:
             self.format = [None for _ in self.label]
 
+        if not isinstance(self.format, list):
+            self.format = [self.format]
+
     def __setattr__(self, name, value):
         """
         Use to set field values so everything is cost correctly
@@ -288,43 +292,65 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
+    def plant(self, tree, branch, value):
+        """
+        Set the value as a specific position for dicts only
+        """
+
+        if isinstance(branch, str):
+            branch = branch.split('__')
+
+        for index, leaf in enumerate(branch):
+
+            if re.match(r'^\d+$', leaf):
+                raise FieldError(self, f"numeric {leaf} not allowed")
+
+            if leaf[0] == '_':
+                leaf = leaf[1:]
+
+            if index < len(branch) - 1:
+                tree.setdefault(leaf, {})
+                tree = tree[leaf]
+            else:
+                tree[leaf] = value
+
     @staticmethod
-    def walk(path, value):
+    def climb(tree, branch):
         """
         Retrieve value at path filling in what's expected
         """
 
-        if isinstance(path, str):
-            path = path.split('__')
+        if isinstance(branch, str):
+            branch = branch.split('__')
 
-        value = value or {}
+        tree = tree or {}
 
-        for index, place in enumerate(path):
+        for index, leaf in enumerate(branch):
 
-            if index == len(path) - 1:
+            if index == len(branch) - 1:
                 default = None
-            elif re.match(r'^\d+$', path[index+1]):
+            elif re.match(r'^\d+$', branch[index+1]):
                 default = []
             else:
                 default = {}
 
-            if re.match(r'^\d+$', place):
+            if re.match(r'^\d+$', leaf):
 
-                place = int(place)
+                leaf = int(leaf)
 
-                if place < len(value):
-                    value = value[place]
+                if leaf < len(tree):
+                    tree = tree[leaf]
                 else:
-                    value = default
+                    tree = default
 
             else:
 
-                if place[0] == '_':
-                    place = place[1:]
+                if leaf[0] == '_':
+                    leaf = leaf[1:]
 
-                value = value.get(place, default)
+                tree = tree.get(leaf, default)
 
-        return value
+        return tree
 
     def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
@@ -345,7 +371,7 @@ class Field: # pylint: disable=too-many-instance-attributes
                 path = operator.split("__")
                 operator = path.pop()
 
-                value = self.walk(path, value)
+                value = self.climb(value, path)
 
             if operator == "null":
                 if satisfy != (value is None):
@@ -430,14 +456,19 @@ class Field: # pylint: disable=too-many-instance-attributes
         Create a dictionary of object attributes
         """
 
-        if callable(self.attr):
-            return  self.attr(self.value)
-
         values = {}
 
-        for attr, store in self.attr.items():
-            attr = getattr(self.value, attr)
-            values[store] = attr() if callable(attr) else attr
+        if self.value is not None:
+
+            if callable(self.attr):
+
+                self.attr(values, self.value)
+
+            else:
+
+                for attr, store in self.attr.items():
+                    attr = getattr(self.value, attr)
+                    self.plant(values, store, attr() if callable(attr) else attr)
 
         return values
 
@@ -458,3 +489,24 @@ class Field: # pylint: disable=too-many-instance-attributes
                 values[self.store] = self.value
 
             self.changed = False
+
+    def labels(self, branch=None):
+        """
+        Get label at branch
+        """
+
+        if self.kind in [bool, int, float, str]:
+            return [self.value]
+
+        if branch is None:
+            branch = []
+
+        if self.kind in [list, dict]:
+            return [self.climb(self.value, branch)]
+
+        values = self.export()
+
+        if branch:
+            return [self.climb(values, branch)]
+
+        return [self.climb(values, label) for label in self.label]

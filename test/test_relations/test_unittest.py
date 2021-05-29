@@ -26,9 +26,7 @@ class Meta(SourceModel):
     stuff = list
     things = dict
 
-def subnet_attr(value):
-
-    values = {}
+def subnet_attr(values, value):
 
     values["address"] = str(value)
     min_ip = value[0]
@@ -37,8 +35,6 @@ def subnet_attr(value):
     values["min_value"] = int(min_ip)
     values["max_address"] = str(max_ip)
     values["max_value"] = int(max_ip)
-
-    return values
 
 class Net(SourceModel):
 

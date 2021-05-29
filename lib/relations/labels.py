@@ -2,8 +2,6 @@
 Relations Module for handling labels
 """
 
-import relations
-
 class Labels:
     """
     Labels container
@@ -33,10 +31,7 @@ class Labels:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
                 self.format.extend(self.parents[field].format)
             elif field in model._fields._names:
-                if isinstance(model._fields._names[field].format, list):
-                    self.format.extend(model._fields._names[field].format)
-                else:
-                    self.format.append(model._fields._names[field].format)
+                self.format.extend(model._fields._names[field].format)
             else:
                 self.format.append(None)
 
@@ -87,9 +82,9 @@ class Labels:
 
         del self.labels[id]
 
-    def add(self, values): # pylint: disable=too-many-branches
+    def add(self, model): # pylint: disable=too-many-branches
         """
-        Adds a label given values
+        Adds a label given a model
         """
 
         label = []
@@ -98,52 +93,16 @@ class Labels:
 
             if name in self.parents:
 
-                if values[name] in self.parents[name]:
-                    label.extend(self.parents[name][values[name]])
+                if model[name] in self.parents[name]:
+                    label.extend(self.parents[name][model[name]])
                 else:
-                    label.extend([None for each in self.parents[name].format])
+                    label.extend([None for _ in self.parents[name].format])
 
-            elif '__' in name:
-
-                field, path = name.split('__', 1)
-
-                if isinstance(values, dict):
-                    label.append(relations.Field.walk(path, values[field]))
-                else:
-
-                    field = values._record._names[field]
-
-                    if isinstance(field.value, (list, dict)):
-                        label.append(relations.Field.walk(path, field.value))
-                    else:
-                        if field.value is not None:
-                            export = field.export()
-                            for piece in field.label:
-                                label.append(relations.Field.walk(path, export))
-                        else:
-                            for piece in field.label:
-                                label.append(None)
             else:
 
-                if isinstance(values, dict):
+                branch = name.split('__')
+                field = branch.pop(0)
 
-                    label.append(values[name])
+                label.extend(model._record._names[field].labels(branch))
 
-                else:
-
-                    field = values._record._names[name]
-
-                    if field.kind in [bool, int, float, str, list, dict]:
-
-                        label.append(field.value)
-
-                    else:
-                        if field.value is not None:
-                            export = field.export()
-                            for piece in field.label:
-                                label.append(export[piece])
-                        else:
-                            for piece in field.label:
-                                label.append(None)
-
-        self[values[self.id]] = label
+        self[model[self.id]] = label

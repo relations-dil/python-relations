@@ -45,6 +45,7 @@ class TestField(unittest.TestCase):
         self.assertIsNone(field.attr)
         self.assertIsNone(field.init)
         self.assertIsNone(field.label)
+        self.assertEqual(field.format, [None])
 
         field = relations.Field(int, {"unit": "test"})
         self.assertEqual(field.kind, int)
@@ -208,9 +209,18 @@ class TestField(unittest.TestCase):
         field.filter("1", "a__in")
         self.assertEqual(field.criteria["a__in"], ["1"])
 
-    def test_walk(self):
+    def test_plant(self):
 
-        self.assertEqual(relations.Field.walk("things__a__b__0___1", {"things": {"a":{"b": [{"1": "yep"}]}}}), "yep")
+        field = relations.Field(int)
+        tree = {}
+        field.plant(tree, "a__b___0", "yep")
+        self.assertEqual(tree, {"a":{"b": {"0": "yep"}}})
+
+        self.assertRaisesRegex(relations.FieldError, "numeric 0 not allowed", field.plant, tree, 'a__b__0', "nope")
+
+    def test_climb(self):
+
+        self.assertEqual(relations.Field.climb({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
 
     def test_satisfy(self):
 
@@ -364,9 +374,17 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.changed)
 
     def test_export(self):
-        def hurl(value):
 
-            values = {}
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
+        field.value = "1.2.3.4"
+        self.assertEqual(field.export(), {
+            "ip": {
+                "address": "1.2.3.4",
+                "value": 16909060
+            }
+        })
+
+        def hurl(values, value):
 
             values["address"] = str(value)
             min_ip = value[0]
@@ -376,10 +394,8 @@ class TestField(unittest.TestCase):
             values["max_address"] = str(max_ip)
             values["max_value"] = int(max_ip)
 
-            return values
-
-        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr=hurl, label="address")
-        field.value = ipaddress.IPv4Network('1.2.3.0/24')
+        field = relations.Field(ipaddress.IPv4Network, attr=hurl, label="address")
+        field.value = '1.2.3.0/24'
         self.assertEqual(field.export(), {
             "address": "1.2.3.0/24",
             "min_address": "1.2.3.0",
@@ -432,3 +448,36 @@ class TestField(unittest.TestCase):
         field.write(values)
         self.assertEqual(values, {})
         self.assertTrue(field.changed)
+
+    def test_labels(self):
+
+        field = relations.Field(bool)
+        field.value = False
+        self.assertEqual(field.labels(), [False])
+
+        field = relations.Field(int)
+        field.value = 1
+        self.assertEqual(field.labels(), [1])
+
+        field = relations.Field(float)
+        field.value = 1.0
+        self.assertEqual(field.labels(), [1.0])
+
+        field = relations.Field(str)
+        field.value = "yep"
+        self.assertEqual(field.labels(), ["yep"])
+
+        field = relations.Field(list)
+        field.value = [1, 2, [3, 4]]
+        self.assertEqual(field.labels(), [[1, 2, [3, 4]]])
+        self.assertEqual(field.labels("2__1"), [4])
+
+        field = relations.Field(dict)
+        field.value = {"a":{"b": [{"1": "yep"}]}}
+        self.assertEqual(field.labels(), [{"a":{"b": [{"1": "yep"}]}}])
+        self.assertEqual(field.labels("a__b__0___1"), ["yep"])
+
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, label=["ip__address", "ip__value"])
+        field.value = "1.2.3.4"
+        self.assertEqual(field.labels("ip__value"), [16909060])
+        self.assertEqual(field.labels(), ["1.2.3.4", 16909060])
