@@ -192,7 +192,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.format is None and self.label is not None:
             self.format = [None for _ in self.label]
 
-        if not isinstance(self.format, list):
+        if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
 
     def __setattr__(self, name, value):

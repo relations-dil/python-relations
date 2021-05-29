@@ -45,7 +45,7 @@ class TestField(unittest.TestCase):
         self.assertIsNone(field.attr)
         self.assertIsNone(field.init)
         self.assertIsNone(field.label)
-        self.assertEqual(field.format, [None])
+        self.assertEqual(field.format, None)
 
         field = relations.Field(int, {"unit": "test"})
         self.assertEqual(field.kind, int)

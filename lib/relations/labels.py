@@ -30,7 +30,7 @@ class Labels:
             if relation is not None:
                 self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
                 self.format.extend(self.parents[field].format)
-            elif field in model._fields._names:
+            elif field in model._fields._names and model._fields._names[field].format is not None:
                 self.format.extend(model._fields._names[field].format)
             else:
                 self.format.append(None)
