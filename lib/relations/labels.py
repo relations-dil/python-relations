@@ -87,14 +87,14 @@ class Labels:
 
         del self.labels[id]
 
-    def add(self, values):
+    def add(self, values): # pylint: disable=too-many-branches
         """
         Adds a label given values
         """
 
         label = []
 
-        for name in self.label:
+        for name in self.label: # pylint: disable=too-many-nested-blocks
 
             if name in self.parents:
 
