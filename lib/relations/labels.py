@@ -100,9 +100,9 @@ class Labels:
 
             else:
 
-                branch = name.split('__')
-                field = branch.pop(0)
+                path = name.split('__')
+                field = path.pop(0)
 
-                label.extend(model._record._names[field].labels(branch))
+                label.extend(model._record._names[field].labels(path))
 
         self[model[self.id]] = label

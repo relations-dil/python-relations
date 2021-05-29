@@ -209,18 +209,18 @@ class TestField(unittest.TestCase):
         field.filter("1", "a__in")
         self.assertEqual(field.criteria["a__in"], ["1"])
 
-    def test_plant(self):
+    def test_place(self):
 
         field = relations.Field(int)
         tree = {}
-        field.plant(tree, "a__b___0", "yep")
+        field.place(tree, "a__b___0", "yep")
         self.assertEqual(tree, {"a":{"b": {"0": "yep"}}})
 
-        self.assertRaisesRegex(relations.FieldError, "numeric 0 not allowed", field.plant, tree, 'a__b__0', "nope")
+        self.assertRaisesRegex(relations.FieldError, "numeric 0 not allowed", field.place, tree, 'a__b__0', "nope")
 
-    def test_climb(self):
+    def test_walk(self):
 
-        self.assertEqual(relations.Field.climb({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
+        self.assertEqual(relations.Field.walk({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
 
     def test_satisfy(self):
 

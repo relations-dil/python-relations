@@ -293,63 +293,63 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
-    def plant(self, tree, branch, value):
+    def place(self, tree, path, value):
         """
         Set the value as a specific position for dicts only
         """
 
-        if isinstance(branch, str):
-            branch = branch.split('__')
+        if isinstance(path, str):
+            path = path.split('__')
 
-        for index, leaf in enumerate(branch):
+        for index, place in enumerate(path):
 
-            if relations.INDEX.match(leaf):
-                raise FieldError(self, f"numeric {leaf} not allowed")
+            if relations.INDEX.match(place):
+                raise FieldError(self, f"numeric {place} not allowed")
 
-            if leaf[0] == '_':
-                leaf = leaf[1:]
+            if place[0] == '_':
+                place = place[1:]
 
-            if index < len(branch) - 1:
-                tree.setdefault(leaf, {})
-                tree = tree[leaf]
+            if index < len(path) - 1:
+                tree.setdefault(place, {})
+                tree = tree[place]
             else:
-                tree[leaf] = value
+                tree[place] = value
 
     @staticmethod
-    def climb(tree, branch):
+    def walk(tree, path):
         """
         Retrieve value at path filling in what's expected
         """
 
-        if isinstance(branch, str):
-            branch = branch.split('__')
+        if isinstance(path, str):
+            path = path.split('__')
 
         tree = tree or {}
 
-        for index, leaf in enumerate(branch):
+        for index, place in enumerate(path):
 
-            if index == len(branch) - 1:
+            if index == len(path) - 1:
                 default = None
-            elif relations.INDEX.match(branch[index+1]):
+            elif relations.INDEX.match(path[index+1]):
                 default = []
             else:
                 default = {}
 
-            if relations.INDEX.match(leaf):
+            if relations.INDEX.match(place):
 
-                leaf = int(leaf)
+                place = int(place)
 
-                if leaf < len(tree):
-                    tree = tree[leaf]
+                if place < len(tree):
+                    tree = tree[place]
                 else:
                     tree = default
 
             else:
 
-                if leaf[0] == '_':
-                    leaf = leaf[1:]
+                if place[0] == '_':
+                    place = place[1:]
 
-                tree = tree.get(leaf, default)
+                tree = tree.get(place, default)
 
         return tree
 
@@ -372,7 +372,7 @@ class Field: # pylint: disable=too-many-instance-attributes
                 path = operator.split("__")
                 operator = path.pop()
 
-                value = self.climb(value, path)
+                value = self.walk(value, path)
 
             if operator == "null":
                 if satisfy != (value is None):
@@ -469,7 +469,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                 for attr, store in self.attr.items():
                     attr = getattr(self.value, attr)
-                    self.plant(values, store, attr() if callable(attr) else attr)
+                    self.place(values, store, attr() if callable(attr) else attr)
 
         return values
 
@@ -489,23 +489,23 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             self.changed = False
 
-    def labels(self, branch=None):
+    def labels(self, path=None):
         """
-        Get label at branch
+        Get label at path
         """
 
         if self.kind in [bool, int, float, str]:
             return [self.value]
 
-        if branch is None:
-            branch = []
+        if path is None:
+            path = []
 
         if self.kind in [list, dict]:
-            return [self.climb(self.value, branch)]
+            return [self.walk(self.value, path)]
 
         values = self.export()
 
-        if branch:
-            return [self.climb(values, branch)]
+        if path:
+            return [self.walk(values, path)]
 
-        return [self.climb(values, label) for label in self.label]
+        return [self.walk(values, label) for label in self.label]
