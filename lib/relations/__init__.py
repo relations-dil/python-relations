@@ -1,6 +1,8 @@
 """
 Main relations module
 """
+
+import re
 import inspect
 
 from relations.source import Source
@@ -10,8 +12,9 @@ from relations.record import Record, RecordError
 from relations.model import Model, ModelIdentity, ModelError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany
 
-SOURCES = {}  # Sources reference to use
+INDEX = re.compile(r'^-?\d+$')
 
+SOURCES = {}  # Sources reference to use
 
 def register(new_source):
     """

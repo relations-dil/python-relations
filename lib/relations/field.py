@@ -5,6 +5,7 @@ Relations Module for handling fields
 # pylint: disable=not-callable
 
 import re
+import relations
 
 class FieldError(Exception):
     """
@@ -302,7 +303,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         for index, leaf in enumerate(branch):
 
-            if re.match(r'^\d+$', leaf):
+            if relations.INDEX.match(leaf):
                 raise FieldError(self, f"numeric {leaf} not allowed")
 
             if leaf[0] == '_':
@@ -329,12 +330,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             if index == len(branch) - 1:
                 default = None
-            elif re.match(r'^\d+$', branch[index+1]):
+            elif relations.INDEX.match(branch[index+1]):
                 default = []
             else:
                 default = {}
 
-            if re.match(r'^\d+$', leaf):
+            if relations.INDEX.match(leaf):
 
                 leaf = int(leaf)
 

@@ -19,6 +19,12 @@ class TestRelations(unittest.TestCase):
 
     maxDiff = None
 
+    def test_index(self):
+
+        self.assertTrue(relations.INDEX.match("0"))
+        self.assertTrue(relations.INDEX.match("-1"))
+        self.assertFalse(relations.INDEX.match("nope"))
+
     @unittest.mock.patch("relations.SOURCES", {})
     def test_register(self):
 
