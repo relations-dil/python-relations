@@ -481,8 +481,6 @@ class Field: # pylint: disable=too-many-instance-attributes
         if not self.readonly:
 
             if self.attr is not None:
-                if not self.value:
-                    return
                 values[self.store] = self.export()
             else:
                 if update and self.replace and not self.changed:
