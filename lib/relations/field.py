@@ -236,7 +236,12 @@ class Field: # pylint: disable=too-many-instance-attributes
             return value
 
         if not isinstance(value, self.kind):
-            value = self.kind(value)
+            if self.init is not None and callable(self.init):
+                value = self.init(value)
+            elif self.init is not None and isinstance(value, dict):
+                value = self.kind(**{init: value[store] for init, store in self.init.items()})
+            else:
+                value = self.kind(value)
 
         if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
             raise FieldError(self, f"{value} not in {self.options} for {self.name}")
@@ -438,18 +443,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         Loads the value from storage
         """
 
-        value = values.get(self.store)
-
-        if self.init is not None:
-            if not value:
-                return
-            if callable(self.init):
-                self.value = self.init(value)
-            else:
-                self.value = self.valid(self.kind(**{init: value[store] for init, store in self.init.items()}))
-        else:
-            self.value = self.valid(value)
-
+        self.value = self.valid(values.get(self.store))
         self.changed = False
 
     def export(self):

@@ -134,6 +134,24 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.valid("1"), 1)
         self.assertRaisesRegex(relations.FieldError, "None not allowed for id", field.valid, None)
 
+        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
+        self.assertEqual(field.valid({"address": '1.2.3.4'}).compressed, '1.2.3.4')
+
+        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
+        self.assertEqual(field.valid('1.2.3.4').compressed, '1.2.3.4')
+
+        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
+        self.assertIsNone(field.valid(None))
+
+        def slurp(value):
+
+            return ipaddress.IPv4Network(value["addy"])
+
+        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr={"compressed": "address"}, init=slurp)
+        field.read({"subnet": {"addy": '1.2.3.0/24'}})
+        self.assertEqual(str(field.value), '1.2.3.0/24')
+        self.assertFalse(field.changed)
+
         field = relations.Field(int, name="id", options=[1])
         self.assertEqual(field.valid("1"), 1)
         self.assertRaisesRegex(relations.FieldError, "2 not in \[1\] for id", field.valid, 2)
@@ -354,25 +372,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.value, 1)
         self.assertFalse(field.changed)
 
-        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
-        field.read({"ip": {"address": '1.2.3.4'}})
-        self.assertEqual(field.value.compressed, '1.2.3.4')
-        self.assertFalse(field.changed)
-
-        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
-        field.read({"ip": {}})
-        self.assertIsNone(field.value)
-        self.assertFalse(field.changed)
-
-        def slurp(value):
-
-            return ipaddress.IPv4Network(value["addy"])
-
-        field = relations.Field(ipaddress.IPv4Network, store="subnet", attr={"compressed": "address"}, init=slurp)
-        field.read({"subnet": {"addy": '1.2.3.0/24'}})
-        self.assertEqual(str(field.value), '1.2.3.0/24')
-        self.assertFalse(field.changed)
-
     def test_export(self):
 
         field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
@@ -394,7 +393,7 @@ class TestField(unittest.TestCase):
             values["max_address"] = str(max_ip)
             values["max_value"] = int(max_ip)
 
-        field = relations.Field(ipaddress.IPv4Network, attr=hurl, label="address")
+        field = relations.Field(ipaddress.IPv4Network, attr=hurl, init="address", label="address")
         field.value = '1.2.3.0/24'
         self.assertEqual(field.export(), {
             "address": "1.2.3.0/24",
