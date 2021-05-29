@@ -451,19 +451,20 @@ class Field: # pylint: disable=too-many-instance-attributes
         Create a dictionary of object attributes
         """
 
+        if self.value is None:
+            return self.value
+
         values = {}
 
-        if self.value is not None:
+        if callable(self.attr):
 
-            if callable(self.attr):
+            self.attr(values, self.value)
 
-                self.attr(values, self.value)
+        else:
 
-            else:
-
-                for attr, store in self.attr.items():
-                    attr = getattr(self.value, attr)
-                    self.place(values, store, attr() if callable(attr) else attr)
+            for attr, store in self.attr.items():
+                attr = getattr(self.value, attr)
+                self.place(values, store, attr() if callable(attr) else attr)
 
         return values
 

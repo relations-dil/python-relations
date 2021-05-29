@@ -445,7 +445,7 @@ class TestField(unittest.TestCase):
         field.value = None
         values = {}
         field.write(values)
-        self.assertEqual(values, {"ip": {}})
+        self.assertEqual(values, {"ip": None})
         self.assertFalse(field.changed)
 
     def test_labels(self):
