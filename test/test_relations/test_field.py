@@ -94,6 +94,11 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.init, {"exploded": "exploded"})
         self.assertEqual(field.label, ["packed"])
 
+        field = relations.Field(str, extract=True)
+        self.assertEqual(field.kind, str)
+        self.assertIsNone(field.default)
+        self.assertTrue(field.readonly)
+
         self.assertRaisesRegex(relations.FieldError, "1 default not <class 'str'> for opt", relations.Field, str, name="opt", default=1)
         self.assertRaisesRegex(relations.FieldError, "1 option not <class 'str'> for opt", relations.Field, str, name="opt", options=[1])
         self.assertRaisesRegex(relations.FieldError, "1 validation not regex or method for val", relations.Field, str, name="val", validation=1)

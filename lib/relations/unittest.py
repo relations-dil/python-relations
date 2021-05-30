@@ -4,6 +4,7 @@ Unittest Tools for Relations
 
 # pylint: disable=unused-argument,arguments-differ
 
+import copy
 import relations
 
 class MockSource(relations.Source):
@@ -65,6 +66,19 @@ class MockSource(relations.Source):
             model.NAME: definitions
         }
 
+    @staticmethod
+    def extract(model, values):
+        """
+        Extracts from fields and injects into values
+        """
+
+        for extracting in [field for field in model._fields._order if field.extract]:
+            path = extracting.extract.split('__')
+            extracted = model._fields._names[path.pop(0)]
+            values[extracting.store] = relations.Field.walk(values[extracted.store], path)
+
+        return values
+
     def model_create(self, model):
         """
         Executes the create
@@ -80,7 +94,7 @@ class MockSource(relations.Source):
                 values[model._fields._names[model._id].store] = self.ids[model.NAME]
                 creating[model._id] = self.ids[model.NAME]
 
-            self.data[model.NAME][self.ids[model.NAME]] = values
+            self.data[model.NAME][self.ids[model.NAME]] = self.extract(creating, values)
 
             if not model._bulk:
 
@@ -230,10 +244,10 @@ class MockSource(relations.Source):
             values = {}
             self.record_update(model._record, values, changed=True)
 
-            for record in self.data[model.NAME].values():
-                if model._record.satisfy(record):
+            for data in self.data[model.NAME].values():
+                if model._record.satisfy(data):
                     updated += 1
-                    record.update(values)
+                    data.update(self.extract(model, copy.deepcopy(values)))
 
         elif model._id:
 
@@ -242,7 +256,7 @@ class MockSource(relations.Source):
                 values = {}
                 self.record_update(updating._record, values)
 
-                self.data[model.NAME][updating[model._id]].update(values)
+                self.data[model.NAME][updating[model._id]].update(self.extract(updating, values))
 
                 updated += 1
 

@@ -199,6 +199,13 @@ class TestModelIdentity(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
 
+        class Extract(relations.ModelIdentity):
+            id = int
+            name = str
+            pull = str,{"extract": "nope__value"}
+
+        self.assertRaisesRegex(relations.ModelError, "cannot extract nope__value for pull", Extract.thy)
+
     def test__field_name(self):
 
         stuff = Stuff()
