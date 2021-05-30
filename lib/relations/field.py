@@ -27,9 +27,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
     name = None       # Name used in models
     store = None      # Name to use when reading and writing
+
     attr = None       # Attributes to store in JSON
     init = None       # Attributes to create with JSON
     label = None      # Attributes to label with JSON
+
+    extract = None    # Field to extract
 
     default = None    # Default value
     none = None       # Whether to allow None (nulls)
@@ -41,7 +44,6 @@ class Field: # pylint: disable=too-many-instance-attributes
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
-    data = None       # Data of the field for custom
     changed = None    # Whether the values been changed since creation, retrieving
     replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
@@ -194,6 +196,11 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
+
+        # If extract is set, field is readonly
+
+        if self.extract is not None:
+            self.readonly = True
 
     def __setattr__(self, name, value):
         """

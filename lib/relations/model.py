@@ -42,7 +42,6 @@ class ModelIdentity:
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
 
-
     ORDER = None    # Default sort order
     CHUNK = 100     # Default chunk
 
@@ -138,7 +137,7 @@ class ModelIdentity:
                     continue
                 if field.kind in (int, str):
                     label.append(field.name)
-                    if field.kind == str and field._none is None:
+                    if field.kind == str and field._none is None and not field.extract:
                         field.none = False
                 if field.kind == str:
                     break
@@ -216,6 +215,12 @@ class ModelIdentity:
             for field in self._index[index]:
                 if field not in self._fields:
                     raise ModelError(self, f"cannot find field {field} from index {index}")
+
+        # Make sure all extract fields reference actual fields
+
+        for field in self._fields._order:
+            if field.extract and field.extract.split('__')[0] not in self._fields:
+                raise ModelError(self, f"cannot extract {field.extract} for {field.name}")
 
         # Determine default sort order (if desired)
 
