@@ -23,6 +23,7 @@ class Meta(SourceModel):
     id = int
     name = str
     flag = bool
+    spend = float
     stuff = list
     things = dict
     pull = str, {"extract": "things__for__0___1"}
@@ -152,7 +153,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(simples._models, [])
 
-        yep = Meta("yep", True, [1], {"a": 1, "for": [{"1": "yep"}]}).create()
+        yep = Meta("yep", True, 3.50, [1], {"a": 1, "for": [{"1": "yep"}]}).create()
         self.assertTrue(Meta.one(yep.id).flag)
 
         nope = Meta("nope", False).create()
@@ -186,6 +187,7 @@ class TestSource(unittest.TestCase):
                     "id": 1,
                     "name": "yep",
                     "flag": True,
+                    "spend": 3.50,
                     "stuff": [1],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
                     "pull": "yep"
@@ -194,6 +196,7 @@ class TestSource(unittest.TestCase):
                     "id": 2,
                     "name": "nope",
                     "flag": False,
+                    "spend": None,
                     "stuff": [],
                     "things": {},
                     "pull": None
