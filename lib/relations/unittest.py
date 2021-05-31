@@ -227,7 +227,11 @@ class MockSource(relations.Source):
             if field.replace and not field.changed:
                 field.value = field.default() if callable(field.default) else field.default
             if changed is None or field.changed == changed:
-                values[field.store] = field.value
+                if field.attr is not None:
+                    value = field.export()
+                else:
+                    value = field.value
+                values[field.store] = value
                 field.changed = False
 
     def model_update(self, model):
