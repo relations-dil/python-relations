@@ -329,28 +329,17 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             if index < len(path) - 1:
 
-                next = path[index+1]
-
-                if relations.INDEX.match(next):
-                    next = int(next)
-                    default = []
-
-                    while (next if next > -1 else abs(next) - 1) > len(default) - 1:
-                        default.append(None)
-
-                else:
-
-                    if next[0] == '_': # pylint: disable=unsubscriptable-object
-                        next = next[1:]
-
-                    default = {}
+                default = [] if relations.INDEX.match(path[index+1]) else {}
 
                 if write:
 
                     if isinstance(values, dict):
                         values.setdefault(place, default)
-                    elif values[place] is None:
-                        values[place] = default
+                    else:
+                        while (place if place > -1 else abs(place + 1)) > len(values) - 1:
+                            values.append(None)
+                        if values[place] is None:
+                            values[place] = default
 
                     values = values[place]
 
@@ -358,7 +347,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                     if isinstance(values, dict):
                         values = values.get(place, default)
-                    elif place > len(values) - 1 or values[place] is None:
+                    elif (place if place > -1 else abs(place + 1)) > len(values) - 1 or values[place] is None:
                         values = default
                     else:
                         values = values[place]

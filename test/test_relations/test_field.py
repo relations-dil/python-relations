@@ -235,8 +235,8 @@ class TestField(unittest.TestCase):
     def test_find(self):
 
         self.assertEqual(relations.Field.find({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), ({"1": "yep"}, "1"))
-        self.assertEqual(relations.Field.find(None, "things__a__b__7___1"), ({}, "1"))
-        self.assertEqual(relations.Field.find(None, "7___1"), ({}, "1"))
+        self.assertEqual(relations.Field.find(None, "things__a__b__-7___1"), ({}, "1"))
+        self.assertEqual(relations.Field.find(None, "-7___1"), ({}, "1"))
 
         values = {}
         relations.Field.find(values, "things__a__b__0___1")
@@ -255,8 +255,8 @@ class TestField(unittest.TestCase):
     def test_set(self):
 
         values = {}
-        relations.Field.set(values, "things__a__b__0___1", "yep")
-        self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}]}}})
+        relations.Field.set(values, "things__a__b__-2___1", "yep")
+        self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}, None]}}})
 
     def test_satisfy(self):
 

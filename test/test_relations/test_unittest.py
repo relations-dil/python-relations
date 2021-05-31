@@ -27,6 +27,7 @@ class Meta(SourceModel):
     stuff = list
     things = dict
     pull = str, {"extract": "things__for__0___1"}
+    push = str, {"inject": "stuff__-1__4___1"}
 
 def subnet_attr(values, value):
 
@@ -153,7 +154,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(simples._models, [])
 
-        yep = Meta("yep", True, 3.50, [1], {"a": 1, "for": [{"1": "yep"}]}).create()
+        yep = Meta("yep", True, 3.50, [1, None], {"a": 1, "for": [{"1": "yep"}]}, "sure").create()
         self.assertTrue(Meta.one(yep.id).flag)
 
         nope = Meta("nope", False).create()
@@ -188,7 +189,7 @@ class TestSource(unittest.TestCase):
                     "name": "yep",
                     "flag": True,
                     "spend": 3.50,
-                    "stuff": [1],
+                    "stuff": [1, [None, None, None, None, {"1": "sure"}]],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
                     "pull": "yep"
                 },
@@ -197,7 +198,7 @@ class TestSource(unittest.TestCase):
                     "name": "nope",
                     "flag": False,
                     "spend": None,
-                    "stuff": [],
+                    "stuff": [[None, None, None, None, {"1": None}]],
                     "things": {},
                     "pull": None
                 }
@@ -321,7 +322,7 @@ class TestSource(unittest.TestCase):
         self.assertEqual(model.name, ["things"])
         self.assertTrue(model.overflow)
 
-        Meta("dive", stuff=[1, 2, 3], things={"a": {"b": [1], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]}).create()
+        Meta("dive", stuff=[1, 2, 3, None], things={"a": {"b": [1], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]}).create()
 
         model = Meta.many(stuff__1=2)
         self.assertEqual(model[0].name, "dive")
