@@ -232,18 +232,31 @@ class TestField(unittest.TestCase):
         field.filter("1", "a__in")
         self.assertEqual(field.criteria["a__in"], ["1"])
 
-    def test_place(self):
+    def test_find(self):
 
-        field = relations.Field(int)
-        tree = {}
-        field.place(tree, "a__b___0", "yep")
-        self.assertEqual(tree, {"a":{"b": {"0": "yep"}}})
+        self.assertEqual(relations.Field.find({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), ({"1": "yep"}, "1"))
+        self.assertEqual(relations.Field.find(None, "things__a__b__0___1"), ({}, "1"))
+        self.assertEqual(relations.Field.find(None, "0___1"), ({}, "1"))
 
-        self.assertRaisesRegex(relations.FieldError, "numeric 0 not allowed", field.place, tree, 'a__b__0', "nope")
+        values = {}
+        relations.Field.find(values, "things__a__b__0___1")
+        self.assertEqual(values, {})
 
-    def test_walk(self):
+        values = {}
+        relations.Field.find(values, "things__a__b__0___1", write=True)
+        self.assertEqual(values, {"things": {"a":{"b": [{}]}}})
 
-        self.assertEqual(relations.Field.walk({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
+
+    def test_get(self):
+
+        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
+        self.assertEqual(relations.Field.get({}, "things__a__b__0___1"), None)
+
+    def test_set(self):
+
+        values = {}
+        relations.Field.set(values, "things__a__b__0___1", "yep")
+        self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}]}}})
 
     def test_satisfy(self):
 
@@ -377,6 +390,11 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.value, 1)
         self.assertFalse(field.changed)
 
+        field = relations.Field(str, inject="nope__a__b__0___1")
+        field.read({"a":{"b": [{"1": "yep"}]}})
+        self.assertEqual(field.value, "yep")
+        self.assertFalse(field.changed)
+
     def test_export(self):
 
         field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
@@ -451,6 +469,13 @@ class TestField(unittest.TestCase):
         values = {}
         field.write(values)
         self.assertEqual(values, {"ip": None})
+        self.assertFalse(field.changed)
+
+        field = relations.Field(str, inject="nope__a__b__0___1")
+        field.value = "yep"
+        values = {"a":{"b": [{}]}}
+        field.write(values)
+        self.assertEqual(values, {"a":{"b": [{"1": "yep"}]}})
         self.assertFalse(field.changed)
 
     def test_labels(self):

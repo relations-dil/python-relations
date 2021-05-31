@@ -75,7 +75,7 @@ class MockSource(relations.Source):
         for extracting in [field for field in model._fields._order if field.extract]:
             path = extracting.extract.split('__')
             extracted = model._fields._names[path.pop(0)]
-            values[extracting.store] = relations.Field.walk(values[extracted.store], path)
+            values[extracting.store] = extracting.get(values[extracted.store], path)
 
         return values
 

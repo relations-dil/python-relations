@@ -216,11 +216,19 @@ class ModelIdentity:
                 if field not in self._fields:
                     raise ModelError(self, f"cannot find field {field} from index {index}")
 
-        # Make sure all extract fields reference actual fields
+        # Make sure all extract fields reference actual fields that are lists or dicts
 
-        for field in self._fields._order:
-            if field.extract and field.extract.split('__')[0] not in self._fields:
-                raise ModelError(self, f"cannot extract {field.extract} for {field.name}")
+        for field, extract in [(field, field.extract.split('__')[0]) for field in self._fields._order if field.extract]:
+            if extract not in self._fields:
+                raise relations.FieldError(field, f"cannot find field {extract} from extract {field.extract}")
+
+        # Make sure all inject fields reference actual fields that are lists or dicts
+
+        for field, inject in [(field, field.inject.split('__')[0]) for field in self._fields._order if field.inject]:
+            if inject not in self._fields:
+                raise relations.FieldError(field, f"cannot find field {inject} from inject {field.inject}")
+            if self._fields._names[inject].kind not in [list, dict]:
+                raise relations.FieldError(self, f"field {inject} not list or dict from inject {field.inject}")
 
         # Determine default sort order (if desired)
 

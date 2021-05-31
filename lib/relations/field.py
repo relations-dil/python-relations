@@ -33,6 +33,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     label = None      # Attributes to label with JSON
 
     extract = None    # Field to extract
+    inject = None     # Field to inject
 
     default = None    # Default value
     none = None       # Whether to allow None (nulls)
@@ -305,9 +306,10 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
-    def place(self, tree, path, value):
+    @staticmethod
+    def find(values, path, write=False): # pylint: disable=too-many-branches
         """
-        Set the value as a specific position for dicts only
+        Traverse a values to get to the last structure
         """
 
         if isinstance(path, str):
@@ -316,54 +318,80 @@ class Field: # pylint: disable=too-many-instance-attributes
         for index, place in enumerate(path):
 
             if relations.INDEX.match(place):
-                raise FieldError(self, f"numeric {place} not allowed")
-
-            if place[0] == '_':
-                place = place[1:]
+                if values is None:
+                    values = []
+                place = int(place)
+            else:
+                if values is None:
+                    values = {}
+                if place[0] == '_':
+                    place = place[1:]
 
             if index < len(path) - 1:
-                tree.setdefault(place, {})
-                tree = tree[place]
-            else:
-                tree[place] = value
 
-    @staticmethod
-    def walk(tree, path):
+                next = path[index+1]
+
+                if relations.INDEX.match(next):
+                    next = int(next)
+                    default = []
+
+                    while (next if next > -1 else abs(next) - 1) > len(default) - 1:
+                        default.append(None)
+
+                else:
+
+                    if next[0] == '_': # pylint: disable=unsubscriptable-object
+                        next = next[1:]
+
+                    default = {}
+
+                if write:
+
+                    if isinstance(values, dict):
+                        values.setdefault(place, default)
+                    elif place > len(values) - 1 or values[place] is None:
+                        values[place] = default
+
+                    values = values[place]
+
+                else:
+
+                    if isinstance(values, dict):
+                        values = values.get(place, default)
+                    elif place > len(values) - 1 or values[place] is None:
+                        values = default
+                    else:
+                        values = values[place]
+
+        return values, place
+
+    @classmethod
+    def get(cls, values, path):
         """
         Retrieve value at path filling in what's expected
         """
 
-        if isinstance(path, str):
-            path = path.split('__')
+        if not path:
+            return values
 
-        tree = tree or {}
+        values, place = cls.find(values, path)
 
-        for index, place in enumerate(path):
+        if isinstance(values, list):
+            if place > len(values) - 1:
+                return None
+            return values[place]
 
-            if index == len(path) - 1:
-                default = None
-            elif relations.INDEX.match(path[index+1]):
-                default = []
-            else:
-                default = {}
+        return values.get(place)
 
-            if relations.INDEX.match(place):
+    @classmethod
+    def set(cls, values, path, value):
+        """
+        Retrieve value at path filling in what's expected
+        """
 
-                place = int(place)
+        values, place = cls.find(values, path, write=True)
 
-                if place < len(tree):
-                    tree = tree[place]
-                else:
-                    tree = default
-
-            else:
-
-                if place[0] == '_':
-                    place = place[1:]
-
-                tree = tree.get(place, default)
-
-        return tree
+        values[place] = value
 
     def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
@@ -384,7 +412,7 @@ class Field: # pylint: disable=too-many-instance-attributes
                 path = operator.split("__")
                 operator = path.pop()
 
-                value = self.walk(value, path)
+                value = self.get(value, path)
 
             if operator == "null":
                 if satisfy != (value is None):
@@ -450,7 +478,10 @@ class Field: # pylint: disable=too-many-instance-attributes
         Loads the value from storage
         """
 
-        self.value = self.valid(values.get(self.store))
+        if self.inject:
+            self.value = self.get(values, self.inject.split('__')[1:])
+        else:
+            self.value = self.valid(values.get(self.store))
         self.changed = False
 
     def export(self):
@@ -471,7 +502,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             for attr, store in self.attr.items():
                 attr = getattr(self.value, attr)
-                self.place(values, store, attr() if callable(attr) else attr)
+                self.set(values, store, attr() if callable(attr) else attr)
 
         return values
 
@@ -481,13 +512,16 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
 
         if not self.readonly:
-
             if self.attr is not None:
-                values[self.store] = self.export()
+                value = self.export()
             else:
                 if update and self.replace and not self.changed:
                     self.value = self.default() if callable(self.default) else self.default
-                values[self.store] = self.value
+                value = self.value
+            if self.inject:
+                self.set(values, self.inject.split('__')[1:], value)
+            else:
+                values[self.store] = value
 
             self.changed = False
 
@@ -503,11 +537,11 @@ class Field: # pylint: disable=too-many-instance-attributes
             path = []
 
         if self.kind in [list, dict]:
-            return [self.walk(self.value, path)]
+            return [self.get(self.value, path)]
 
         values = self.export()
 
         if path:
-            return [self.walk(values, path)]
+            return [self.get(values, path)]
 
-        return [self.walk(values, label) for label in self.label]
+        return [self.get(values, label) for label in self.label]
