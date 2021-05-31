@@ -500,14 +500,14 @@ class TestSource(unittest.TestCase):
         ping = Net(ip="1.2.3.4", subnet="1.2.3.0/24").create()
         pong = Net(ip="5.6.7.8", subnet="5.6.7.0/24").create()
 
-        Net.many().set(ip="9.10.11.12").update()
+        Net.many().set(subnet="9.10.11.0/24").update()
 
-        self.assertEqual(Net.one(ping.id).ip.compressed, "9.10.11.12")
-        self.assertEqual(Net.one(pong.id).ip.compressed, "9.10.11.12")
+        self.assertEqual(Net.one(ping.id).subnet.compressed, "9.10.11.0/24")
+        self.assertEqual(Net.one(pong.id).subnet.compressed, "9.10.11.0/24")
 
         Net.one(ping.id).set(ip="13.14.15.16").update()
         self.assertEqual(Net.one(ping.id).ip.compressed, "13.14.15.16")
-        self.assertEqual(Net.one(pong.id).ip.compressed, "9.10.11.12")
+        self.assertEqual(Net.one(pong.id).ip.compressed, "5.6.7.8")
 
     def test_model_delete(self):
 
