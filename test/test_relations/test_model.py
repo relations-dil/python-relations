@@ -204,7 +204,18 @@ class TestModelIdentity(unittest.TestCase):
             name = str
             pull = str,{"extract": "nope__value"}
 
-        self.assertRaisesRegex(relations.ModelError, "cannot extract nope__value for pull", Extract.thy)
+        self.assertRaisesRegex(relations.FieldError, "cannot find field nope from extract nope__value", Extract.thy)
+
+        class Inject(relations.ModelIdentity):
+            id = int
+            name = str
+            push = str,{"inject": "nope__value"}
+
+        self.assertRaisesRegex(relations.FieldError, "cannot find field nope from inject nope__value", Inject.thy)
+
+        Inject.push = str,{"inject": "name__value"}
+
+        self.assertRaisesRegex(relations.FieldError, "field name not list or dict from inject name__value", Inject.thy)
 
     def test__field_name(self):
 

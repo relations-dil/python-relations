@@ -159,14 +159,30 @@ class TestRecord(unittest.TestCase):
 
     def test_read(self):
 
-        self.record.read({"_id": 1, "_name": "unit"})
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
+        self.record.read({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
 
         self.assertEqual(self.record.id, 1)
         self.assertEqual(self.record.name, "unit")
+        self.assertEqual(self.record.things, {"a":{"b": [{"1": "yep"}]}})
+        self.assertEqual(self.record.push, "yep")
 
     def test_write(self):
 
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
         self.record.id = 1
         self.record.name = "unit"
+        self.record.things = {}
+        self.record.push = "yep"
 
-        self.assertEqual(self.record.write({}), {"_id": 1, "_name": "unit"})
+        self.assertEqual(self.record.write({}), {"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})

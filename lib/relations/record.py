@@ -174,14 +174,25 @@ class Record:
         """
 
         for field in self._order:
-            field.read(values)
+            if field.inject:
+                field.read(values[self._names[field.inject.split('__')[0]].store])
+            else:
+                field.read(values)
 
     def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
         """
 
+        inject = []
+
         for field in self._order:
-            field.write(values, update=update)
+            if field.inject:
+                inject.append(field)
+            else:
+                field.write(values, update=update)
+
+        for field in inject:
+            field.write(values[self._names[field.inject.split('__')[0]].store])
 
         return values
