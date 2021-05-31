@@ -349,7 +349,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                     if isinstance(values, dict):
                         values.setdefault(place, default)
-                    elif place > len(values) - 1 or values[place] is None:
+                    elif values[place] is None:
                         values[place] = default
 
                     values = values[place]
