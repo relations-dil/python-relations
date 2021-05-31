@@ -27,7 +27,7 @@ class Meta(SourceModel):
     stuff = list
     things = dict
     pull = str, {"extract": "things__for__0___1"}
-    push = str, {"inject": "stuff__-1__4___1"}
+    push = str, {"inject": "stuff__-1__relations.io___1"}
 
 def subnet_attr(values, value):
 
@@ -189,7 +189,7 @@ class TestSource(unittest.TestCase):
                     "name": "yep",
                     "flag": True,
                     "spend": 3.50,
-                    "stuff": [1, [None, None, None, None, {"1": "sure"}]],
+                    "stuff": [1, {"relations.io": {"1": "sure"}}],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
                     "pull": "yep"
                 },
@@ -198,7 +198,7 @@ class TestSource(unittest.TestCase):
                     "name": "nope",
                     "flag": False,
                     "spend": None,
-                    "stuff": [[None, None, None, None, {"1": None}]],
+                    "stuff": [{"relations.io": {"1": None}}],
                     "things": {},
                     "pull": None
                 }
