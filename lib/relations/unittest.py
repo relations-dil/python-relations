@@ -158,6 +158,23 @@ class MockSource(relations.Source):
         model._models = model._models[model._offset:model._offset + model._limit]
         model.overflow = model.overflow or len(model._models) >= model._limit
 
+    def model_count(self, model):
+        """
+        Executes the retrieve
+        """
+
+        model._collate()
+
+        values = self.model_like(model) if model._like is not None else self.data[model.NAME].values()
+
+        matches = 0
+
+        for record in values:
+            if model._record.satisfy(record):
+                matches += 1
+
+        return matches
+
     def model_retrieve(self, model, verify=True):
         """
         Executes the retrieve

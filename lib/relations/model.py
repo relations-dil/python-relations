@@ -510,6 +510,9 @@ class Model(ModelIdentity):
         Use for number of records
         """
 
+        if self._action == "retrieve" and self._mode == "many":
+            return self.count()
+
         self._ensure()
 
         if self._role == "child" and self._mode == "one":
@@ -967,6 +970,16 @@ class Model(ModelIdentity):
             raise ModelError(self, f"cannot create during {self._action}")
 
         return relations.source(self.SOURCE).model_create(self, *args, **kwargs)
+
+    def count(self, *args, **kwargs):
+        """
+        count the models
+        """
+
+        if self._action not in ["update", "retrieve"]:
+            raise ModelError(self, f"cannot count during {self._action}")
+
+        return relations.source(self.SOURCE).model_count(self, *args, **kwargs)
 
     def retrieve(self, verify=True, *args, **kwargs):
         """
