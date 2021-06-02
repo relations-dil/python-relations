@@ -275,6 +275,16 @@ class TestSource(unittest.TestCase):
         self.assertEqual(unit._models, [2, 3])
         self.assertTrue(unit.overflow)
 
+    def test_model_count(self):
+
+        Unit([["stuff"], ["people"]]).create()
+
+        self.assertEqual(Unit.many().count(), 2)
+
+        self.assertEqual(Unit.many(name="people").count(), 1)
+
+        self.assertEqual(Unit.many(like="p").count(), 1)
+
     def test_model_retrieve(self):
 
         Unit([["stuff"], ["people"]]).create()

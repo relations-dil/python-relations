@@ -578,6 +578,10 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(len(unit), 2)
 
+        unit = Unit.many()
+
+        self.assertEqual(len(unit), 1)
+
     def test___iter__(self):
 
         # model
@@ -1256,6 +1260,16 @@ class TestModel(unittest.TestCase):
 
         unit = Unit.one(0)
         self.assertRaisesRegex(relations.ModelError, "unit: cannot create during retrieve", unit.create)
+
+    def test_count(self):
+
+        self.assertEqual(Unit.many(name="yep").count(), 0)
+
+        Unit("yep").create()
+        self.assertEqual(Unit.many(name="yep").count(), 1)
+
+        unit = Unit("sure")
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot count during create", unit.count)
 
     def test_retrieve(self):
 
