@@ -2,6 +2,8 @@ import unittest
 import unittest.mock
 import relations.unittest
 
+import ipaddress
+
 import relations
 
 
@@ -95,6 +97,15 @@ class Run(ModelTest):
     test_id = int
     name = str
     status = ["pass", "fail"]
+
+class Net(ModelTest):
+
+    id = int
+    ip = ipaddress.IPv4Address, {
+        "attr": {"compressed": "address", "__int__": "value"},
+        "init": "address",
+        "label": "address"
+    }
 
 relations.OneToMany(Unit, Test)
 relations.OneToOne(Test, Case)
@@ -1241,6 +1252,29 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._models, [])
 
         self.assertEqual(len(UnitTest.many()), 2)
+
+    def test_export(self):
+
+        models = Net.many()
+        self.assertEqual(models.export(), [])
+
+        model = Net("1.2.3.4").create()
+        self.assertEqual(model.export(), {
+            "id": 1,
+            "ip": {
+                "address": "1.2.3.4",
+                "value": 16909060
+            }
+        })
+
+        models = Net.many()
+        self.assertEqual(models.export(), [{
+            "id": 1,
+            "ip": {
+                "address": "1.2.3.4",
+                "value": 16909060
+            }
+        }])
 
     def test_define(self):
 

@@ -179,6 +179,13 @@ class Record:
             else:
                 field.read(values)
 
+    def export(self):
+        """
+        Exports value by name
+        """
+
+        return {field.name: field.export() for field in self._order}
+
     def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)

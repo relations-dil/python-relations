@@ -954,6 +954,21 @@ class Model(ModelIdentity):
 
         return self
 
+    def export(self):
+        """
+        Converts to all models, whether _record or _models
+        """
+
+        self._ensure()
+
+        if self._record:
+            return self._record.export()
+
+        if self._models:
+            return [model.export() for model in self._models]
+
+        return []
+
     @classmethod
     def define(cls, *args, **kwargs):
         """
