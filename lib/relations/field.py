@@ -409,7 +409,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values
 
-    def delta(self, mass=False):
+    def delta(self):
         """
         Detect if a field is different from original
         """
@@ -572,6 +572,6 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.changed:
 
             if self.inject:
-                raise FieldError(self, f"no mass update with inject")
+                raise FieldError(self, "no mass update with inject")
 
             self.write(values)
