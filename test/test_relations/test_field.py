@@ -128,7 +128,6 @@ class TestField(unittest.TestCase):
 
         field.value = "1"
         self.assertEqual(field.value, 1)
-        self.assertTrue(field.changed)
 
         field.value = None
         self.assertIsNone(field.value)
@@ -155,7 +154,7 @@ class TestField(unittest.TestCase):
         field = relations.Field(ipaddress.IPv4Network, store="subnet", attr={"compressed": "address"}, init=slurp)
         field.read({"subnet": {"addy": '1.2.3.0/24'}})
         self.assertEqual(str(field.value), '1.2.3.0/24')
-        self.assertFalse(field.changed)
+        self.assertEqual(field.original, {"address": "1.2.3.0/24"})
 
         field = relations.Field(int, name="id", options=[1])
         self.assertEqual(field.valid("1"), 1)
@@ -383,18 +382,6 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.match({"ip": {"address": '1.2.3.4'}}, "1.3.2.", {}))
         self.assertFalse(field.match({}, "1.3.2.4", {}))
 
-    def test_read(self):
-
-        field = relations.Field(int, store="_id")
-        field.read({"_id": "1"})
-        self.assertEqual(field.value, 1)
-        self.assertFalse(field.changed)
-
-        field = relations.Field(str, inject="nope__a__b__0___1")
-        field.read({"a":{"b": [{"1": "yep"}]}})
-        self.assertEqual(field.value, "yep")
-        self.assertFalse(field.changed)
-
     def test_export(self):
 
         field = relations.Field(int)
@@ -430,6 +417,36 @@ class TestField(unittest.TestCase):
             "max_value": 16909311
         })
 
+    def test_changed(self):
+
+        field = relations.Field(int)
+        field.original = 0
+        field.value = 1
+        self.assertTrue(field.changed())
+
+        field.value = "0"
+        self.assertFalse(field.changed())
+
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
+        field.value = "1.2.3.4"
+        self.assertTrue(field.changed())
+
+        field.original = field.export()
+        field.value = ipaddress.IPv4Address("1.2.3.4")
+        self.assertFalse(field.changed())
+
+    def test_read(self):
+
+        field = relations.Field(int, store="_id")
+        field.read({"_id": "1"})
+        self.assertEqual(field.value, 1)
+        self.assertFalse(field.changed())
+
+        field = relations.Field(str, inject="nope__a__b__0___1")
+        field.read({"a":{"b": [{"1": "yep"}]}})
+        self.assertEqual(field.value, "yep")
+        self.assertFalse(field.changed())
+
     def test_write(self):
 
         field = relations.Field(int, store="_id", default=-1, replace=True)
@@ -438,17 +455,16 @@ class TestField(unittest.TestCase):
         values = {}
         field.write(values)
         self.assertEqual(values, {'_id': 1})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
-        field.value = 1
-        field.changed = True
+        field.value = 2
         values = {}
         field.write(values, update=True)
-        self.assertEqual(values, {'_id': 1})
-        self.assertEqual(field.value, 1)
+        self.assertEqual(values, {'_id': 2})
+        self.assertEqual(field.value, 2)
 
         field.value = 1
-        field.changed = False
+        field.original = 1
         values = {}
         field.write(values, update=True)
         self.assertEqual(values, {'_id': -1})
@@ -459,28 +475,28 @@ class TestField(unittest.TestCase):
         values = {}
         field.write(values)
         self.assertEqual(values, {})
-        self.assertTrue(field.changed)
+        self.assertTrue(field.changed())
 
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address", "__int__": "value"})
         field.value = ipaddress.IPv4Address('1.2.3.4')
         values = {}
         field.write(values)
         self.assertEqual(values, {'ip': {"address": "1.2.3.4", "value": 16909060}})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"})
         field.value = None
         values = {}
         field.write(values)
         self.assertEqual(values, {"ip": None})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
         field = relations.Field(str, inject="nope__a__b__0___1")
         field.value = "yep"
         values = {"a":{"b": [{}]}}
         field.write(values)
         self.assertEqual(values, {"a":{"b": [{"1": "yep"}]}})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
     def test_labels(self):
 

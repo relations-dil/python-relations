@@ -45,7 +45,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
-    changed = None    # Whether the values been changed since creation, retrieving
+    original = None   # Original value
     replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
 
@@ -228,7 +228,6 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if name == "value":
             value = self.valid(value)
-            self.changed = True
 
         object.__setattr__(self, name, value)
 
@@ -463,17 +462,6 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return str(like).lower() in str(value).lower()
 
-    def read(self, values):
-        """
-        Loads the value from storage
-        """
-
-        if self.inject:
-            self.value = self.get(values, self.inject.split('__')[1:])
-        else:
-            self.value = self.valid(values.get(self.store))
-        self.changed = False
-
     def export(self):
         """
         Create a dictionary of object attributes
@@ -496,13 +484,32 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values
 
+    def changed(self):
+        """
+        Detect if a field has changed
+        """
+
+        return self.export() != self.original
+
+    def read(self, values):
+        """
+        Loads the value from storage
+        """
+
+        if self.inject:
+            self.value = self.get(values, self.inject.split('__')[1:])
+        else:
+            self.value = self.valid(values.get(self.store))
+
+        self.original = self.export()
+
     def write(self, values, update=False):
         """
         Writes values to dict (if not readonly)
         """
 
         if not self.readonly:
-            if update and self.replace and not self.changed:
+            if update and self.replace and not self.changed():
                 self.value = self.default() if callable(self.default) else self.default
             value = self.export()
             if self.inject:
@@ -510,7 +517,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 values[self.store] = value
 
-            self.changed = False
+            self.original = value
 
     def labels(self, path=None):
         """

@@ -440,7 +440,7 @@ class TestSource(unittest.TestCase):
         field.value = 1
         self.source.field_update(field, values)
         self.assertEqual(values, {"id": 1})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
         # replace
 
@@ -450,7 +450,7 @@ class TestSource(unittest.TestCase):
         self.source.field_update(field, values)
         self.assertEqual(values, {'id': 1})
 
-        field.changed = False
+        field.original = 1
         values = {}
         self.source.field_update(field, values)
         self.assertEqual(values, {'id': -1})
@@ -462,7 +462,7 @@ class TestSource(unittest.TestCase):
         values = {}
         self.source.field_update(field, values, changed=True)
         self.assertEqual(values, {})
-        self.assertFalse(field.changed)
+        self.assertFalse(field.changed())
 
         # readonly
 
