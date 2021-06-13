@@ -502,12 +502,9 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
 
         if not self.readonly:
-            if self.attr is not None:
-                value = self.export()
-            else:
-                if update and self.replace and not self.changed:
-                    self.value = self.default() if callable(self.default) else self.default
-                value = self.value
+            if update and self.replace and not self.changed:
+                self.value = self.default() if callable(self.default) else self.default
+            value = self.export()
             if self.inject:
                 self.set(values, self.inject.split('__')[1:], value)
             else:
