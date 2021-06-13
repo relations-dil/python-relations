@@ -45,7 +45,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
-    original = None   # Original value
+    original = None   # Original value (as export)
     replace = None    # Whether to replace the value with default on update
     criteria = None   # Values for searching
 
