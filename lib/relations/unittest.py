@@ -42,8 +42,7 @@ class MockSource(relations.Source):
         self.data.setdefault(model.NAME, {})
 
         if model._id is not None and model._fields._names[model._id].auto_increment is None:
-            model._fields._names[model._id].auto_increment = True
-            model._fields._names[model._id].readonly = True
+            model._fields._names[model._id].auto = True
 
     def field_define(self, field, definitions):
         """
@@ -87,7 +86,7 @@ class MockSource(relations.Source):
 
         for creating in model._each("create"):
 
-            values = creating._record.write({})
+            values = creating._record.create({})
 
             self.ids[model.NAME] += 1
 
@@ -130,7 +129,7 @@ class MockSource(relations.Source):
         likes = []
 
         for record in self.data[model.NAME].values():
-            if model._record.match(record, model._label, model._like, parents):
+            if model._record.like(record, model._label, model._like, parents):
                 likes.append(record)
 
         return likes
@@ -170,7 +169,7 @@ class MockSource(relations.Source):
         matches = 0
 
         for record in values:
-            if model._record.satisfy(record):
+            if model._record.retrieve(record):
                 matches += 1
 
         return matches
@@ -187,7 +186,7 @@ class MockSource(relations.Source):
         matches = []
 
         for record in values:
-            if model._record.satisfy(record):
+            if model._record.retrieve(record):
                 matches.append(record)
 
         if model._mode == "one" and len(matches) > 1:
@@ -236,19 +235,6 @@ class MockSource(relations.Source):
 
         return labels
 
-    def field_update(self, field, values, changed=None):
-        """
-        Updates values with the field's that changed
-        """
-
-        if not field.readonly:
-            if field.replace and not field.changed():
-                field.value = field.default() if callable(field.default) else field.default
-            if changed is None or field.changed() == changed:
-                value = field.export()
-                values[field.store] = value
-                field.original = value
-
     def model_update(self, model):
         """
         Executes the update
@@ -260,11 +246,10 @@ class MockSource(relations.Source):
 
         if model._action == "retrieve" and model._record._action == "update":
 
-            values = {}
-            self.record_update(model._record, values, changed=True)
+            values = model._record.mass({})
 
             for data in self.data[model.NAME].values():
-                if model._record.satisfy(data):
+                if model._record.retrieve(data):
                     updated += 1
                     data.update(self.extract(model, copy.deepcopy(values)))
 
@@ -272,10 +257,7 @@ class MockSource(relations.Source):
 
             for updating in model._each("update"):
 
-                values = {}
-                self.record_update(updating._record, values, changed=True)
-
-                self.data[model.NAME][updating[model._id]].update(self.extract(updating, values))
+                self.data[model.NAME][updating[model._id]].update(self.extract(updating, updating._record.update({})))
 
                 updated += 1
 
@@ -299,7 +281,7 @@ class MockSource(relations.Source):
         if model._action == "retrieve":
 
             for id, record in self.data[model.NAME].items():
-                if model._record.satisfy(record):
+                if model._record.retrieve(record):
                     ids.append(id)
 
         elif model._id:

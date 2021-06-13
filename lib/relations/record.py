@@ -146,24 +146,49 @@ class Record:
 
         raise RecordError(self, f"unknown criterion '{criterion}'")
 
-    def satisfy(self, values):
+    def export(self):
+        """
+        Exports value by name
+        """
+
+        return {field.name: field.export() for field in self._order}
+
+    def create(self, values):
+        """
+        Writes values for create
+        """
+
+        inject = []
+
+        for field in self._order:
+            if field.inject:
+                inject.append(field)
+            else:
+                field.create(values)
+
+        for field in inject:
+            field.create(values[self._names[field.inject.split('__')[0]].store])
+
+        return values
+
+    def retrieve(self, values):
         """
         Sees if a record satisfies criteria in a dict
         """
 
         for field in self._order:
-            if not field.satisfy(values):
+            if not field.retrieve(values):
                 return False
 
         return True
 
-    def match(self, values, label, like, parents):
+    def like(self, values, label, like, parents):
         """
-        Sees if a record satisfies criteria in a dict
+        Sees if a record matches a like value
         """
 
         for field in label:
-            if self._names[field].match(values, like, parents):
+            if self._names[field].like(values, like, parents):
                 return True
 
         return False
@@ -179,16 +204,9 @@ class Record:
             else:
                 field.read(values)
 
-    def export(self):
+    def update(self, values):
         """
-        Exports value by name
-        """
-
-        return {field.name: field.export() for field in self._order}
-
-    def write(self, values, update=False):
-        """
-        Writes values to dict (if not readonly)
+        Writes values for create
         """
 
         inject = []
@@ -197,9 +215,35 @@ class Record:
             if field.inject:
                 inject.append(field)
             else:
-                field.write(values, update=update)
+                field.update(values)
 
         for field in inject:
-            field.write(values[self._names[field.inject.split('__')[0]].store])
+            if field.delta() or field.refresh:
+                store = field.inject.split('__')[0]
+                if self._names[store].store not in values:
+                    self._names[store].write(values)
+                field.update(values[self._names[store].store])
+
+        return values
+
+    def mass(self, values):
+        """
+        Writes values for create
+        """
+
+        inject = []
+
+        for field in self._order:
+            if field.inject:
+                inject.append(field)
+            else:
+                field.mass(values)
+
+        for field in inject:
+            if field.changed or field.refresh:
+                store = field.inject.split('__')[0]
+                if self._names[store].store not in values:
+                    self._names[store].write(values)
+                field.mass(values[self._names[field.inject.split('__')[0]].store])
 
         return values

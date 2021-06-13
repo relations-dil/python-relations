@@ -741,7 +741,7 @@ class Model(ModelIdentity):
         field = 0
 
         for value in args:
-            while record._order[field].readonly or record._order[field].name in self._related:
+            while record._order[field].auto or record._order[field].name in self._related:
                 field += 1
             record[field] = value
             field += 1

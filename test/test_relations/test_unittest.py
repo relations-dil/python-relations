@@ -112,8 +112,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.ids, {"check": 0})
         self.assertEqual(self.source.data, {"check": {}})
-        self.assertTrue(model._fields._names["id"].auto_increment)
-        self.assertTrue(model._fields._names["id"].readonly)
+        self.assertTrue(model._fields._names["id"].auto)
 
     def test_field_define(self):
 
@@ -429,49 +428,6 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.many().labels().labels, {
             1: ["1.2.3.4"]
         })
-
-    def test_field_update(self):
-
-        # Standard
-
-        field = relations.Field(int, name="id")
-        self.source.field_init(field)
-        values = {}
-        field.value = 1
-        self.source.field_update(field, values)
-        self.assertEqual(values, {"id": 1})
-        self.assertFalse(field.changed())
-
-        # replace
-
-        field = relations.Field(int, name="id", default=-1, replace=True)
-        field.value = 1
-        values = {}
-        self.source.field_update(field, values)
-        self.assertEqual(values, {'id': 1})
-
-        field.original = 1
-        values = {}
-        self.source.field_update(field, values)
-        self.assertEqual(values, {'id': -1})
-        self.assertEqual(field.value, -1)
-
-        # not changed
-
-        field = relations.Field(int, name="id")
-        values = {}
-        self.source.field_update(field, values, changed=True)
-        self.assertEqual(values, {})
-        self.assertFalse(field.changed())
-
-        # readonly
-
-        field = relations.Field(int, name="id", readonly=True)
-        self.source.field_init(field)
-        values = {}
-        field.value = 1
-        self.source.field_update( field, values)
-        self.assertEqual(values, {})
 
     def test_model_update(self):
 

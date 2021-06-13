@@ -40,13 +40,16 @@ class Field: # pylint: disable=too-many-instance-attributes
     _none = None      # Original setting before override
     options = None    # Possible values (if not None)
     validation = None # How to validate values (if not None)
-    readonly = None   # Whether this field is readonly
     length = None     # Length of the value
     format = None     # How to format the value instructions
 
     value = None      # Value of the field
     original = None   # Original value (as export)
-    replace = None    # Whether to replace the value with default on update
+    changed = None    # Whether an field has changed for update only
+    readonly = None   # Whether or not a field is readnoly
+    auto = None       # Whether a field can be auto generated
+    refresh = None    # Whether a field is to be refreshed if not touched
+
     criteria = None   # Values for searching
 
     # Operators supported and whether allwo multiple values
@@ -199,14 +202,14 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
 
-        # If extract is set, field is readonly
+        # If extract is set, field is auto
 
         if self.extract is not None:
-            self.readonly = True
+            self.auto = True
 
     def __setattr__(self, name, value):
         """
-        Use to set field values so everything is cost correctly
+        Use to set field values so everything is cast correctly
         """
 
         if name == "name":
@@ -227,7 +230,9 @@ class Field: # pylint: disable=too-many-instance-attributes
                 self.store = value
 
         if name == "value":
+
             value = self.valid(value)
+            self.changed = True
 
         object.__setattr__(self, name, value)
 
@@ -382,7 +387,56 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         values[place] = value
 
-    def satisfy(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
+    def export(self):
+        """
+        Create a dictionary of object attributes
+        """
+
+        if self.value is None or self.attr is None:
+            return self.value
+
+        values = {}
+
+        if callable(self.attr):
+
+            self.attr(values, self.value)
+
+        else:
+
+            for attr, store in self.attr.items():
+                attr = getattr(self.value, attr)
+                self.set(values, store, attr() if callable(attr) else attr)
+
+        return values
+
+    def delta(self, mass=False):
+        """
+        Detect if a field is different from original
+        """
+
+        return self.export() != self.original
+
+    def write(self, values):
+        """
+        Writes values to dict for storage
+        """
+
+        value = self.export()
+        if self.inject:
+            self.set(values, self.inject.split('__')[1:], value)
+        else:
+            values[self.store] = value
+
+    def create(self, values):
+        """
+        Writes values to dict for creation
+        """
+
+        if not self.auto:
+            self.write(values)
+            self.original = self.export()
+
+    def retrieve(self, values): # pylint: disable=too-many-return-statements,too-many-branches)
         """
         Check if this value satisfies our criteria
         """
@@ -440,7 +494,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return True
 
-    def match(self, values, like, parents):
+    def like(self, values, like, parents):
         """
         Check if this value matchees a model's like or parents match
         """
@@ -462,35 +516,6 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return str(like).lower() in str(value).lower()
 
-    def export(self):
-        """
-        Create a dictionary of object attributes
-        """
-
-        if self.value is None or self.attr is None:
-            return self.value
-
-        values = {}
-
-        if callable(self.attr):
-
-            self.attr(values, self.value)
-
-        else:
-
-            for attr, store in self.attr.items():
-                attr = getattr(self.value, attr)
-                self.set(values, store, attr() if callable(attr) else attr)
-
-        return values
-
-    def changed(self):
-        """
-        Detect if a field has changed
-        """
-
-        return self.export() != self.original
-
     def read(self, values):
         """
         Loads the value from storage
@@ -502,22 +527,6 @@ class Field: # pylint: disable=too-many-instance-attributes
             self.value = self.valid(values.get(self.store))
 
         self.original = self.export()
-
-    def write(self, values, update=False):
-        """
-        Writes values to dict (if not readonly)
-        """
-
-        if not self.readonly:
-            if update and self.replace and not self.changed():
-                self.value = self.default() if callable(self.default) else self.default
-            value = self.export()
-            if self.inject:
-                self.set(values, self.inject.split('__')[1:], value)
-            else:
-                values[self.store] = value
-
-            self.original = value
 
     def labels(self, path=None):
         """
@@ -539,3 +548,30 @@ class Field: # pylint: disable=too-many-instance-attributes
             return [self.get(values, path)]
 
         return [self.get(values, label) for label in self.label]
+
+    def update(self, values):
+        """
+        Writes values to dict for updates, whether a record has its values changed
+        """
+
+        if self.refresh and not self.delta():
+            self.value = self.default() if callable(self.default) else self.default
+
+        if self.delta():
+            self.write(values)
+            self.original = self.export()
+
+    def mass(self, values):
+        """
+        Writes values to dict for a mass update, whether any field has been set
+        """
+
+        if self.refresh and not self.changed:
+            self.value = self.default() if callable(self.default) else self.default
+
+        if self.changed:
+
+            if self.inject:
+                raise FieldError(self, f"no mass update with inject")
+
+            self.write(values)
