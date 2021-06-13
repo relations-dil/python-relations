@@ -144,36 +144,6 @@ class TestRecord(unittest.TestCase):
 
         self.assertRaisesRegex(relations.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 
-    def test_satisfy(self):
-
-        self.record.filter("id", "1")
-        self.record.filter("name", "unit")
-
-        self.assertTrue(self.record.satisfy({"_id": 1, "_name": "unit"}))
-        self.assertFalse(self.record.satisfy({"_id": 2, "_name": "unit"}))
-        self.assertFalse(self.record.satisfy({"_id": 1, "_name": "test"}))
-
-    def test_match(self):
-
-        self.assertTrue(self.record.match({"_id": 1, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
-        self.assertTrue(self.record.match({"_id": 2, "_name": "unit"}, ["id", "name"], "unit", {'_id': [1]}))
-        self.assertFalse(self.record.match({"_id": 2, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
-
-    def test_read(self):
-
-        self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
-
-        self.record.append(self.things)
-        self.record.append(self.push)
-
-        self.record.read({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
-
-        self.assertEqual(self.record.id, 1)
-        self.assertEqual(self.record.name, "unit")
-        self.assertEqual(self.record.things, {"a":{"b": [{"1": "yep"}]}})
-        self.assertEqual(self.record.push, "yep")
-
     def test_export(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
@@ -197,7 +167,7 @@ class TestRecord(unittest.TestCase):
             }
         })
 
-    def test_write(self):
+    def test_create(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
         self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
@@ -210,4 +180,75 @@ class TestRecord(unittest.TestCase):
         self.record.things = {}
         self.record.push = "yep"
 
-        self.assertEqual(self.record.write({}), {"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
+        self.assertEqual(self.record.create({}), {"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
+
+    def test_retrieve(self):
+
+        self.record.filter("id", "1")
+        self.record.filter("name", "unit")
+
+        self.assertTrue(self.record.retrieve({"_id": 1, "_name": "unit"}))
+        self.assertFalse(self.record.retrieve({"_id": 2, "_name": "unit"}))
+        self.assertFalse(self.record.retrieve({"_id": 1, "_name": "test"}))
+
+    def test_like(self):
+
+        self.assertTrue(self.record.like({"_id": 1, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
+        self.assertTrue(self.record.like({"_id": 2, "_name": "unit"}, ["id", "name"], "unit", {'_id': [1]}))
+        self.assertFalse(self.record.like({"_id": 2, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
+
+    def test_read(self):
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
+        self.record.read({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
+
+        self.assertEqual(self.record.id, 1)
+        self.assertEqual(self.record.name, "unit")
+        self.assertEqual(self.record.things, {"a":{"b": [{"1": "yep"}]}})
+        self.assertEqual(self.record.push, "yep")
+
+    def test_update(self):
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
+        self.assertEqual(self.record.update({}), {})
+
+        self.record.id = 1
+        self.record.name = "unit"
+        self.record.things = {}
+        self.record.push = "yep"
+
+        self.things.original = {}
+
+        self.assertEqual(self.record.update({}), {"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}})
+
+    def test_mass(self):
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
+        self.assertEqual(self.record.mass({}), {})
+
+        self.record.id = 1
+        self.record.name = "unit"
+
+        self.assertEqual(self.record.mass({}), {"_id": 1, "_name": "unit"})
+
+        self.record.things = {}
+        self.record.push = "yep"
+
+        self.things.changed = False
+
+        self.assertRaisesRegex(relations.FieldError, "no mass update with inject", self.record.mass, {})

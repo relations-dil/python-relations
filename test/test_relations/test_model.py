@@ -295,8 +295,7 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(model._fields._names["id"].name, "id")
         self.assertEqual(model._fields._names["id"].kind, int)
-        self.assertTrue(model._fields._names["id"].auto_increment)
-        self.assertTrue(model._fields._names["id"].readonly)
+        self.assertTrue(model._fields._names["id"].auto)
         self.assertEqual(model._fields._names["name"].name, "name")
         self.assertEqual(model._fields._names["name"].kind, str)
         self.assertNotIn("nope", model._fields)

@@ -129,6 +129,20 @@ class TestSource(unittest.TestCase):
 
         mock_field.assert_called_once_with(record)
 
+    def test_field_mass(self):
+
+        self.source.field_mass(None)
+
+    @unittest.mock.patch("relations.Source.field_mass")
+    def test_record_mass(self, mock_field):
+
+        record = unittest.mock.MagicMock()
+        record._order = [record]
+
+        self.source.record_mass(record)
+
+        mock_field.assert_called_once_with(record)
+
     def test_model_update(self):
 
         self.source.model_update(None)
