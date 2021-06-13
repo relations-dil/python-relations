@@ -124,6 +124,18 @@ class Source:
         for field in record._order:
             self.field_update(field, *args, **kwargs)
 
+    def field_mass(self, field, *args, **kwargs):
+        """
+        mass the field
+        """
+
+    def record_mass(self, record, *args, **kwargs):
+        """
+        mass the record
+        """
+        for field in record._order:
+            self.field_mass(field, *args, **kwargs)
+
     def model_update(self, model):
         """
         update the model
