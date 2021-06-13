@@ -77,6 +77,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         'create',
         'define',
         'delete',
+        'export',
         'filter',
         'insert',
         'labels',
@@ -478,7 +479,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         Create a dictionary of object attributes
         """
 
-        if self.value is None:
+        if self.value is None or self.attr is None:
             return self.value
 
         values = {}

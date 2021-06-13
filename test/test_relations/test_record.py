@@ -1,6 +1,8 @@
 import unittest
 import unittest.mock
 
+import ipaddress
+
 import relations
 
 class TestRecordError(unittest.TestCase):
@@ -171,6 +173,29 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(self.record.name, "unit")
         self.assertEqual(self.record.things, {"a":{"b": [{"1": "yep"}]}})
         self.assertEqual(self.record.push, "yep")
+
+    def test_export(self):
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.ip = relations.Field(ipaddress.IPv4Address, name="ip", attr={"compressed": "address", "__int__": "value"})
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+        self.record.append(self.ip)
+
+        self.record.read({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}, "ip": "1.2.3.4"})
+
+        self.assertEqual(self.record.export(), {
+            "id": 1,
+            "name": "unit",
+            "things": {"a":{"b": [{"1": "yep"}]}},
+            "push": "yep",
+            "ip": {
+                "address": "1.2.3.4",
+                "value": 16909060
+            }
+        })
 
     def test_write(self):
 
