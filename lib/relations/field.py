@@ -32,7 +32,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     init = None       # Attributes to create with JSON
     label = None      # Attributes to label with JSON
 
-    extract = None    # Field to extract
+    extract = None    # Fields to extract
     inject = None     # Field to inject
 
     default = None    # Default value
@@ -202,10 +202,10 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
 
-        # If extract is set, field is auto
+        # If extract is set make sure it's an array
 
-        if self.extract is not None:
-            self.auto = True
+        if isinstance(self.extract, str):
+            self.extract = [self.extract]
 
     def __setattr__(self, name, value):
         """
@@ -494,14 +494,14 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return True
 
-    def like(self, values, like, parents):
+    def like(self, values, like, parents, path=None):
         """
         Check if this value matchees a model's like or parents match
         """
 
         value = values.get(self.store)
 
-        if self.label is not None:
+        if self.label is not None and path is None:
             if not value:
                 return False
             for store in self.label:
@@ -509,7 +509,10 @@ class Field: # pylint: disable=too-many-instance-attributes
                     return True
             return False
 
-        value = self.valid(value)
+        if path:
+            value = self.get(value, path)
+        else:
+            value = self.valid(value)
 
         if self.store in parents:
             return value in parents[self.store]

@@ -94,10 +94,10 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.init, {"exploded": "exploded"})
         self.assertEqual(field.label, ["packed"])
 
-        field = relations.Field(str, extract=True)
+        field = relations.Field(str, extract="field__from")
         self.assertEqual(field.kind, str)
         self.assertIsNone(field.default)
-        self.assertTrue(field.auto)
+        self.assertEqual(field.extract, ["field__from"])
 
         self.assertRaisesRegex(relations.FieldError, "1 default not <class 'str'> for opt", relations.Field, str, name="opt", default=1)
         self.assertRaisesRegex(relations.FieldError, "1 option not <class 'str'> for opt", relations.Field, str, name="opt", options=[1])
@@ -470,6 +470,7 @@ class TestField(unittest.TestCase):
 
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, label="address")
         self.assertTrue(field.like({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}))
+        self.assertTrue(field.like({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}, "address"))
         self.assertFalse(field.like({"ip": {"address": '1.2.3.4'}}, "1.3.2.", {}))
         self.assertFalse(field.like({}, "1.3.2.4", {}))
 

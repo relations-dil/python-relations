@@ -137,7 +137,7 @@ class ModelIdentity:
                     continue
                 if field.kind in (int, str):
                     label.append(field.name)
-                    if field.kind == str and field._none is None and not field.extract:
+                    if field.kind == str and field._none is None:
                         field.none = False
                 if field.kind == str:
                     break
@@ -193,7 +193,7 @@ class ModelIdentity:
 
         for unique in self._unique:
             for field in self._unique[unique]:
-                if field not in self._fields:
+                if field.split('__')[0] not in self._fields:
                     raise ModelError(self, f"cannot find field {field} from unique {unique}")
 
         index = self.INDEX or {}
@@ -213,14 +213,8 @@ class ModelIdentity:
 
         for index in self._index:
             for field in self._index[index]:
-                if field not in self._fields:
+                if field.split('__')[0] not in self._fields:
                     raise ModelError(self, f"cannot find field {field} from index {index}")
-
-        # Make sure all extract fields reference actual fields that are lists or dicts
-
-        for field, extract in [(field, field.extract.split('__')[0]) for field in self._fields._order if field.extract]:
-            if extract not in self._fields:
-                raise relations.FieldError(field, f"cannot find field {extract} from extract {field.extract}")
 
         # Make sure all inject fields reference actual fields that are lists or dicts
 
@@ -280,7 +274,7 @@ class ModelIdentity:
 
             field = sort[1:] if sort[0] in ['-', '+'] else sort
 
-            if field not in self._fields:
+            if field.split('__')[0] not in self._fields:
                 raise ModelError(self, f"unknown sort field {field}")
 
             ordering.append(sort if sort != field else f"+{sort}")

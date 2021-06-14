@@ -72,10 +72,8 @@ class MockSource(relations.Source):
         """
 
         for extracting in [field for field in model._fields._order if field.extract]:
-            path = extracting.extract.split('__')
-            extracted = model._fields._names[path.pop(0)]
-            if extracted.store in values:
-                values[extracting.store] = extracting.get(values[extracted.store], path)
+            for extract in extracting.extract:
+                values[f"{extracting.store}__{extract}"] = extracting.get(values.get(extracting.store), extract)
 
         return values
 
