@@ -250,6 +250,7 @@ class TestField(unittest.TestCase):
 
         self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
         self.assertEqual(relations.Field.get({}, "things__a__b__0___1"), None)
+        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
 
     def test_set(self):
 

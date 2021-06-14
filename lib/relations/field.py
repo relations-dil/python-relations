@@ -376,7 +376,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         values, place = cls.find(values, path)
 
         if isinstance(values, list):
-            if place > len(values) - 1:
+            if (place if place > -1 else abs(place + 1)) > len(values) - 1:
                 return None
             return values[place]
 
