@@ -97,7 +97,7 @@ class TestField(unittest.TestCase):
         field = relations.Field(str, extract="field__from")
         self.assertEqual(field.kind, str)
         self.assertIsNone(field.default)
-        self.assertEqual(field.extract, ["field__from"])
+        self.assertEqual(field.extract, {"field__from": str})
 
         self.assertRaisesRegex(relations.FieldError, "1 default not <class 'str'> for opt", relations.Field, str, name="opt", default=1)
         self.assertRaisesRegex(relations.FieldError, "1 option not <class 'str'> for opt", relations.Field, str, name="opt", options=[1])

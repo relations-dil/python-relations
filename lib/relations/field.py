@@ -202,10 +202,15 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
 
-        # If extract is set make sure it's an array
+        # If extract is str, turn into list
 
         if isinstance(self.extract, str):
             self.extract = [self.extract]
+
+        # If extract is list, turn into a dict, assuming str
+
+        if isinstance(self.extract, list):
+            self.extract = {extract: str for extract in self.extract}
 
     def __setattr__(self, name, value):
         """
