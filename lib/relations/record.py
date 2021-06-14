@@ -188,7 +188,7 @@ class Record:
         """
 
         for field in label:
-            field= field.split('__')
+            field = field.split('__')
             if self._names[field[0]].like(values, like, parents, field[1:]):
                 return True
 
