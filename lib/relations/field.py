@@ -101,7 +101,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         'write'
     ]
 
-    def __init__(self, kind, *args, **kwargs): # pylint: disable=too-many-branches
+    def __init__(self, kind, *args, **kwargs): # pylint: disable=too-many-branches,too-many-statements
         """
         Set the name and what to cast it as and everything else be free form
         """
