@@ -104,8 +104,12 @@ class Net(ModelTest):
     ip = ipaddress.IPv4Address, {
         "attr": {"compressed": "address", "__int__": "value"},
         "init": "address",
-        "label": "address"
+        "label": "address",
+        "extract": ["address", "value"]
     }
+
+    LABEL = "ip__address"
+    INDEX = "ip__address"
 
 relations.OneToMany(Unit, Test)
 relations.OneToOne(Test, Case)
@@ -169,6 +173,8 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(things._fields._names["name"].storage, "id")
         self.assertIsNone(things._id)
 
+        Net.thy()
+
         test = Test.many()
         self.assertEqual(test._label, ["unit_id", "name"])
 
@@ -209,13 +215,6 @@ class TestModelIdentity(unittest.TestCase):
             INDEX = "nope"
 
         self.assertRaisesRegex(relations.ModelError, "cannot find field nope from index nope", Index.thy)
-
-        class Extract(relations.ModelIdentity):
-            id = int
-            name = str
-            pull = str,{"extract": "nope__value"}
-
-        self.assertRaisesRegex(relations.FieldError, "cannot find field nope from extract nope__value", Extract.thy)
 
         class Inject(relations.ModelIdentity):
             id = int

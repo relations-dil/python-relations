@@ -193,9 +193,15 @@ class TestRecord(unittest.TestCase):
 
     def test_like(self):
 
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.record.append(self.things)
+
         self.assertTrue(self.record.like({"_id": 1, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
         self.assertTrue(self.record.like({"_id": 2, "_name": "unit"}, ["id", "name"], "unit", {'_id': [1]}))
         self.assertFalse(self.record.like({"_id": 2, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
+
+        self.assertTrue(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0___1"], "y", {'things': [1]}))
+        self.assertFalse(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0___1"], "n", {'things': [1]}))
 
     def test_read(self):
 
