@@ -413,6 +413,10 @@ class TestModel(unittest.TestCase):
         model.id = 2
         self.assertEqual(model._record['id'], 2)
 
+        net = Net("1.2.3.4")
+        net.ip__address = "1.2.3.4"
+        self.assertEqual(net._record['ip'].compressed, "1.2.3.4")
+
         # multiple, with records
 
         models = UnitTest([{"name": "unit"}, {"name": "test"}])
@@ -477,6 +481,10 @@ class TestModel(unittest.TestCase):
         test.update()
 
         self.assertEqual(test.case.name, "whatever")
+
+        net = Net("1.2.3.4")
+
+        self.assertEqual(net.ip__address, "1.2.3.4")
 
         def get():
 

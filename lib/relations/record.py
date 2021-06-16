@@ -51,10 +51,17 @@ class Record:
         Use to set field values directly
         """
 
-        if name[0] != '_' and name in self._names:
+        if name[0] != '_' and name in (self._names or []):
             self._names[name].value = value
-        else:
-            self.__dict__[name] = value
+            return
+
+        apply = name.split('__')
+
+        if apply[0] in (self._names or []):
+            self._names[apply[0]].apply(apply[1:], value)
+            return
+
+        self.__dict__[name] = value
 
     def __getattr__(self, name):
         """
@@ -63,6 +70,11 @@ class Record:
 
         if name in (self._names or []):
             return self._names[name].value
+
+        access = name.split('__')
+
+        if access[0] in (self._names or []):
+            return self._names[access[0]].access(access[1:])
 
         raise AttributeError(f"'{self}' object has no attribute '{name}'")
 
@@ -112,6 +124,12 @@ class Record:
             self._names[key].value = value
             return
 
+        apply = key.split('__')
+
+        if apply[0] in (self._names or []):
+            self._names[apply[0]].apply(apply[1:], value)
+            return
+
         raise RecordError(self, f"unknown field '{key}'")
 
     def __getitem__(self, key):
@@ -125,6 +143,11 @@ class Record:
 
         if key in self._names:
             return self._names[key].value
+
+        access = key.split('__')
+
+        if access[0] in (self._names or []):
+            return self._names[access[0]].access(access[1:])
 
         raise RecordError(self, f"unknown field '{key}'")
 

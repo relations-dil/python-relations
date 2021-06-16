@@ -72,12 +72,25 @@ class TestRecord(unittest.TestCase):
         self.record.id = "1"
         self.assertEqual(self.id.value, 1)
 
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.record.append(self.things)
+        self.record.things__a__b__0___1 = "yep"
+        self.assertEqual(self.things.value, {"a":{"b": [{"1": "yep"}]}})
+
     def test___getattr__(self):
+
         self.id.value = "1"
         self.assertEqual(self.record.id, 1)
 
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.record.append(self.things)
+        self.things.value = {"a":{"b": [{"1": "yep"}]}}
+        self.assertEqual(self.record.things__a__b__0___1, "yep")
+
         def nope():
             self.record.nope
+
+        self.assertRaisesRegex(AttributeError, "has no attribute 'nope'", nope)
 
     def test___len__(self):
 
@@ -109,6 +122,11 @@ class TestRecord(unittest.TestCase):
         self.assertEqual(self.id.value, 1)
         self.assertEqual(self.name.value, "unit")
 
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.record.append(self.things)
+        self.record['things__a__b__0___1'] = "yep"
+        self.assertEqual(self.things.value, {"a":{"b": [{"1": "yep"}]}})
+
         def nope():
             self.record['nope'] = 1
 
@@ -119,6 +137,11 @@ class TestRecord(unittest.TestCase):
         self.id.value = "1"
         self.assertEqual(self.record[0], 1)
         self.assertEqual(self.record['id'], 1)
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.record.append(self.things)
+        self.things.value = {"a":{"b": [{"1": "yep"}]}}
+        self.assertEqual(self.record["things__a__b__0___1"], "yep")
 
         def nope():
             self.record['nope']
