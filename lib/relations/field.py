@@ -257,7 +257,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if self.init is not None and callable(self.init):
                 value = self.init(value)
             elif self.init is not None and isinstance(value, dict):
-                value = self.kind(**{init: value[store] for init, store in self.init.items()})
+                value = self.kind(**{init: self.get(value, store) for init, store in self.init.items()})
             else:
                 value = self.kind(value)
 
@@ -365,6 +365,16 @@ class Field: # pylint: disable=too-many-instance-attributes
         return values, place
 
     @classmethod
+    def set(cls, values, path, value):
+        """
+        Retrieve value at path filling in what's expected
+        """
+
+        values, place = cls.find(values, path, write=True)
+
+        values[place] = value
+
+    @classmethod
     def get(cls, values, path):
         """
         Retrieve value at path filling in what's expected
@@ -381,16 +391,6 @@ class Field: # pylint: disable=too-many-instance-attributes
             return values[place]
 
         return values.get(place)
-
-    @classmethod
-    def set(cls, values, path, value):
-        """
-        Retrieve value at path filling in what's expected
-        """
-
-        values, place = cls.find(values, path, write=True)
-
-        values[place] = value
 
     def export(self):
         """
@@ -413,6 +413,32 @@ class Field: # pylint: disable=too-many-instance-attributes
                 self.set(values, store, attr() if callable(attr) else attr)
 
         return values
+
+    def apply(self, path, value):
+        """
+        Apply value at path
+        """
+
+        if self.kind in [bool, int, float, str]:
+            raise FieldError(self, f"no apply for {self.kind.__name__}")
+
+        values = self.export()
+
+        if values is None:
+            values = [] if self.kind == list else {}
+
+        self.set(values, path, value)
+        self.value = values
+
+    def access(self, path):
+        """
+        Access value at path
+        """
+
+        if self.kind in [bool, int, float, str]:
+            raise FieldError(self, f"no access for {self.kind.__name__}")
+
+        return self.get(self.export(), path)
 
     def delta(self):
         """
@@ -532,7 +558,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.inject:
             self.value = self.get(values, self.inject.split('__')[1:])
         else:
-            self.value = self.valid(values.get(self.store))
+            self.value = values.get(self.store)
 
         self.original = self.export()
 

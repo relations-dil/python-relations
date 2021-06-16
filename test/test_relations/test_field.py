@@ -145,6 +145,9 @@ class TestField(unittest.TestCase):
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
         self.assertEqual(field.valid('1.2.3.4').compressed, '1.2.3.4')
 
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, init={"address": "ip__address"})
+        self.assertEqual(field.valid({"ip": {"address": '1.2.3.4'}}).compressed, '1.2.3.4')
+
         field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, init="address")
         self.assertIsNone(field.valid(None))
 
@@ -246,17 +249,17 @@ class TestField(unittest.TestCase):
         relations.Field.find(values, "things__a__b__0___1", write=True)
         self.assertEqual(values, {"things": {"a":{"b": [{}]}}})
 
-    def test_get(self):
-
-        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
-        self.assertEqual(relations.Field.get({}, "things__a__b__0___1"), None)
-        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
-
     def test_set(self):
 
         values = {}
         relations.Field.set(values, "things__a__b__-2___1", "yep")
         self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}, None]}}})
+
+    def test_get(self):
+
+        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
+        self.assertEqual(relations.Field.get({}, "things__a__b__0___1"), None)
+        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
 
     def test_export(self):
 
@@ -292,6 +295,26 @@ class TestField(unittest.TestCase):
             "max_address": "1.2.3.255",
             "max_value": 16909311
         })
+
+    def test_apply(self):
+
+        field = relations.Field(int)
+        field.value = 1
+        self.assertRaisesRegex(relations.FieldError, "no apply for int", field.apply, 0, 0)
+
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, init={"address": "ip__address"})
+        field.apply("ip__address", "1.2.3.4")
+        self.assertEqual(field.access("ip__address"), "1.2.3.4")
+
+    def test_access(self):
+
+        field = relations.Field(int)
+        field.value = 1
+        self.assertRaisesRegex(relations.FieldError, "no access for int", field.access, 0)
+
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
+        field.value = "1.2.3.4"
+        self.assertEqual(field.access("ip__address"), "1.2.3.4")
 
     def test_delta(self):
 

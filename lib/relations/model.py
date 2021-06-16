@@ -438,7 +438,7 @@ class Model(ModelIdentity):
         Use to set field values directly
         """
 
-        if name[0] != '_' and name == name.lower() and name in (object.__getattribute__(self, '_fields') or []):
+        if name[0] != '_' and name == name.lower() and name.split('__')[0] in (object.__getattribute__(self, '_fields') or []):
 
             self._ensure()
 
@@ -449,7 +449,8 @@ class Model(ModelIdentity):
                     raise ModelError(self, "no record")
             elif self._mode == "one":
                 self._record[name] = value
-                self._propagate(name, value)
+                if '__' not in name:
+                    self._propagate(name, value)
             else:
                 if self._models:
                     for model in self._models:
@@ -480,7 +481,7 @@ class Model(ModelIdentity):
         Use to get field values directly
         """
 
-        if name[0] != '_' and name == name.lower() and name in (object.__getattribute__(self, '_fields') or []):
+        if name[0] != '_' and name == name.lower() and name.split('__')[0] in (object.__getattribute__(self, '_fields') or []):
 
             self._ensure()
 
