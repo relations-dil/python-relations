@@ -117,6 +117,8 @@ relations.OneToOne(Test, Run)
 
 class TestModelIdentity(unittest.TestCase):
 
+    maxDiff = None
+
     def test_underscore(self):
 
         self.assertEqual(People.underscore("SomePeople"), "some_people")
@@ -254,6 +256,45 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(test._ancestor("unit_id").Parent, Unit)
         self.assertIsNone(test._ancestor("nope"))
 
+    def test_define(self):
+
+        people = People.thy()
+
+        self.assertEqual(people.define(),{
+            "name": "people",
+            "title": "People",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                },
+                {
+                    "name": "gender",
+                    "kind": "str",
+                    "store": "gender",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "default": "free",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        })
 
 class TestModel(unittest.TestCase):
 

@@ -58,6 +58,27 @@ class ModelIdentity:
     _index = None  # Actual indexes
     _order = None  # Default sort order
 
+    DEFINE = [
+        "id",
+        "unique",
+        "index"
+    ]
+
+    UNDEFINE = [
+        "SOURCE",
+        "ID",
+        "LABEL",
+        "LIST",
+        "UNIQUE",
+        "INDEX",
+        "ORDER",
+        "CHUNK",
+        "PARENTS",
+        "CHILDREN",
+        "SISTERS",
+        "BROTHERS"
+    ]
+
     @staticmethod
     def underscore(name):
         """
@@ -291,6 +312,25 @@ class ModelIdentity:
                 return relation
 
         return None
+
+    def define(self):
+        """
+        define the identity
+        """
+
+        definition = {
+            "fields": self._fields.define(),
+        }
+
+        for attr in self.DEFINE:
+            if getattr(self, f"_{attr}") is not None:
+                definition[attr] = getattr(self, f"_{attr}")
+
+        for attr in self.__dict__:
+            if attr[0] != '_' and attr == attr.upper() and attr not in self.UNDEFINE and getattr(self, attr) is not None:
+                definition[attr.lower()] = getattr(self, attr)
+
+        return definition
 
 class Model(ModelIdentity):
     """

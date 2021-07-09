@@ -11,6 +11,7 @@ from relations.labels import Labels
 from relations.record import Record, RecordError
 from relations.model import Model, ModelIdentity, ModelError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany
+from relations.migrations import Migrations
 
 INDEX = re.compile(r'^-?\d+$')
 
