@@ -15,7 +15,8 @@ setup(
         'relations.labels',
         'relations.model',
         'relations.record',
-        'relations.relation'
+        'relations.relation',
+        'relations.migrations'
     ],
     install_requires=[]
 )

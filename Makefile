@@ -40,7 +40,8 @@ setup:
 	python -m relations.labels && \
 	python -m relations.model && \
 	python -m relations.record && \
-	python -m relations.relation"
+	python -m relations.relation && \
+	python -m relations.migrations"
 
 tag:
 	-git tag -a $(VERSION) -m "Version $(VERSION)"
