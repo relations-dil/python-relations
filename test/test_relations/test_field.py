@@ -136,8 +136,10 @@ class TestField(unittest.TestCase):
     def test_define(self):
 
         field = relations.Field(int, name="test", default=False)
-
         self.assertEqual(field.define(), {"kind": 'int', "name": "test", "store": "test", "none": False, "default": False})
+
+        field = relations.Field(int, name="test", default=int)
+        self.assertEqual(field.define(), {"kind": 'int', "name": "test", "store": "test", "none": False})
 
     def test_valid(self):
 

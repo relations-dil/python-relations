@@ -261,7 +261,10 @@ class Field: # pylint: disable=too-many-instance-attributes
         }
 
         for attr in self.__dict__:
-            if attr[0] != '_' and attr == attr.lower() and attr not in self.UNDEFINE and getattr(self, attr) is not None:
+            if (
+                attr[0] != '_' and attr == attr.lower() and attr not in self.UNDEFINE and
+                getattr(self, attr) is not None and not callable(getattr(self, attr))
+            ):
                 definition[attr] = getattr(self, attr)
 
         return definition
