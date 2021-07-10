@@ -1004,13 +1004,6 @@ class Model(ModelIdentity):
 
         return []
 
-    @classmethod
-    def define(cls, *args, **kwargs):
-        """
-        define the model
-        """
-        return relations.source(cls.SOURCE).model_define(cls, *args, **kwargs)
-
     def create(self, *args, **kwargs):
         """
         create the model

@@ -1323,17 +1323,6 @@ class TestModel(unittest.TestCase):
             }
         }])
 
-    def test_define(self):
-
-        Unit.define()
-
-        self.assertEqual(Unit.define(), {
-            "unit": {
-                "id": int,
-                "name": str
-            }
-        })
-
     def test_create(self):
 
         Unit("yep").create()

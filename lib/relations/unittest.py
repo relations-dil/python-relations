@@ -44,27 +44,6 @@ class MockSource(relations.Source):
         if model._id is not None and model._fields._names[model._id].auto_increment is None:
             model._fields._names[model._id].auto = True
 
-    def field_define(self, field, definitions):
-        """
-        define the field
-        """
-        definitions[field.store] = field.kind
-
-    def model_define(self, cls):
-        """
-        define the model
-        """
-
-        model = cls.thy()
-
-        definitions = {}
-
-        self.record_define(model._fields, definitions)
-
-        return {
-            model.NAME: definitions
-        }
-
     @staticmethod
     def extract(model, values):
         """

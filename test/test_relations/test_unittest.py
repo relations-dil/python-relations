@@ -113,23 +113,6 @@ class TestSource(unittest.TestCase):
         self.assertEqual(self.source.data, {"check": {}})
         self.assertTrue(model._fields._names["id"].auto)
 
-    def test_field_define(self):
-
-        field = relations.Field(int, store="_id")
-        self.source.field_init(field)
-        definitions = {}
-        self.source.field_define(field, definitions)
-        self.assertEqual(definitions, {"_id": int})
-
-    def test_model_define(self):
-
-        self.assertEqual(Simple.define(), {
-            "simple": {
-                "id": int,
-                "name": str
-            }
-        })
-
     def test_extract(self):
 
         self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0___1"], "yep")
