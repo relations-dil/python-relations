@@ -65,7 +65,7 @@ class Source:
         """
         define the record
         """
-        for field in record._order:
+        for field in record:
             self.field_define(field, *args, **kwargs)
 
     def model_define(self, model):

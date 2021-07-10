@@ -69,9 +69,8 @@ class TestSource(unittest.TestCase):
     def test_record_define(self, mock_field):
 
         record = unittest.mock.MagicMock()
-        record._order = [record]
 
-        self.source.record_define(record)
+        self.source.record_define([record])
 
         mock_field.assert_called_once_with(record)
 
