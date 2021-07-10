@@ -332,6 +332,17 @@ class ModelIdentity:
 
         return definition
 
+    def migrate(self, previous, definition=None):
+        """
+        migrates from a previous identity
+        """
+
+        if definition is None:
+            definition = self.define()
+
+        return relations.Migrations.model(previous, definition)
+
+
 class Model(ModelIdentity):
     """
     Main model class
@@ -1003,6 +1014,23 @@ class Model(ModelIdentity):
             return [model.export() for model in self._models]
 
         return []
+
+    @classmethod
+    def define(cls, *args, **kwargs):
+        """
+        define the model
+        """
+        return relations.source(cls.SOURCE).model_define(cls.thy().define(), *args, **kwargs)
+
+    @classmethod
+    def migrate(cls, migration, *args, **kwargs):
+        """
+        define the model
+        """
+        thy = cls.thy()
+        model = thy.define()
+
+        return relations.source(cls.SOURCE).model_migrate(model, thy.migrate(model, migration), *args, **kwargs)
 
     def create(self, *args, **kwargs):
         """

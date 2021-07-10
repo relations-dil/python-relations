@@ -113,6 +113,92 @@ class TestSource(unittest.TestCase):
         self.assertEqual(self.source.data, {"check": {}})
         self.assertTrue(model._fields._names["id"].auto)
 
+    def test_field_define(self):
+
+        field = relations.Field(int, store="_id")
+        self.source.field_init(field)
+        definitions = {}
+        self.source.field_define(field.define(), definitions)
+        self.assertEqual(definitions, {"_id": 'int'})
+
+    def test_model_define(self):
+
+        self.assertEqual(Simple.define(), {
+            "simple": {
+                "id": 'int',
+                "name": 'str'
+            }
+        })
+
+    def test_field_add(self):
+
+        field = relations.Field(int, store="_id")
+        self.source.field_init(field)
+        definitions = {}
+        self.source.field_add(field.define(), definitions)
+        self.assertEqual(definitions, {"add _id": 'int'})
+
+    def test_field_remove(self):
+
+        field = relations.Field(int, store="_id")
+        self.source.field_init(field)
+        definitions = {}
+        self.source.field_remove(field.define(), definitions)
+        self.assertEqual(definitions, {"remove _id": 'int'})
+
+    def test_field_change(self):
+
+        field = relations.Field(int, store="_id")
+        self.source.field_init(field)
+        definitions = {}
+        self.source.field_change(field.define(), {"kind": "float"}, definitions)
+        self.assertEqual(definitions, {"change _id": 'int'})
+
+    def test_model_migrate(self):
+
+        model = {
+            "name": "migs",
+            "fields": [
+                {
+                    "name": "fie",
+                    "store": "fie",
+                    "kind": "int"
+                },
+                {
+                    "name": "foe",
+                    "store": "foe",
+                    "kind": "int"
+                }
+            ]
+        }
+
+        migration = {
+            "fields": {
+                "add": [
+                    {
+                        "name": "fee",
+                        "store": "fee",
+                        "kind": "int"
+                    }
+                ],
+                "remove": ["fie"],
+                "change": {
+                    "foe": {
+                        "name": "fum",
+                        "kind": "float"
+                    }
+                }
+            }
+        }
+
+        self.assertEqual(self.source.model_migrate(model, migration), {
+            "migs": {
+                "add fee": 'int',
+                "remove fie": 'int',
+                "change foe": 'int'
+            }
+        })
+
     def test_extract(self):
 
         self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0___1"], "yep")

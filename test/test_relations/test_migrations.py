@@ -92,24 +92,24 @@ class TestMigrations(unittest.TestCase):
     @unittest.mock.patch('relations.migrations.input')
     def test_rename(self, mock_input, mock_print):
 
-        renamed = {}
-        relations.Migrations.rename("unit", [], [], renamed)
-        self.assertEqual(renamed, {})
+        rename = {}
+        relations.Migrations.rename("unit", [], [], rename)
+        self.assertEqual(rename, {})
         mock_print.assert_not_called()
         mock_input.assert_not_called()
 
-        removed = ["people", "stuff"]
-        added = ["things"]
+        remove = ["people", "stuff"]
+        add = ["things"]
 
         mock_input.return_value = '1'
 
-        renamed = {}
+        rename = {}
 
-        relations.Migrations.rename("test", added, removed, renamed)
+        relations.Migrations.rename("test", add, remove, rename)
 
-        self.assertEqual(removed, ["stuff"])
-        self.assertEqual(added, [])
-        self.assertEqual(renamed, {"people": "things"})
+        self.assertEqual(remove, ["stuff"])
+        self.assertEqual(add, [])
+        self.assertEqual(rename, {"people": "things"})
 
         mock_print.assert_has_calls([
             unittest.mock.call("Please indicate if any test were renamed:"),
@@ -246,7 +246,7 @@ class TestMigrations(unittest.TestCase):
         ]
 
         self.assertEqual(relations.Migrations.fields("test", current, define), {
-            "added": [
+            "add": [
                 {
                     "name": "name",
                     "kind": "str",
@@ -254,15 +254,10 @@ class TestMigrations(unittest.TestCase):
                     "none": False
                 }
             ],
-            "removed": [
-                {
-                    "name": "id",
-                    "kind": "int",
-                    "store": "id",
-                    "none": True
-                }
+            "remove": [
+                "id"
             ],
-            "changed": {
+            "change": {
                 "genders": {
                     "name": "gender",
                     "store": "gender",
@@ -305,13 +300,11 @@ class TestMigrations(unittest.TestCase):
         }
 
         self.assertEqual(relations.Migrations.indexes("test", "indexes", current, define), {
-            "added": {
+            "add": {
                 "moar": [2]
             },
-            "removed": {
-                "stuff": [2]
-            },
-            "renamed": {
+            "remove": ["stuff"],
+            "rename": {
                 "people": "things"
             }
         })
@@ -418,7 +411,7 @@ class TestMigrations(unittest.TestCase):
             "title": "Persons",
             "id": "idd",
             "fields": {
-                "added": [
+                "add": [
                     {
                         "name": "name",
                         "kind": "str",
@@ -426,15 +419,10 @@ class TestMigrations(unittest.TestCase):
                         "none": False
                     }
                 ],
-                "removed": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True
-                    }
+                "remove": [
+                    "id"
                 ],
-                "changed": {
+                "change": {
                     "genders": {
                         "name": "gender",
                         "store": "gender",
@@ -447,24 +435,20 @@ class TestMigrations(unittest.TestCase):
                 }
             },
             "unique": {
-                "added": {
+                "add": {
                     "things": [1]
                 },
-                "removed": {
-                    "people": [1]
-                },
-                "renamed": {
+                "remove": ["people"],
+                "rename": {
                     "stuff": "moar"
                 }
             },
             "index": {
-                "added": {
+                "add": {
                     "moar": [4]
                 },
-                "removed": {
-                    "stuff": [4]
-                },
-                "renamed": {
+                "remove": ["stuff"],
+                "rename": {
                     "people": "things"
                 }
             }
@@ -541,7 +525,7 @@ class TestMigrations(unittest.TestCase):
         }
 
         self.assertEqual(relations.Migrations.models(current, define), {
-            "added": {
+            "add": {
                 "things": {
                     "name": "things",
                     "title": "Things",
@@ -551,7 +535,7 @@ class TestMigrations(unittest.TestCase):
                     "index": {}
                 }
             },
-            "removed": {
+            "remove": {
                 "stuff": {
                     "name": "stuff",
                     "title": "Stuff",
@@ -561,7 +545,7 @@ class TestMigrations(unittest.TestCase):
                     "index": {}
                 }
             },
-            "changed": {
+            "change": {
                 "people": {
                     "definition": {
                         "name": "people",
@@ -667,7 +651,7 @@ class TestMigrations(unittest.TestCase):
         ])
 
         self.assertEqual(json.loads(''.join([call[1][0] for call in migration_file.write.mock_calls])), {
-            "changed": {
+            "change": {
                 "people": {
                     "definition": {
                         "name": "people",
@@ -706,7 +690,7 @@ class TestMigrations(unittest.TestCase):
                     },
                     "migration": {
                         "fields": {
-                            "changed": {
+                            "change": {
                                 "gender": {
                                     "store": "gender"
                                 }

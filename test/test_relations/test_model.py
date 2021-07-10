@@ -260,7 +260,7 @@ class TestModelIdentity(unittest.TestCase):
 
         people = People.thy()
 
-        self.assertEqual(people.define(),{
+        self.assertEqual(people.define(), {
             "name": "people",
             "title": "People",
             "fields": [
@@ -294,6 +294,54 @@ class TestModelIdentity(unittest.TestCase):
                 "name": ["name"]
             },
             "index": {}
+        })
+
+    def test_migrate(self):
+
+        people = People.thy()
+
+        self.assertEqual(people.migrate({
+            "name": "people",
+            "title": "People",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                },
+                {
+                    "name": "gender",
+                    "kind": "str",
+                    "store": "genders",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "default": "free",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }), {
+            "fields": {
+                "change": {
+                    "gender": {
+                        "store": "gender"
+                    }
+                }
+            }
         })
 
 class TestModel(unittest.TestCase):
@@ -1322,6 +1370,29 @@ class TestModel(unittest.TestCase):
                 "value": 16909060
             }
         }])
+
+    def test_define(self):
+
+        Unit.define()
+
+        self.assertEqual(Unit.define(), {
+            "unit": {
+                "id": 'int',
+                "name": 'str'
+            }
+        })
+
+    def test_migrate(self):
+
+        definition = Unit.thy().define()
+
+        definition["fields"][1]["store"] = "front"
+
+        self.assertEqual(Unit.migrate(definition), {
+            "unit": {
+                "change name": 'str'
+            }
+        })
 
     def test_create(self):
 

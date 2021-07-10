@@ -73,6 +73,41 @@ class Source:
         define the model
         """
 
+    def field_add(self, migration, *args, **kwargs):
+        """
+        add the field
+        """
+
+    def field_remove(self, field, *args, **kwargs):
+        """
+        remove the field
+        """
+
+    def field_change(self, field, migration, *args, **kwargs):
+        """
+        change the field
+        """
+
+    def record_migrate(self, record, migration, *args, **kwargs):
+        """
+        define the record
+        """
+
+        for add in migration.get('add', []):
+            self.field_add(add, *args, **kwargs)
+
+        for remove in migration.get('remove', []):
+            self.field_remove(relations.Migrations.lookup(remove, record), *args, **kwargs)
+
+        for field in record:
+            if field["name"] in migration.get("change", {}):
+                self.field_change(field, migration["change"][field['name']], *args, **kwargs)
+
+    def model_define(self, model):
+        """
+        define the model
+        """
+
     def field_create(self, field, *args, **kwargs):
         """
         create the field

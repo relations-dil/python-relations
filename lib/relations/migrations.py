@@ -35,30 +35,30 @@ class Migrations:
         return {model["name"]: model for model in [cls.thy().define() for cls in self.classes]}
 
     @staticmethod
-    def rename(name, addeds, removeds, renameds):
+    def rename(name, adds, removes, renames):
         """
-        Get which were actually renamed
+        Get which were actually rename
         """
 
-        if not addeds or not removeds:
+        if not adds or not removes:
             return
 
         print(f"Please indicate if any {name} were renamed:")
 
-        for removed in removeds:
-            remaining = [added for added in addeds if added not in renameds.values()]
+        for remove in removes:
+            remaining = [add for add in adds if add not in renames.values()]
             if not remaining:
                 break
-            for index, added in enumerate(remaining):
-                print(f"[{index + 1}] {added}")
-            renamed = int(input(f"Which was {removed} renamed to? (return if none)") or '0')
+            for index, add in enumerate(remaining):
+                print(f"[{index + 1}] {add}")
+            rename = int(input(f"Which was {remove} renamed to? (return if none)") or '0')
 
-            if 0 < renamed <= len(remaining):
-                renameds[removed] = remaining[renamed - 1]
+            if 0 < rename <= len(remaining):
+                renames[remove] = remaining[rename - 1]
 
-        for removed, added in renameds.items():
-            removeds.pop(removeds.index(removed))
-            addeds.pop(addeds.index(added))
+        for remove, add in renames.items():
+            removes.pop(removes.index(remove))
+            adds.pop(adds.index(add))
 
     @staticmethod
     def lookup(name, fields):
@@ -97,27 +97,27 @@ class Migrations:
         current_names = [field["name"] for field in current]
         define_names = [field["name"] for field in define]
 
-        added = [name for name in define_names if name not in current_names]
-        removed = [name for name in current_names if name not in define_names]
-        renamed = {}
+        add = [name for name in define_names if name not in current_names]
+        remove = [name for name in current_names if name not in define_names]
+        rename = {}
 
-        cls.rename(f"{model} fields", added, removed, renamed)
+        cls.rename(f"{model} fields", add, remove, rename)
 
-        if added:
-            migration["added"] = [field for field in define if field["name"] in added]
+        if add:
+            migration["add"] = [field for field in define if field["name"] in add]
 
-        if removed:
-            migration["removed"] = [field for field in current if field["name"] in removed]
+        if remove:
+            migration["remove"] = remove
 
-        changed = {}
+        change = {}
 
         for current_field in current:
-            define_field = cls.lookup(renamed.get(current_field['name'], current_field['name']), define)
+            define_field = cls.lookup(rename.get(current_field['name'], current_field['name']), define)
             if define_field is not None and current_field != define_field:
-                changed[current_field['name']] = cls.field(current_field, define_field)
+                change[current_field['name']] = cls.field(current_field, define_field)
 
-        if changed:
-            migration["changed"] = changed
+        if change:
+            migration["change"] = change
 
         return migration
 
@@ -129,25 +129,25 @@ class Migrations:
 
         migration = {}
 
-        added = [name for name in sorted(define.keys()) if name not in current]
-        removed = [name for name in sorted(current.keys()) if name not in define]
-        renamed = {}
+        add = [name for name in sorted(define.keys()) if name not in current]
+        remove = [name for name in sorted(current.keys()) if name not in define]
+        rename = {}
 
-        cls.rename(f"{model} {kind}", added, removed, renamed)
+        cls.rename(f"{model} {kind}", add, remove, rename)
 
-        if added:
-            migration["added"] = {name: define[name] for name in added}
+        if add:
+            migration["add"] = {name: define[name] for name in add}
 
-        if removed:
-            migration["removed"] = {name: current[name] for name in removed}
+        if remove:
+            migration["remove"] = remove
 
-        if renamed:
+        if rename:
 
-            for current_name, define_name in renamed.items():
+            for current_name, define_name in rename.items():
                 if current[current_name] != define[define_name]:
                     raise Exception(f"{model} {kind} {current_name} and {define_name} must have same fields to rename")
 
-            migration["renamed"] = renamed
+            migration["rename"] = rename
 
         return migration
 
@@ -183,30 +183,30 @@ class Migrations:
 
         migration = {}
 
-        added = [name for name in sorted(define.keys()) if name not in current]
-        removed = [name for name in sorted(current.keys()) if name not in define]
-        renamed = {}
+        add = [name for name in sorted(define.keys()) if name not in current]
+        remove = [name for name in sorted(current.keys()) if name not in define]
+        rename = {}
 
-        cls.rename("models", added, removed, renamed)
+        cls.rename("models", add, remove, rename)
 
-        if added:
-            migration["added"] = {name: define[name] for name in added}
+        if add:
+            migration["add"] = {name: define[name] for name in add}
 
-        if removed:
-            migration["removed"] = {name: current[name] for name in removed}
+        if remove:
+            migration["remove"] = {name: current[name] for name in remove}
 
-        changed = {}
+        change = {}
 
         for name in current:
-            define_model = define.get(renamed.get(name, name))
+            define_model = define.get(rename.get(name, name))
             if define_model is not None and current[name] != define_model:
-                changed[name] = {
+                change[name] = {
                     "definition": current[name],
                     "migration": cls.model(current[name], define_model)
                 }
 
-        if changed:
-            migration["changed"] = changed
+        if change:
+            migration["change"] = change
 
         return migration
 

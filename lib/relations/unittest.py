@@ -44,6 +44,59 @@ class MockSource(relations.Source):
         if model._id is not None and model._fields._names[model._id].auto_increment is None:
             model._fields._names[model._id].auto = True
 
+    def field_define(self, field, definitions):
+        """
+        define the field
+        """
+        definitions[field['store']] = field['kind']
+
+    def model_define(self, model):
+        """
+        define the model
+        """
+
+        definitions = {}
+
+        self.record_define(model['fields'], definitions)
+
+        return {
+            model['name']: definitions
+        }
+
+    def field_add(self, migration, migrations):
+        """
+        add the field
+        """
+
+        migrations[f"add {migration['store']}"] = migration['kind']
+
+    def field_remove(self, field, migrations):
+        """
+        remove the field
+        """
+
+        migrations[f"remove {field['store']}"] = field['kind']
+
+    def field_change(self, field, migration, migrations):
+        """
+        change the field
+        """
+
+        migrations[f"change {field['store']}"] = field['kind']
+
+    def model_migrate(self, model, migration):
+        """
+        migrate the model
+        """
+
+        migrations = {}
+
+        self.record_migrate(model['fields'], migration.get("fields", {}), migrations)
+
+        return {
+            model['name']: migrations
+        }
+
     @staticmethod
     def extract(model, values):
         """
