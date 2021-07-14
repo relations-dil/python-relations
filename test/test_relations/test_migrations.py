@@ -11,6 +11,7 @@ import json
 import relations
 
 class People(relations.ModelIdentity):
+    SOURCE = "MigrationsSource"
     id = int
     name = str
     gender = ["free", "male", "female"]
@@ -21,19 +22,17 @@ class TestMigrations(unittest.TestCase):
 
     def test___init__(self):
 
-        migrations = relations.Migrations([1, 2, 3])
-        self.assertEqual(migrations.classes, [1, 2, 3])
+        migrations = relations.Migrations()
         self.assertEqual(migrations.directory, "ddl")
 
-        migrations = relations.Migrations([1, 2, 3], "dll")
-        self.assertEqual(migrations.classes, [1, 2, 3])
+        migrations = relations.Migrations("dll")
         self.assertEqual(migrations.directory, "dll")
 
     @unittest.mock.patch('relations.migrations.open', create=True)
     @unittest.mock.patch('os.path.exists')
     def test_current(self, mock_exists, mock_open):
 
-        migrations = relations.Migrations([1, 2, 3], "dll")
+        migrations = relations.Migrations("dll")
 
         mock_exists.return_value = False
         self.assertEqual(migrations.current(), {})
@@ -48,10 +47,11 @@ class TestMigrations(unittest.TestCase):
 
     def test_define(self):
 
-        migrations = relations.Migrations([People])
+        migrations = relations.Migrations()
 
-        self.assertEqual(migrations.define(), {
+        self.assertEqual(migrations.define([People]), {
             "people": {
+                "source": "MigrationsSource",
                 "name": "people",
                 "title": "People",
                 "fields": [
@@ -59,7 +59,8 @@ class TestMigrations(unittest.TestCase):
                         "name": "id",
                         "kind": "int",
                         "store": "id",
-                        "none": True
+                        "none": True,
+                        "auto": True
                     },
                     {
                         "name": "name",
@@ -579,12 +580,24 @@ class TestMigrations(unittest.TestCase):
     @freezegun.freeze_time("2021-07-08 11:12:13")
     @unittest.mock.patch('relations.migrations.open', create=True)
     @unittest.mock.patch('os.path.exists')
-    def test_generate(self, mock_exists, mock_open):
+    @unittest.mock.patch('os.rename')
+    def test_generate(self, mock_rename, mock_exists, mock_open):
 
-        migrations = relations.Migrations([People])
+        migrations = relations.Migrations()
 
-        current = {
+        mock_exists.return_value = False
+
+        definition_file = unittest.mock.mock_open().return_value
+
+        mock_open.side_effect = [
+            definition_file
+        ]
+
+        self.assertTrue(migrations.generate([People]))
+
+        self.assertEqual(json.loads(''.join([call[1][0] for call in definition_file.write.mock_calls])), {
             "people": {
+                "source": "MigrationsSource",
                 "name": "people",
                 "title": "People",
                 "fields": [
@@ -592,7 +605,48 @@ class TestMigrations(unittest.TestCase):
                         "name": "id",
                         "kind": "int",
                         "store": "id",
-                        "none": True
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    },
+                    {
+                        "name": "gender",
+                        "kind": "str",
+                        "store": "gender",
+                        "options": [
+                            "free",
+                            "male",
+                            "female"
+                        ],
+                        "default": "free",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
+                },
+                "index": {}
+            }
+        })
+
+        current = {
+            "people": {
+                "source": "MigrationsSource",
+                "name": "people",
+                "title": "People",
+                "fields": [
+                    {
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
                     },
                     {
                         "name": "name",
@@ -626,9 +680,9 @@ class TestMigrations(unittest.TestCase):
             unittest.mock.mock_open(read_data=json.dumps(current)).return_value
         ]
 
-        self.assertFalse(migrations.generate())
+        self.assertFalse(migrations.generate([People]))
 
-        mock_open.assert_called_once_with("ddl/definition.json", 'r')
+        mock_open.assert_called_with("ddl/definition.json", 'r')
 
         current["people"]["fields"][2]["store"] = "genders"
 
@@ -642,7 +696,9 @@ class TestMigrations(unittest.TestCase):
             current_file
         ]
 
-        self.assertTrue(migrations.generate())
+        self.assertTrue(migrations.generate([People]))
+
+        mock_rename.assert_called_once_with("ddl/definition.json", "ddl/definition_20210708111213.json")
 
         mock_open.assert_has_calls([
             unittest.mock.call("ddl/definition.json", 'r'),
@@ -654,6 +710,7 @@ class TestMigrations(unittest.TestCase):
             "change": {
                 "people": {
                     "definition": {
+                        "source": "MigrationsSource",
                         "name": "people",
                         "title": "People",
                         "fields": [
@@ -661,7 +718,8 @@ class TestMigrations(unittest.TestCase):
                                 "name": "id",
                                 "kind": "int",
                                 "store": "id",
-                                "none": True
+                                "none": True,
+                                "auto": True
                             },
                             {
                                 "name": "name",
@@ -703,6 +761,7 @@ class TestMigrations(unittest.TestCase):
 
         self.assertEqual(json.loads(''.join([call[1][0] for call in current_file.write.mock_calls])), {
             "people": {
+                "source": "MigrationsSource",
                 "name": "people",
                 "title": "People",
                 "fields": [
@@ -710,7 +769,8 @@ class TestMigrations(unittest.TestCase):
                         "name": "id",
                         "kind": "int",
                         "store": "id",
-                        "none": True
+                        "none": True,
+                        "auto": True
                     },
                     {
                         "name": "name",
@@ -738,3 +798,176 @@ class TestMigrations(unittest.TestCase):
                 "index": {}
             }
         })
+
+    @unittest.mock.patch('glob.glob')
+    @unittest.mock.patch('os.makedirs')
+    @unittest.mock.patch('relations.unittest.open', create=True)
+    def test_convert(self, mock_open, mock_makedirs, mock_glob):
+
+        relations.unittest.MockSource("MigrationsSource")
+
+        mock_glob.return_value = [
+            "ddl/definition.json",
+            "ddl/migration_1234.json"
+        ]
+
+        definition_file = unittest.mock.mock_open().return_value
+
+        migration = {
+            "change": {
+                "migs": {
+                    "definition": {
+                        "source": "MigrationsSource",
+                        "name": "migs",
+                        "fields": [
+                            {
+                                "name": "fie",
+                                "store": "fie",
+                                "kind": "int"
+                            },
+                            {
+                                "name": "foe",
+                                "store": "foe",
+                                "kind": "int"
+                            }
+                        ]
+                    },
+                    "migration": {
+                        "source": "MigrationsSource",
+                        "name": "mig",
+                        "fields": {
+                            "add": [
+                                {
+                                    "name": "fee",
+                                    "store": "fee",
+                                    "kind": "int"
+                                }
+                            ],
+                            "remove": ["fie"],
+                            "change": {
+                                "foe": {
+                                    "name": "fum",
+                                    "kind": "float"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        migration_file = unittest.mock.mock_open().return_value
+
+        mock_open.side_effect = [
+            unittest.mock.mock_open(read_data=json.dumps({"people": People.thy().define()})).return_value,
+            definition_file,
+            unittest.mock.mock_open(read_data=json.dumps(migration)).return_value,
+            migration_file
+        ]
+
+        migrations = relations.Migrations()
+
+        migrations.convert("MigrationsSource")
+
+        mock_makedirs.assert_called_once_with("ddl/MigrationsSource/mock", exists_ok=True)
+
+        mock_open.assert_has_calls([
+            unittest.mock.call("ddl/definition.json", 'r'),
+            unittest.mock.call("ddl/MigrationsSource/mock/definition.json", 'w'),
+            unittest.mock.call("ddl/migration_1234.json", 'r'),
+            unittest.mock.call("ddl/MigrationsSource/mock/migration_1234.json", 'w')
+        ])
+
+        self.assertEqual(json.loads(''.join([call[1][0] for call in definition_file.write.mock_calls])), [{
+            "ACTION": "define",
+            "source": "MigrationsSource",
+            "name": "people",
+            "title": "People",
+            "fields": [
+                {
+                    "ACTION": "define",
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "ACTION": "define",
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                },
+                {
+                    "ACTION": "define",
+                    "name": "gender",
+                    "kind": "str",
+                    "store": "gender",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "default": "free",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }])
+
+        self.assertEqual(json.loads(''.join([call[1][0] for call in migration_file.write.mock_calls])), [
+            {
+                "ACTION": "change",
+                "DEFINITION": {
+                    "source": "MigrationsSource",
+                    "name": "migs",
+                    "fields": [
+                        {
+                            "name": "fie",
+                            "store": "fie",
+                            "kind": "int"
+                        },
+                        {
+                            "name": "foe",
+                            "store": "foe",
+                            "kind": "int"
+                        }
+                    ]
+                },
+                "MIGRATION": {
+                    "source": "MigrationsSource",
+                    "name": "mig",
+                    "fields": [
+                        {
+                            "ACTION": "add",
+                            "name": "fee",
+                            "store": "fee",
+                            "kind": "int"
+                        },
+                        {
+                            "ACTION": "remove",
+                            "name": "fie",
+                            "store": "fie",
+                            "kind": "int"
+                        },
+                        {
+                            "ACTION": "change",
+                            "DEFINITION": {
+                                "name": "foe",
+                                "store": "foe",
+                                "kind": "int"
+                            },
+                            "MIGRATION": {
+                                "name": "fum",
+                                "kind": "float"
+                            }
+                        }
+                    ]
+                }
+            }
+        ])

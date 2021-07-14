@@ -30,6 +30,9 @@ class TestModelError(unittest.TestCase):
 
 
 class People(relations.ModelIdentity):
+
+    EXTRA = "info"
+
     id = int
     name = str
     gender = ["free", "male", "female"]
@@ -175,6 +178,10 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(things._fields._names["name"].storage, "id")
         self.assertIsNone(things._id)
 
+        Unit.thy()
+
+        self.assertEqual(Unit.SOURCE, "TestModel")
+
         Net.thy()
 
         test = Test.many()
@@ -263,6 +270,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people.define(), {
             "name": "people",
             "title": "People",
+            "extra": "info",
             "fields": [
                 {
                     "name": "id",
@@ -1376,22 +1384,32 @@ class TestModel(unittest.TestCase):
         Unit.define()
 
         self.assertEqual(Unit.define(), {
-            "unit": {
-                "id": 'int',
-                "name": 'str'
-            }
-        })
-
-    def test_migrate(self):
-
-        definition = Unit.thy().define()
-
-        definition["fields"][1]["store"] = "front"
-
-        self.assertEqual(Unit.migrate(definition), {
-            "unit": {
-                "change name": 'str'
-            }
+            "ACTION": "define",
+            "source": "TestModel",
+            "name": "unit",
+            "title": "Unit",
+            "fields": [
+                {
+                    "ACTION": "define",
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "ACTION": "define",
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
         })
 
     def test_create(self):

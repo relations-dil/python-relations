@@ -3,17 +3,19 @@ Data definition module
 """
 
 import os
+import glob
 import json
 import datetime
+
+import relations
 
 class Migrations:
     """
     Class for handling Migrations changes
     """
 
-    def __init__(self, classes, directory="ddl"):
+    def __init__(self, directory="ddl"):
 
-        self.classes = classes
         self.directory = directory
 
     def current(self):
@@ -27,12 +29,12 @@ class Migrations:
         with open(f"{self.directory}/definition.json", "r") as current_file:
             return json.load(current_file)
 
-    def define(self):
+    def define(self, models):
         """
         Get definitions
         """
 
-        return {model["name"]: model for model in [cls.thy().define() for cls in self.classes]}
+        return {model["name"]: model for model in [model.thy().define() for model in models]}
 
     @staticmethod
     def rename(name, adds, removes, renames):
@@ -210,23 +212,50 @@ class Migrations:
 
         return migration
 
-    def generate(self):
+    def generate(self, models):
         """
         Updates a Migrations change
         """
 
         current = self.current()
-        define = self.define()
+        define = self.define(models)
 
-        if current == define:
-            return False
+        if current:
 
-        migration = self.models(current, define)
+            if current == define:
+                return False
 
-        with open(f"{self.directory}/migration_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json", "w") as migration_file:
-            json.dump(migration, migration_file, indent=4, sort_keys=True)
+            migration = self.models(current, define)
+
+            stamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+            os.rename(f"{self.directory}/definition.json", f"{self.directory}/definition_{stamp}.json")
+
+            with open(f"{self.directory}/migration_{stamp}.json", "w") as migration_file:
+                json.dump(migration, migration_file, indent=4, sort_keys=True)
 
         with open(f"{self.directory}/definition.json", "w") as current_file:
             json.dump(define, current_file, indent=4, sort_keys=True)
 
         return True
+
+    def convert(self, name):
+        """
+        Converts definitions and migrations to source definitions and migrations based on a source name
+        """
+
+        source = relations.source(name)
+
+        source_path = f"{self.directory}/{source.name}/{source.KIND}"
+
+        os.makedirs(source_path, exists_ok=True)
+
+        for file_path in glob.glob(f"{self.directory}/*.json"):
+
+            file_name = file_path.split("/")[-1]
+
+            if file_name.startswith("definition"):
+                source.definition_file(file_path, source_path)
+
+            elif file_name.startswith("migration"):
+                source.migration_file(file_path, source_path)

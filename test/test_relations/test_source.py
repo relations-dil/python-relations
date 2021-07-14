@@ -91,7 +91,7 @@ class TestSource(unittest.TestCase):
     @unittest.mock.patch("relations.Source.field_add")
     @unittest.mock.patch("relations.Source.field_remove")
     @unittest.mock.patch("relations.Source.field_change")
-    def test_record_migratee(self, mock_change, mock_remove, mock_add):
+    def test_record_change(self, mock_change, mock_remove, mock_add):
 
         record = [
             {"name": "fie"},
@@ -108,15 +108,23 @@ class TestSource(unittest.TestCase):
             }
         }
 
-        self.source.record_migrate(record, migration)
+        self.source.record_change(record, migration)
 
         mock_add.assert_called_once_with({"name": "fee"})
         mock_remove.assert_called_once_with({"name": "fie"})
         mock_change.assert_called_once_with({"name": "foe"}, {"name": "fum"})
 
-    def test_model_migrate(self):
+    def test_model_add(self):
 
-        self.source.model_define(None)
+        self.source.model_add(None)
+
+    def test_model_remove(self):
+
+        self.source.model_remove(None)
+
+    def test_model_change(self):
+
+        self.source.model_change(None, None)
 
     def test_field_create(self):
 

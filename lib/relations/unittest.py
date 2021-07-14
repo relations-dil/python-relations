@@ -5,6 +5,7 @@ Unittest Tools for Relations
 # pylint: disable=unused-argument,arguments-differ
 
 import copy
+import json
 import relations
 
 class MockSource(relations.Source):
@@ -12,6 +13,8 @@ class MockSource(relations.Source):
     """
     Mock Source for Testing
     """
+
+    KIND = "mock"
 
     ids = None  # ID's keyed by model names
     data = None # Data keyed by model names
@@ -48,54 +51,115 @@ class MockSource(relations.Source):
         """
         define the field
         """
-        definitions[field['store']] = field['kind']
+        definitions.append({"ACTION": "define", **field})
 
     def model_define(self, model):
         """
         define the model
         """
 
-        definitions = {}
+        definitions = []
 
         self.record_define(model['fields'], definitions)
 
-        return {
-            model['name']: definitions
-        }
+        return {"ACTION": "define", **model, "fields": definitions}
+
+    def definition_file(self, file_path, source_path):
+        """"
+        Converts a definition file to a source definition file
+        """
+
+        definitions = []
+
+        with open(file_path, "r") as definition_file:
+            definition = json.load(definition_file)
+            for name in sorted(definition.keys()):
+                if definition[name]["source"] == self.name:
+                    definitions.append(self.model_define(definition[name]))
+
+        if definitions:
+            file_name = file_path.split("/")[-1].split('.')[0]
+            with open(f"{source_path}/{file_name}.json", "w") as source_file:
+                source_file.write(json.dumps(definitions))
+                source_file.write("\n")
 
     def field_add(self, migration, migrations):
         """
         add the field
         """
 
-        migrations[f"add {migration['store']}"] = migration['kind']
+        migrations.append({"ACTION": "add", **migration})
 
-    def field_remove(self, field, migrations):
+    def field_remove(self, definition, migrations):
         """
         remove the field
         """
 
-        migrations[f"remove {field['store']}"] = field['kind']
+        migrations.append({"ACTION": "remove", **definition})
 
-    def field_change(self, field, migration, migrations):
+    def field_change(self, definition, migration, migrations):
         """
         change the field
         """
 
-        migrations[f"change {field['store']}"] = field['kind']
+        migrations.append({"ACTION": "change", "DEFINITION": definition, "MIGRATION": migration})
 
-    def model_migrate(self, model, migration):
+    def model_add(self, definition):
         """
         migrate the model
         """
 
-        migrations = {}
+        definitions = []
 
-        self.record_migrate(model['fields'], migration.get("fields", {}), migrations)
+        self.record_define(definition['fields'], definitions)
 
-        return {
-            model['name']: migrations
-        }
+        return {"ACTION": "add", **definition, "fields": definitions}
+
+    def model_remove(self, definition):
+        """
+        migrate the model
+        """
+
+        return {"ACTION": "remove", **definition}
+
+    def model_change(self, definition, migration):
+        """
+        migrate the model
+        """
+
+        migrations = []
+
+        self.record_change(definition['fields'], migration.get("fields", {}), migrations)
+
+        return {"ACTION": "change", "DEFINITION": definition, "MIGRATION": {**migration, "fields": migrations}}
+
+    def migration_file(self, file_path, source_path):
+        """"
+        Converts a migration file to a source definition file
+        """
+
+        migrations = []
+
+        with open(file_path, "r") as migration_file:
+            migration = json.load(migration_file)
+
+            for add in sorted(migration.get('add', {}).keys()):
+                if migration['add'][add]["source"] == self.name:
+                    migrations.append(self.model_add(migration['add'][add]))
+
+            for remove in sorted(migration.get('remove', {}).keys()):
+                if migration['remove'][remove]["source"] == self.name:
+                    migrations.append(self.model_remove(migration['remove'][remove]))
+
+            for change in sorted(migration.get('change', {}).keys()):
+                if migration['change'][change]['definition']["source"] == self.name:
+                    migrations.append(self.model_change(migration['change'][change]['definition'], migration['change'][change]['migration']))
+
+        if migrations:
+            file_name = file_path.split("/")[-1].split('.')[0]
+            with open(f"{source_path}/{file_name}.json", "w") as source_file:
+                source_file.write(json.dumps(migrations))
+                source_file.write("\n")
 
     @staticmethod
     def extract(model, values):

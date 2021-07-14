@@ -1,6 +1,7 @@
 import unittest
 import unittest.mock
 
+import json
 import ipaddress
 
 import relations.unittest
@@ -117,46 +118,200 @@ class TestSource(unittest.TestCase):
 
         field = relations.Field(int, store="_id")
         self.source.field_init(field)
-        definitions = {}
+        definitions = []
         self.source.field_define(field.define(), definitions)
-        self.assertEqual(definitions, {"_id": 'int'})
+        self.assertEqual(definitions, [{
+            "ACTION": "define",
+            "kind": "int",
+            "store": "_id",
+            "none": True
+        }])
 
     def test_model_define(self):
 
         self.assertEqual(Simple.define(), {
-            "simple": {
-                "id": 'int',
-                "name": 'str'
-            }
+            "ACTION": "define",
+            "source": "UnittestSource",
+            "name": "simple",
+            "title": "Simple",
+            "fields": [
+                {
+                    "ACTION": "define",
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "ACTION": "define",
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
         })
+
+    @unittest.mock.patch('relations.unittest.open', create=True)
+    def test_definition_file(self, mock_open):
+
+        source_file = unittest.mock.mock_open().return_value
+
+        mock_open.side_effect = [
+            unittest.mock.mock_open(read_data=json.dumps({"simple": Simple.thy().define()})).return_value,
+            source_file
+        ]
+
+        self.source.definition_file("general", "sourced")
+
+        mock_open.assert_has_calls([
+            unittest.mock.call("general", 'r'),
+            unittest.mock.call("sourced/general.json", 'w')
+        ])
+
+        self.assertEqual(json.loads(''.join([call[1][0] for call in source_file.write.mock_calls])), [{
+            "ACTION": "define",
+            "source": "UnittestSource",
+            "name": "simple",
+            "title": "Simple",
+            "fields": [
+                {
+                    "ACTION": "define",
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "ACTION": "define",
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }])
 
     def test_field_add(self):
 
         field = relations.Field(int, store="_id")
         self.source.field_init(field)
-        definitions = {}
-        self.source.field_add(field.define(), definitions)
-        self.assertEqual(definitions, {"add _id": 'int'})
+        migrations = []
+        self.source.field_add(field.define(), migrations)
+        self.assertEqual(migrations, [{
+            "ACTION": "add",
+            "kind": "int",
+            "store": "_id",
+            "none": True
+        }])
 
     def test_field_remove(self):
 
         field = relations.Field(int, store="_id")
         self.source.field_init(field)
-        definitions = {}
-        self.source.field_remove(field.define(), definitions)
-        self.assertEqual(definitions, {"remove _id": 'int'})
+        migrations = []
+        self.source.field_remove(field.define(), migrations)
+        self.assertEqual(migrations, [{
+            "ACTION": "remove",
+            "kind": "int",
+            "store": "_id",
+            "none": True
+        }])
 
     def test_field_change(self):
 
         field = relations.Field(int, store="_id")
         self.source.field_init(field)
-        definitions = {}
-        self.source.field_change(field.define(), {"kind": "float"}, definitions)
-        self.assertEqual(definitions, {"change _id": 'int'})
+        migrations = []
+        self.source.field_change(field.define(), {"kind": "float"}, migrations)
+        self.assertEqual(migrations, [{
+            "ACTION": "change",
+            "DEFINITION": {
+                "kind": "int",
+                "store": "_id",
+                "none": True
+            },
+            "MIGRATION": {
+                "kind": "float"
+            }
+        }])
 
-    def test_model_migrate(self):
+    def test_model_add(self):
 
-        model = {
+        self.assertEqual(self.source.model_add(Simple.thy().define()), {
+            "ACTION": "add",
+            "source": "UnittestSource",
+            "name": "simple",
+            "title": "Simple",
+            "fields": [
+                {
+                    "ACTION": "define",
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "ACTION": "define",
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        })
+
+    def test_model_remove(self):
+
+        self.assertEqual(self.source.model_remove(Simple.thy().define()), {
+            "ACTION": "remove",
+            "source": "UnittestSource",
+            "name": "simple",
+            "title": "Simple",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        })
+
+    def test_model_change(self):
+
+        definition = {
+            "source": "UnittestSource",
             "name": "migs",
             "fields": [
                 {
@@ -173,6 +328,8 @@ class TestSource(unittest.TestCase):
         }
 
         migration = {
+            "source": "UnittestSource",
+            "name": "mig",
             "fields": {
                 "add": [
                     {
@@ -191,13 +348,223 @@ class TestSource(unittest.TestCase):
             }
         }
 
-        self.assertEqual(self.source.model_migrate(model, migration), {
-            "migs": {
-                "add fee": 'int',
-                "remove fie": 'int',
-                "change foe": 'int'
+        self.assertEqual(self.source.model_change(definition, migration), {
+            "ACTION": "change",
+            "DEFINITION": {
+                "source": "UnittestSource",
+                "name": "migs",
+                "fields": [
+                    {
+                        "name": "fie",
+                        "store": "fie",
+                        "kind": "int"
+                    },
+                    {
+                        "name": "foe",
+                        "store": "foe",
+                        "kind": "int"
+                    }
+                ]
+            },
+            "MIGRATION": {
+                "source": "UnittestSource",
+                "name": "mig",
+                "fields": [
+                    {
+                        "ACTION": "add",
+                        "name": "fee",
+                        "store": "fee",
+                        "kind": "int"
+                    },
+                    {
+                        "ACTION": "remove",
+                        "name": "fie",
+                        "store": "fie",
+                        "kind": "int"
+                    },
+                    {
+                        "ACTION": "change",
+                        "DEFINITION": {
+                            "name": "foe",
+                            "store": "foe",
+                            "kind": "int"
+                        },
+                        "MIGRATION": {
+                            "name": "fum",
+                            "kind": "float"
+                        }
+                    }
+                ]
             }
         })
+
+    @unittest.mock.patch('relations.unittest.open', create=True)
+    def test_migration_file(self, mock_open):
+
+        source_file = unittest.mock.mock_open().return_value
+
+        migration = {
+            "add": {"simple": Simple.thy().define()},
+            "remove": {"simple": Simple.thy().define()},
+            "change": {
+                "migs": {
+                    "definition": {
+                        "source": "UnittestSource",
+                        "name": "migs",
+                        "fields": [
+                            {
+                                "name": "fie",
+                                "store": "fie",
+                                "kind": "int"
+                            },
+                            {
+                                "name": "foe",
+                                "store": "foe",
+                                "kind": "int"
+                            }
+                        ]
+                    },
+                    "migration": {
+                        "source": "UnittestSource",
+                        "name": "mig",
+                        "fields": {
+                            "add": [
+                                {
+                                    "name": "fee",
+                                    "store": "fee",
+                                    "kind": "int"
+                                }
+                            ],
+                            "remove": ["fie"],
+                            "change": {
+                                "foe": {
+                                    "name": "fum",
+                                    "kind": "float"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        mock_open.side_effect = [
+            unittest.mock.mock_open(read_data=json.dumps(migration)).return_value,
+            source_file
+        ]
+
+        self.source.migration_file("general", "sourced")
+
+        mock_open.assert_has_calls([
+            unittest.mock.call("general", 'r'),
+            unittest.mock.call("sourced/general.json", 'w')
+        ])
+
+        self.assertEqual(json.loads(''.join([call[1][0] for call in source_file.write.mock_calls])), [
+            {
+                "ACTION": "add",
+                "source": "UnittestSource",
+                "name": "simple",
+                "title": "Simple",
+                "fields": [
+                    {
+                        "ACTION": "define",
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "ACTION": "define",
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
+                },
+                "index": {}
+            },
+            {
+                "ACTION": "remove",
+                "source": "UnittestSource",
+                "name": "simple",
+                "title": "Simple",
+                "fields": [
+                    {
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
+                },
+                "index": {}
+            },
+            {
+                "ACTION": "change",
+                "DEFINITION": {
+                    "source": "UnittestSource",
+                    "name": "migs",
+                    "fields": [
+                        {
+                            "name": "fie",
+                            "store": "fie",
+                            "kind": "int"
+                        },
+                        {
+                            "name": "foe",
+                            "store": "foe",
+                            "kind": "int"
+                        }
+                    ]
+                },
+                "MIGRATION": {
+                    "source": "UnittestSource",
+                    "name": "mig",
+                    "fields": [
+                        {
+                            "ACTION": "add",
+                            "name": "fee",
+                            "store": "fee",
+                            "kind": "int"
+                        },
+                        {
+                            "ACTION": "remove",
+                            "name": "fie",
+                            "store": "fie",
+                            "kind": "int"
+                        },
+                        {
+                            "ACTION": "change",
+                            "DEFINITION": {
+                                "name": "foe",
+                                "store": "foe",
+                                "kind": "int"
+                            },
+                            "MIGRATION": {
+                                "name": "fum",
+                                "kind": "float"
+                            }
+                        }
+                    ]
+                }
+            }
+        ])
 
     def test_extract(self):
 

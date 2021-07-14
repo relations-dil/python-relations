@@ -12,6 +12,7 @@ class Source:
     """
 
     name = None
+    KIND = None
 
     def __new__(cls, *args, **kwargs):
         """
@@ -78,17 +79,22 @@ class Source:
         add the field
         """
 
-    def field_remove(self, field, *args, **kwargs):
+    def defition_file(self, file_path, source_path):
+        """
+        Concvert a general definition file to a source specific file
+        """
+
+    def field_remove(self, definition, *args, **kwargs):
         """
         remove the field
         """
 
-    def field_change(self, field, migration, *args, **kwargs):
+    def field_change(self, definition, migration, *args, **kwargs):
         """
         change the field
         """
 
-    def record_migrate(self, record, migration, *args, **kwargs):
+    def record_change(self, definition, migration, *args, **kwargs):
         """
         define the record
         """
@@ -97,15 +103,30 @@ class Source:
             self.field_add(add, *args, **kwargs)
 
         for remove in migration.get('remove', []):
-            self.field_remove(relations.Migrations.lookup(remove, record), *args, **kwargs)
+            self.field_remove(relations.Migrations.lookup(remove, definition), *args, **kwargs)
 
-        for field in record:
+        for field in definition:
             if field["name"] in migration.get("change", {}):
                 self.field_change(field, migration["change"][field['name']], *args, **kwargs)
 
-    def model_define(self, model):
+    def model_add(self, migration):
         """
         define the model
+        """
+
+    def model_remove(self, definition):
+        """
+        define the model
+        """
+
+    def model_change(self, definition, migration):
+        """
+        define the model
+        """
+
+    def migration_file(self, file_path, source_path):
+        """
+        Concvert a general definition file to a source specific file
         """
 
     def field_create(self, field, *args, **kwargs):

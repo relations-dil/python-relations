@@ -65,7 +65,6 @@ class ModelIdentity:
     ]
 
     UNDEFINE = [
-        "SOURCE",
         "ID",
         "LABEL",
         "LIST",
@@ -263,8 +262,10 @@ class ModelIdentity:
 
         # Have the the source do whatever it needs to
 
-        if relations.source(cls.SOURCE) is not None:
-            relations.source(cls.SOURCE).model_init(self)
+        self.SOURCE = cls.SOURCE
+
+        if relations.source(self.SOURCE) is not None:
+            relations.source(self.SOURCE).model_init(self)
 
         return self
 
@@ -1021,16 +1022,6 @@ class Model(ModelIdentity):
         define the model
         """
         return relations.source(cls.SOURCE).model_define(cls.thy().define(), *args, **kwargs)
-
-    @classmethod
-    def migrate(cls, migration, *args, **kwargs):
-        """
-        define the model
-        """
-        thy = cls.thy()
-        model = thy.define()
-
-        return relations.source(cls.SOURCE).model_migrate(model, thy.migrate(model, migration), *args, **kwargs)
 
     def create(self, *args, **kwargs):
         """
