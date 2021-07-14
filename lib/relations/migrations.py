@@ -29,7 +29,8 @@ class Migrations:
         with open(f"{self.directory}/definition.json", "r") as current_file:
             return json.load(current_file)
 
-    def define(self, models):
+    @staticmethod
+    def define(models):
         """
         Get definitions
         """
@@ -248,7 +249,7 @@ class Migrations:
 
         source_path = f"{self.directory}/{source.name}/{source.KIND}"
 
-        os.makedirs(source_path, exists_ok=True)
+        os.makedirs(source_path, exist_ok=True)
 
         for file_path in glob.glob(f"{self.directory}/*.json"):
 

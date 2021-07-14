@@ -2,7 +2,7 @@
 Unittest Tools for Relations
 """
 
-# pylint: disable=unused-argument,arguments-differ
+# pylint: disable=unused-argument,arguments-differ,too-many-public-methods
 
 import copy
 import json
@@ -153,7 +153,9 @@ class MockSource(relations.Source):
 
             for change in sorted(migration.get('change', {}).keys()):
                 if migration['change'][change]['definition']["source"] == self.name:
-                    migrations.append(self.model_change(migration['change'][change]['definition'], migration['change'][change]['migration']))
+                    migrations.append(
+                        self.model_change(migration['change'][change]['definition'], migration['change'][change]['migration'])
+                    )
 
         if migrations:
             file_name = file_path.split("/")[-1].split('.')[0]

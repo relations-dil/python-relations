@@ -869,7 +869,7 @@ class TestMigrations(unittest.TestCase):
 
         migrations.convert("MigrationsSource")
 
-        mock_makedirs.assert_called_once_with("ddl/MigrationsSource/mock", exists_ok=True)
+        mock_makedirs.assert_called_once_with("ddl/MigrationsSource/mock", exist_ok=True)
 
         mock_open.assert_has_calls([
             unittest.mock.call("ddl/definition.json", 'r'),
