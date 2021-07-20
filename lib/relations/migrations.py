@@ -9,6 +9,9 @@ import datetime
 
 import relations
 
+class MigrationsError(Exception):
+    pass
+
 class Migrations:
     """
     Class for handling Migrations changes
@@ -148,7 +151,7 @@ class Migrations:
 
             for current_name, define_name in rename.items():
                 if current[current_name] != define[define_name]:
-                    raise Exception(f"{model} {kind} {current_name} and {define_name} must have same fields to rename")
+                    raise MigrationsError(f"{model} {kind} {current_name} and {define_name} must have same fields to rename")
 
             migration["rename"] = rename
 

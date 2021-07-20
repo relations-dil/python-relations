@@ -106,7 +106,7 @@ class MockSource(relations.Source):
 
     def model_add(self, definition):
         """
-        migrate the model
+        add the model
         """
 
         definitions = []
@@ -117,14 +117,14 @@ class MockSource(relations.Source):
 
     def model_remove(self, definition):
         """
-        migrate the model
+        remove the model
         """
 
         return {"ACTION": "remove", **definition}
 
     def model_change(self, definition, migration):
         """
-        migrate the model
+        change the model
         """
 
         migrations = []

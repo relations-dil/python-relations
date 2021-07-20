@@ -332,7 +332,7 @@ class TestMigrations(unittest.TestCase):
             "things": [2]
         }
 
-        self.assertRaisesRegex(Exception, "test indexes people and things must have same fields to rename", relations.Migrations.indexes, "test", "indexes", current, define)
+        self.assertRaisesRegex(relations.MigrationsError, "test indexes people and things must have same fields to rename", relations.Migrations.indexes, "test", "indexes", current, define)
 
     @unittest.mock.patch('relations.migrations.print')
     @unittest.mock.patch('relations.migrations.input')
