@@ -1,6 +1,8 @@
 import unittest
 import unittest.mock
 
+import os
+import shutil
 import json
 import ipaddress
 
@@ -81,6 +83,9 @@ class TestSource(unittest.TestCase):
     def setUp(self):
 
         self.source = relations.unittest.MockSource("UnittestSource")
+
+        shutil.rmtree("ddl", ignore_errors=True)
+        os.makedirs("ddl", exist_ok=True)
 
     @unittest.mock.patch("relations.SOURCES", {})
     def test___init__(self):
@@ -684,54 +689,44 @@ class TestSource(unittest.TestCase):
         plain = Plain().create()
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)
 
-    @unittest.mock.patch('relations.unittest.open', create=True)
-    def test_definition_convert(self, mock_open):
+    def test_definition_convert(self):
 
-        source_file = unittest.mock.mock_open().return_value
+        with open("ddl/general.json", 'w') as from_file:
+            json.dump({"simple": Simple.thy().define()}, from_file)
 
-        mock_open.side_effect = [
-            unittest.mock.mock_open(read_data=json.dumps({"simple": Simple.thy().define()})).return_value,
-            source_file
-        ]
+        os.makedirs("ddl/sourced", exist_ok=True)
 
-        self.source.definition_convert("general", "sourced")
+        self.source.definition_convert("ddl/general.json", "ddl/sourced")
 
-        mock_open.assert_has_calls([
-            unittest.mock.call("general", 'r'),
-            unittest.mock.call("sourced/general.json", 'w')
-        ])
-
-        self.assertEqual(json.loads(''.join([call[1][0] for call in source_file.write.mock_calls])), [{
-            "ACTION": "add",
-            "source": "UnittestSource",
-            "name": "simple",
-            "title": "Simple",
-            "fields": [
-                {
-                    "name": "id",
-                    "kind": "int",
-                    "store": "id",
-                    "none": True,
-                    "auto": True
+        with open("ddl/sourced/general.json", 'r') as to_file:
+            self.assertEqual(json.load(to_file), [{
+                "ACTION": "add",
+                "source": "UnittestSource",
+                "name": "simple",
+                "title": "Simple",
+                "fields": [
+                    {
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
                 },
-                {
-                    "name": "name",
-                    "kind": "str",
-                    "store": "name",
-                    "none": False
-                }
-            ],
-            "id": "id",
-            "unique": {
-                "name": ["name"]
-            },
-            "index": {}
-        }])
+                "index": {}
+            }])
 
-    @unittest.mock.patch('relations.unittest.open', create=True)
-    def test_migration_convert(self, mock_open):
-
-        source_file = unittest.mock.mock_open().return_value
+    def test_migration_convert(self):
 
         migration = {
             "add": {"simple": Simple.thy().define()},
@@ -778,121 +773,117 @@ class TestSource(unittest.TestCase):
             }
         }
 
-        mock_open.side_effect = [
-            unittest.mock.mock_open(read_data=json.dumps(migration)).return_value,
-            source_file
-        ]
+        with open("ddl/general.json", 'w') as from_file:
+            json.dump(migration, from_file)
 
-        self.source.migration_convert("general", "sourced")
+        os.makedirs("ddl/sourced", exist_ok=True)
 
-        mock_open.assert_has_calls([
-            unittest.mock.call("general", 'r'),
-            unittest.mock.call("sourced/general.json", 'w')
-        ])
+        self.source.migration_convert("ddl/general.json", "ddl/sourced")
 
-        self.assertEqual(json.loads(''.join([call[1][0] for call in source_file.write.mock_calls])), [
-            {
-                "ACTION": "add",
-                "source": "UnittestSource",
-                "name": "simple",
-                "title": "Simple",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            },
-            {
-                "ACTION": "remove",
-                "source": "UnittestSource",
-                "name": "simple",
-                "title": "Simple",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            },
-            {
-                "ACTION": "change",
-                "DEFINITION": {
+        with open("ddl/sourced/general.json", 'r') as to_file:
+            self.assertEqual(json.load(to_file), [
+                {
+                    "ACTION": "add",
                     "source": "UnittestSource",
-                    "name": "migs",
+                    "name": "simple",
+                    "title": "Simple",
                     "fields": [
                         {
-                            "name": "fie",
-                            "store": "fie",
-                            "kind": "int"
+                            "name": "id",
+                            "kind": "int",
+                            "store": "id",
+                            "none": True,
+                            "auto": True
                         },
                         {
-                            "name": "foe",
-                            "store": "foe",
-                            "kind": "int"
+                            "name": "name",
+                            "kind": "str",
+                            "store": "name",
+                            "none": False
                         }
-                    ]
+                    ],
+                    "id": "id",
+                    "unique": {
+                        "name": ["name"]
+                    },
+                    "index": {}
                 },
-                "MIGRATION": {
+                {
+                    "ACTION": "remove",
                     "source": "UnittestSource",
-                    "name": "mig",
+                    "name": "simple",
+                    "title": "Simple",
                     "fields": [
                         {
-                            "ACTION": "add",
-                            "name": "fee",
-                            "store": "fee",
-                            "kind": "int"
+                            "name": "id",
+                            "kind": "int",
+                            "store": "id",
+                            "none": True,
+                            "auto": True
                         },
                         {
-                            "ACTION": "remove",
-                            "name": "fie",
-                            "store": "fie",
-                            "kind": "int"
-                        },
-                        {
-                            "ACTION": "change",
-                            "DEFINITION": {
+                            "name": "name",
+                            "kind": "str",
+                            "store": "name",
+                            "none": False
+                        }
+                    ],
+                    "id": "id",
+                    "unique": {
+                        "name": ["name"]
+                    },
+                    "index": {}
+                },
+                {
+                    "ACTION": "change",
+                    "DEFINITION": {
+                        "source": "UnittestSource",
+                        "name": "migs",
+                        "fields": [
+                            {
+                                "name": "fie",
+                                "store": "fie",
+                                "kind": "int"
+                            },
+                            {
                                 "name": "foe",
                                 "store": "foe",
                                 "kind": "int"
-                            },
-                            "MIGRATION": {
-                                "name": "fum",
-                                "kind": "float"
                             }
-                        }
-                    ]
+                        ]
+                    },
+                    "MIGRATION": {
+                        "source": "UnittestSource",
+                        "name": "mig",
+                        "fields": [
+                            {
+                                "ACTION": "add",
+                                "name": "fee",
+                                "store": "fee",
+                                "kind": "int"
+                            },
+                            {
+                                "ACTION": "remove",
+                                "name": "fie",
+                                "store": "fie",
+                                "kind": "int"
+                            },
+                            {
+                                "ACTION": "change",
+                                "DEFINITION": {
+                                    "name": "foe",
+                                    "store": "foe",
+                                    "kind": "int"
+                                },
+                                "MIGRATION": {
+                                    "name": "fum",
+                                    "kind": "float"
+                                }
+                            }
+                        ]
+                    }
                 }
-            }
-        ])
+            ])
 
     def test_execute(self):
 
@@ -1077,22 +1068,18 @@ class TestSource(unittest.TestCase):
             }
         }})
 
-    @unittest.mock.patch("glob.glob")
-    @unittest.mock.patch('relations.unittest.open', create=True)
-    def test_migrate(self, mock_open, mock_glob):
+    def test_migrate(self):
 
         self.source.ids = {}
         self.source.data = {}
         self.source.migrations = []
 
+        os.makedirs("source/kind", exist_ok=True)
+
         # Migrate on definition alone
 
-        mock_glob.return_value = [
-            "source/kind/migration-2021-07-07-11-12-13.json"
-        ]
-
-        mock_open.side_effect = [
-            unittest.mock.mock_open(read_data=json.dumps([{
+        with open("source/kind/definition.json", "w") as ddl_file:
+            json.dump([{
                 "ACTION": "add",
                 "source": "UnittestSource",
                 "name": "people",
@@ -1117,8 +1104,35 @@ class TestSource(unittest.TestCase):
                     "name": ["name"]
                 },
                 "index": {}
-            }])).return_value
-        ]
+            }], ddl_file)
+
+        with open("source/kind/migration-2021-07-07-11-12-13.json", "w") as ddl_file:
+            json.dump([{
+                "ACTION": "add",
+                "source": "UnittestSource",
+                "name": "people",
+                "title": "People",
+                "fields": [
+                    {
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
+                },
+                "index": {}
+            }], ddl_file)
 
         self.assertTrue(self.source.migrate("source/kind"))
 
@@ -1132,26 +1146,14 @@ class TestSource(unittest.TestCase):
             "2021-07-07-11-12-13"
         ])
 
-        mock_glob.assert_called_once_with("source/kind/migration-*.json")
-
-        mock_open.assert_has_calls([
-            unittest.mock.call("source/kind/definition.json", 'r')
-        ])
-
         # Going twice should do nothing
 
         self.assertFalse(self.source.migrate("source/kind"))
 
         # Migrate with a few migrations
 
-        mock_glob.return_value = [
-            "source/kind/migration-2021-07-07-11-12-13.json",
-            "source/kind/migration-2021-07-08-11-12-13.json",
-            "source/kind/migration-2021-07-09-11-12-13.json"
-        ]
-
-        mock_open.side_effect = [
-            unittest.mock.mock_open(read_data=json.dumps([{
+        with open("source/kind/migration-2021-07-08-11-12-13.json", "w") as ddl_file:
+            json.dump([{
                 "ACTION": "add",
                 "source": "UnittestSource",
                 "name": "stuff",
@@ -1176,8 +1178,10 @@ class TestSource(unittest.TestCase):
                     "name": ["name"]
                 },
                 "index": {}
-            }])).return_value,
-            unittest.mock.mock_open(read_data=json.dumps([{
+            }], ddl_file)
+
+        with open("source/kind/migration-2021-07-09-11-12-13.json", "w") as ddl_file:
+            json.dump([{
                 "ACTION": "add",
                 "source": "UnittestSource",
                 "name": "things",
@@ -1202,8 +1206,7 @@ class TestSource(unittest.TestCase):
                     "name": ["name"]
                 },
                 "index": {}
-            }])).return_value
-        ]
+            }], ddl_file)
 
         self.assertTrue(self.source.migrate("source/kind"))
 
@@ -1221,12 +1224,6 @@ class TestSource(unittest.TestCase):
             "2021-07-07-11-12-13",
             "2021-07-08-11-12-13",
             "2021-07-09-11-12-13"
-        ])
-
-        mock_open.assert_has_calls([
-            unittest.mock.call("source/kind/definition.json", 'r'),
-            unittest.mock.call("source/kind/migration-2021-07-08-11-12-13.json", 'r'),
-            unittest.mock.call("source/kind/migration-2021-07-09-11-12-13.json", 'r')
         ])
 
         # Migrating again should do nothing
