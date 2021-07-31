@@ -698,11 +698,11 @@ class TestMigrations(unittest.TestCase):
 
         self.assertTrue(migrations.generate([People]))
 
-        mock_rename.assert_called_once_with("ddl/definition.json", "ddl/definition_20210708111213.json")
+        mock_rename.assert_called_once_with("ddl/definition.json", "ddl/definition-2021-07-08-11-12-13.json")
 
         mock_open.assert_has_calls([
             unittest.mock.call("ddl/definition.json", 'r'),
-            unittest.mock.call("ddl/migration_20210708111213.json", 'w'),
+            unittest.mock.call("ddl/migration-2021-07-08-11-12-13.json", 'w'),
             unittest.mock.call("ddl/definition.json", 'w')
         ])
 
@@ -808,7 +808,7 @@ class TestMigrations(unittest.TestCase):
 
         mock_glob.return_value = [
             "ddl/definition.json",
-            "ddl/migration_1234.json"
+            "ddl/migration-1234.json"
         ]
 
         definition_file = unittest.mock.mock_open().return_value
@@ -874,18 +874,17 @@ class TestMigrations(unittest.TestCase):
         mock_open.assert_has_calls([
             unittest.mock.call("ddl/definition.json", 'r'),
             unittest.mock.call("ddl/MigrationsSource/mock/definition.json", 'w'),
-            unittest.mock.call("ddl/migration_1234.json", 'r'),
-            unittest.mock.call("ddl/MigrationsSource/mock/migration_1234.json", 'w')
+            unittest.mock.call("ddl/migration-1234.json", 'r'),
+            unittest.mock.call("ddl/MigrationsSource/mock/migration-1234.json", 'w')
         ])
 
         self.assertEqual(json.loads(''.join([call[1][0] for call in definition_file.write.mock_calls])), [{
-            "ACTION": "define",
+            "ACTION": "add",
             "source": "MigrationsSource",
             "name": "people",
             "title": "People",
             "fields": [
                 {
-                    "ACTION": "define",
                     "name": "id",
                     "kind": "int",
                     "store": "id",
@@ -893,14 +892,12 @@ class TestMigrations(unittest.TestCase):
                     "auto": True
                 },
                 {
-                    "ACTION": "define",
                     "name": "name",
                     "kind": "str",
                     "store": "name",
                     "none": False
                 },
                 {
-                    "ACTION": "define",
                     "name": "gender",
                     "kind": "str",
                     "store": "gender",
@@ -971,3 +968,70 @@ class TestMigrations(unittest.TestCase):
                 }
             }
         ])
+
+    @unittest.mock.patch("glob.glob")
+    @unittest.mock.patch('relations.unittest.open', create=True)
+    def test_apply(self, mock_open, mock_glob):
+
+        source = relations.unittest.MockSource("MigrationsSource")
+
+        source.ids = {}
+        source.data = {}
+        source.migrations = []
+
+        # Apply on definition alone
+
+        mock_glob.return_value = [
+            "ddl/MigrationsSource/mock/migration-2021-07-07-11-12-13.json"
+        ]
+
+        mock_open.side_effect = [
+            unittest.mock.mock_open(read_data=json.dumps([{
+                "ACTION": "add",
+                "source": "MigrationsSource",
+                "name": "people",
+                "title": "People",
+                "fields": [
+                    {
+                        "name": "id",
+                        "kind": "int",
+                        "store": "id",
+                        "none": True,
+                        "auto": True
+                    },
+                    {
+                        "name": "name",
+                        "kind": "str",
+                        "store": "name",
+                        "none": False
+                    }
+                ],
+                "id": "id",
+                "unique": {
+                    "name": ["name"]
+                },
+                "index": {}
+            }])).return_value
+        ]
+
+        migrations = relations.Migrations()
+
+        self.assertTrue(migrations.apply("MigrationsSource"))
+
+        self.assertEqual(source.ids, {
+            "people": 0
+        })
+        self.assertEqual(source.data, {
+            "people": {}
+        })
+        self.assertEqual(source.migrations, [
+            "2021-07-07-11-12-13"
+        ])
+
+        mock_glob.assert_called_once_with("ddl/MigrationsSource/mock/migration-*.json")
+
+        mock_open.assert_has_calls([
+            unittest.mock.call("ddl/MigrationsSource/mock/definition.json", 'r')
+        ])
+
+        self.assertFalse(migrations.apply("MigrationsSource"))

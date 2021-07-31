@@ -211,3 +211,19 @@ class TestSource(unittest.TestCase):
     def test_model_delete(self):
 
         self.source.model_delete(None)
+
+    def test_definition_convert(self):
+
+        self.source.definition_convert(None, None)
+
+    def test_migration_convert(self):
+
+        self.source.migration_convert(None, None)
+
+    def test_execute(self):
+
+        self.source.execute(None)
+
+    def test_migrate(self):
+
+        self.source.migrate(None)

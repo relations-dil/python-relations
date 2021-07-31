@@ -10,7 +10,10 @@ import datetime
 import relations
 
 class MigrationsError(Exception):
-    pass
+    """
+    General migrations error
+    """
+
 
 class Migrations:
     """
@@ -231,11 +234,11 @@ class Migrations:
 
             migration = self.models(current, define)
 
-            stamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+            stamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 
-            os.rename(f"{self.directory}/definition.json", f"{self.directory}/definition_{stamp}.json")
+            os.rename(f"{self.directory}/definition.json", f"{self.directory}/definition-{stamp}.json")
 
-            with open(f"{self.directory}/migration_{stamp}.json", "w") as migration_file:
+            with open(f"{self.directory}/migration-{stamp}.json", "w") as migration_file:
                 json.dump(migration, migration_file, indent=4, sort_keys=True)
 
         with open(f"{self.directory}/definition.json", "w") as current_file:
@@ -259,7 +262,18 @@ class Migrations:
             file_name = file_path.split("/")[-1]
 
             if file_name.startswith("definition"):
-                source.definition_file(file_path, source_path)
+                source.definition_convert(file_path, source_path)
 
             elif file_name.startswith("migration"):
-                source.migration_file(file_path, source_path)
+                source.migration_convert(file_path, source_path)
+
+    def apply(self, name):
+        """
+        Applies source definitions and migrations based on a source name
+        """
+
+        source = relations.source(name)
+
+        source_path = f"{self.directory}/{source.name}/{source.KIND}"
+
+        return source.migrate(source_path)

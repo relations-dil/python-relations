@@ -79,11 +79,6 @@ class Source:
         add the field
         """
 
-    def defition_file(self, file_path, source_path):
-        """
-        Concvert a general definition file to a source specific file
-        """
-
     def field_remove(self, definition, *args, **kwargs):
         """
         remove the field
@@ -122,11 +117,6 @@ class Source:
     def model_change(self, definition, migration):
         """
         define the model
-        """
-
-    def migration_file(self, file_path, source_path):
-        """
-        Concvert a general definition file to a source specific file
         """
 
     def field_create(self, field, *args, **kwargs):
@@ -214,7 +204,22 @@ class Source:
         delete the model
         """
 
-    def children_execute(self, model):
+    def definition_convert(self, file_path, source_path):
         """
-        Execute everythong on the kids
+        Concvert a general definition file to a source specific file
+        """
+
+    def migration_convert(self, file_path, source_path):
+        """
+        Concvert a general migration file to a source specific file
+        """
+
+    def execute(self, commands):
+        """
+        Execute a command or commands
+        """
+
+    def migrate(self, source_path):
+        """
+        Execute a command or commands
         """

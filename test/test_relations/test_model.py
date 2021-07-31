@@ -1383,14 +1383,13 @@ class TestModel(unittest.TestCase):
 
         Unit.define()
 
-        self.assertEqual(Unit.define(), {
-            "ACTION": "define",
+        self.assertEqual(Unit.define(), [{
+            "ACTION": "add",
             "source": "TestModel",
             "name": "unit",
             "title": "Unit",
             "fields": [
                 {
-                    "ACTION": "define",
                     "name": "id",
                     "kind": "int",
                     "store": "id",
@@ -1398,7 +1397,6 @@ class TestModel(unittest.TestCase):
                     "auto": True
                 },
                 {
-                    "ACTION": "define",
                     "name": "name",
                     "kind": "str",
                     "store": "name",
@@ -1410,7 +1408,7 @@ class TestModel(unittest.TestCase):
                 "name": ["name"]
             },
             "index": {}
-        })
+        }])
 
     def test_create(self):
 
