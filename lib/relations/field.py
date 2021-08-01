@@ -261,7 +261,9 @@ class Field: # pylint: disable=too-many-instance-attributes
         }
 
         for attr in self.__dict__:
-            if (
+            if attr == "extract":
+                definition[attr] = {store: kind.__name__ for store, kind in self.__dict__[attr].items()}
+            elif (
                 attr[0] != '_' and attr == attr.lower() and attr not in self.UNDEFINE and
                 getattr(self, attr) is not None and not callable(getattr(self, attr))
             ):
