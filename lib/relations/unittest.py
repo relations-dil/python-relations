@@ -464,21 +464,17 @@ class MockSource(relations.Source):
                 self.execute(json.load(definition_file))
                 migrated = True
 
-            if migration_paths:
-                self.migrations.append(max(migration_paths).rsplit("/migration-", 1)[-1].split('.')[0])
-
         else:
 
-            definition = max(self.migrations) if self.migrations else ''
-
             for migration_path in migration_paths:
-
-                migration = migration_path.rsplit("/migration-", 1)[-1].split('.')[0]
-
-                if migration > definition:
+                if migration_path.rsplit("/migration-", 1)[-1].split('.')[0] not in self.migrations:
                     with open(migration_path, 'r') as migration_file:
                         self.execute(json.load(migration_file))
-                    self.migrations.append(migration)
                     migrated = True
+
+        for migration_path in migration_paths:
+            migration = migration_path.rsplit("/migration-", 1)[-1].split('.')[0]
+            if migration not in self.migrations:
+                self.migrations.append(migration)
 
         return migrated
