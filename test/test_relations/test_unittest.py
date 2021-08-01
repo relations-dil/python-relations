@@ -698,8 +698,8 @@ class TestSource(unittest.TestCase):
 
         self.source.definition_convert("ddl/general.json", "ddl/sourced")
 
-        with open("ddl/sourced/general.json", 'r') as to_file:
-            self.assertEqual(json.load(to_file), [{
+        with open("ddl/sourced/general.json", 'r') as ddl_file:
+            self.assertEqual(json.load(ddl_file), [{
                 "ACTION": "add",
                 "source": "UnittestSource",
                 "name": "simple",
@@ -773,15 +773,15 @@ class TestSource(unittest.TestCase):
             }
         }
 
-        with open("ddl/general.json", 'w') as from_file:
-            json.dump(migration, from_file)
+        with open("ddl/general.json", 'w') as ddl_file:
+            json.dump(migration, ddl_file)
 
         os.makedirs("ddl/sourced", exist_ok=True)
 
         self.source.migration_convert("ddl/general.json", "ddl/sourced")
 
-        with open("ddl/sourced/general.json", 'r') as to_file:
-            self.assertEqual(json.load(to_file), [
+        with open("ddl/sourced/general.json", 'r') as ddl_file:
+            self.assertEqual(json.load(ddl_file), [
                 {
                     "ACTION": "add",
                     "source": "UnittestSource",
@@ -1072,160 +1072,25 @@ class TestSource(unittest.TestCase):
 
         self.source.ids = {}
         self.source.data = {}
-        self.source.migrations = []
 
-        os.makedirs("source/kind", exist_ok=True)
+        migrations = relations.Migrations()
 
-        # Migrate on definition alone
+        migrations.generate([Unit])
+        migrations.generate([Unit, Test])
+        migrations.convert(self.source.name)
 
-        with open("source/kind/definition.json", "w") as ddl_file:
-            json.dump([{
-                "ACTION": "add",
-                "source": "UnittestSource",
-                "name": "people",
-                "title": "People",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            }], ddl_file)
+        self.assertTrue(self.source.migrate(f"ddl/{self.source.name}/{self.source.KIND}"))
 
-        with open("source/kind/migration-2021-07-07-11-12-13.json", "w") as ddl_file:
-            json.dump([{
-                "ACTION": "add",
-                "source": "UnittestSource",
-                "name": "people",
-                "title": "People",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            }], ddl_file)
+        self.assertEqual(Unit.many().count(), 0)
+        self.assertEqual(Test.many().count(), 0)
 
-        self.assertTrue(self.source.migrate("source/kind"))
+        self.assertFalse(self.source.migrate(f"ddl/{self.source.name}/{self.source.KIND}"))
 
-        self.assertEqual(self.source.ids, {
-            "people": 0
-        })
-        self.assertEqual(self.source.data, {
-            "people": {}
-        })
-        self.assertEqual(self.source.migrations, [
-            "2021-07-07-11-12-13"
-        ])
+        migrations.generate([Unit, Test, Case])
+        migrations.convert(self.source.name)
 
-        # Going twice should do nothing
+        self.assertTrue(self.source.migrate(f"ddl/{self.source.name}/{self.source.KIND}"))
 
-        self.assertFalse(self.source.migrate("source/kind"))
+        self.assertEqual(Case.many().count(), 0)
 
-        # Migrate with a few migrations
-
-        with open("source/kind/migration-2021-07-08-11-12-13.json", "w") as ddl_file:
-            json.dump([{
-                "ACTION": "add",
-                "source": "UnittestSource",
-                "name": "stuff",
-                "title": "Stuff",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            }], ddl_file)
-
-        with open("source/kind/migration-2021-07-09-11-12-13.json", "w") as ddl_file:
-            json.dump([{
-                "ACTION": "add",
-                "source": "UnittestSource",
-                "name": "things",
-                "title": "Things",
-                "fields": [
-                    {
-                        "name": "id",
-                        "kind": "int",
-                        "store": "id",
-                        "none": True,
-                        "auto": True
-                    },
-                    {
-                        "name": "name",
-                        "kind": "str",
-                        "store": "name",
-                        "none": False
-                    }
-                ],
-                "id": "id",
-                "unique": {
-                    "name": ["name"]
-                },
-                "index": {}
-            }], ddl_file)
-
-        self.assertTrue(self.source.migrate("source/kind"))
-
-        self.assertEqual(self.source.ids, {
-            "people": 0,
-            "stuff": 0,
-            "things": 0
-        })
-        self.assertEqual(self.source.data, {
-            "people": {},
-            "stuff": {},
-            "things": {}
-        })
-        self.assertEqual(self.source.migrations, [
-            "2021-07-07-11-12-13",
-            "2021-07-08-11-12-13",
-            "2021-07-09-11-12-13"
-        ])
-
-        # Migrating again should do nothing
-
-        self.assertFalse(self.source.migrate("source/kind"))
+        self.assertFalse(self.source.migrate(f"ddl/{self.source.name}/{self.source.KIND}"))

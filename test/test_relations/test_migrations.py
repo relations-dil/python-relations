@@ -638,7 +638,7 @@ class TestMigrations(unittest.TestCase):
 
         self.assertTrue(migrations.generate([People]))
 
-        with open("ddl/definition-2021-07-08-11-12-13.json", 'r') as ddl_file:
+        with open("ddl/definition-2021-07-08-11-12-13-000000.json", 'r') as ddl_file:
             self.assertEqual(json.load(ddl_file), {
                 "people": {
                     "source": "MigrationsSource",
@@ -679,7 +679,7 @@ class TestMigrations(unittest.TestCase):
                 }
             })
 
-        with open("ddl/migration-2021-07-08-11-12-13.json", 'r') as ddl_file:
+        with open("ddl/migration-2021-07-08-11-12-13-000000.json", 'r') as ddl_file:
             self.assertEqual(json.load(ddl_file), {
                 "change": {
                     "people": {
@@ -964,7 +964,7 @@ class TestMigrations(unittest.TestCase):
         with open("ddl/MigrationsSource/mock/definition.json", 'w') as ddl_file:
             json.dump(definition, ddl_file)
 
-        with open("ddl/MigrationsSource/mock/migration-2021-07-07-11-12-13.json", 'w') as ddl_file:
+        with open("ddl/MigrationsSource/mock/migration-2021-07-07-11-12-13-000000.json", 'w') as ddl_file:
             json.dump(definition, ddl_file)
 
         migrations = relations.Migrations()
@@ -978,7 +978,7 @@ class TestMigrations(unittest.TestCase):
             "people": {}
         })
         self.assertEqual(source.migrations, [
-            "2021-07-07-11-12-13"
+            "2021-07-07-11-12-13-000000"
         ])
 
         self.assertFalse(migrations.apply("MigrationsSource"))

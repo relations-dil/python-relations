@@ -234,7 +234,7 @@ class Migrations:
 
             migration = self.models(current, define)
 
-            stamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            stamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
 
             os.rename(f"{self.directory}/definition.json", f"{self.directory}/definition-{stamp}.json")
 

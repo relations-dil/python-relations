@@ -25,7 +25,7 @@ class MockSource(relations.Source):
 
         self.ids = {}
         self.data = {}
-        self.migrations = []
+        self.migrations = None
 
     def model_init(self, model):
         """
@@ -456,7 +456,9 @@ class MockSource(relations.Source):
 
         migration_paths = sorted(glob.glob(f"{source_path}/migration-*.json"))
 
-        if not self.migrations:
+        if self.migrations is None:
+
+            self.migrations = []
 
             with open(f"{source_path}/definition.json", 'r') as definition_file:
                 self.execute(json.load(definition_file))
@@ -467,7 +469,7 @@ class MockSource(relations.Source):
 
         else:
 
-            definition = max(self.migrations)
+            definition = max(self.migrations) if self.migrations else ''
 
             for migration_path in migration_paths:
 
