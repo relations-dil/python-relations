@@ -66,18 +66,65 @@ class TestSource(unittest.TestCase):
         self.source.field_define(None)
 
     @unittest.mock.patch("relations.Source.field_define")
-    def test_record_define(self, mock_field):
+    def test_record_define(self, mock_define):
 
-        record = unittest.mock.MagicMock()
-        record._order = [record]
+        self.source.record_define([{}])
 
-        self.source.record_define(record)
-
-        mock_field.assert_called_once_with(record)
+        mock_define.assert_called_once_with({})
 
     def test_model_define(self):
 
         self.source.model_define(None)
+
+    def test_field_add(self):
+
+        self.source.field_add(None)
+
+    def test_field_remove(self):
+
+        self.source.field_remove(None)
+
+    def test_field_change(self):
+
+        self.source.field_change(None, None)
+
+    @unittest.mock.patch("relations.Source.field_add")
+    @unittest.mock.patch("relations.Source.field_remove")
+    @unittest.mock.patch("relations.Source.field_change")
+    def test_record_change(self, mock_change, mock_remove, mock_add):
+
+        record = [
+            {"name": "fie"},
+            {"name": "foe"}
+        ]
+
+        migration = {
+            "add": [
+                {"name": "fee"}
+            ],
+            "remove": ["fie"],
+            "change": {
+                "foe": {"name": "fum"}
+            }
+        }
+
+        self.source.record_change(record, migration)
+
+        mock_add.assert_called_once_with({"name": "fee"})
+        mock_remove.assert_called_once_with({"name": "fie"})
+        mock_change.assert_called_once_with({"name": "foe"}, {"name": "fum"})
+
+    def test_model_add(self):
+
+        self.source.model_add(None)
+
+    def test_model_remove(self):
+
+        self.source.model_remove(None)
+
+    def test_model_change(self):
+
+        self.source.model_change(None, None)
 
     def test_field_create(self):
 
@@ -164,3 +211,19 @@ class TestSource(unittest.TestCase):
     def test_model_delete(self):
 
         self.source.model_delete(None)
+
+    def test_definition_convert(self):
+
+        self.source.definition_convert(None, None)
+
+    def test_migration_convert(self):
+
+        self.source.migration_convert(None, None)
+
+    def test_execute(self):
+
+        self.source.execute(None)
+
+    def test_migrate(self):
+
+        self.source.migrate(None)

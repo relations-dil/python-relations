@@ -12,6 +12,7 @@ class Source:
     """
 
     name = None
+    KIND = None
 
     def __new__(cls, *args, **kwargs):
         """
@@ -65,10 +66,55 @@ class Source:
         """
         define the record
         """
-        for field in record._order:
+        for field in record:
             self.field_define(field, *args, **kwargs)
 
     def model_define(self, model):
+        """
+        define the model
+        """
+
+    def field_add(self, migration, *args, **kwargs):
+        """
+        add the field
+        """
+
+    def field_remove(self, definition, *args, **kwargs):
+        """
+        remove the field
+        """
+
+    def field_change(self, definition, migration, *args, **kwargs):
+        """
+        change the field
+        """
+
+    def record_change(self, definition, migration, *args, **kwargs):
+        """
+        define the record
+        """
+
+        for add in migration.get('add', []):
+            self.field_add(add, *args, **kwargs)
+
+        for remove in migration.get('remove', []):
+            self.field_remove(relations.Migrations.lookup(remove, definition), *args, **kwargs)
+
+        for field in definition:
+            if field["name"] in migration.get("change", {}):
+                self.field_change(field, migration["change"][field['name']], *args, **kwargs)
+
+    def model_add(self, migration):
+        """
+        define the model
+        """
+
+    def model_remove(self, definition):
+        """
+        define the model
+        """
+
+    def model_change(self, definition, migration):
         """
         define the model
         """
@@ -158,7 +204,22 @@ class Source:
         delete the model
         """
 
-    def children_execute(self, model):
+    def definition_convert(self, file_path, source_path):
         """
-        Execute everythong on the kids
+        Concvert a general definition file to a source specific file
+        """
+
+    def migration_convert(self, file_path, source_path):
+        """
+        Concvert a general migration file to a source specific file
+        """
+
+    def execute(self, commands):
+        """
+        Execute a command or commands
+        """
+
+    def migrate(self, source_path):
+        """
+        Execute a command or commands
         """

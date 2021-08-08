@@ -58,6 +58,26 @@ class ModelIdentity:
     _index = None  # Actual indexes
     _order = None  # Default sort order
 
+    DEFINE = [
+        "id",
+        "unique",
+        "index"
+    ]
+
+    UNDEFINE = [
+        "ID",
+        "LABEL",
+        "LIST",
+        "UNIQUE",
+        "INDEX",
+        "ORDER",
+        "CHUNK",
+        "PARENTS",
+        "CHILDREN",
+        "SISTERS",
+        "BROTHERS"
+    ]
+
     @staticmethod
     def underscore(name):
         """
@@ -242,8 +262,10 @@ class ModelIdentity:
 
         # Have the the source do whatever it needs to
 
-        if relations.source(cls.SOURCE) is not None:
-            relations.source(cls.SOURCE).model_init(self)
+        self.SOURCE = cls.SOURCE
+
+        if relations.source(self.SOURCE) is not None:
+            relations.source(self.SOURCE).model_init(self)
 
         return self
 
@@ -291,6 +313,36 @@ class ModelIdentity:
                 return relation
 
         return None
+
+    def define(self):
+        """
+        define the identity
+        """
+
+        definition = {
+            "fields": self._fields.define(),
+        }
+
+        for attr in self.DEFINE:
+            if getattr(self, f"_{attr}") is not None:
+                definition[attr] = getattr(self, f"_{attr}")
+
+        for attr in self.__dict__:
+            if attr[0] != '_' and attr == attr.upper() and attr not in self.UNDEFINE and getattr(self, attr) is not None:
+                definition[attr.lower()] = getattr(self, attr)
+
+        return definition
+
+    def migrate(self, previous, definition=None):
+        """
+        migrates from a previous identity
+        """
+
+        if definition is None:
+            definition = self.define()
+
+        return relations.Migrations.model(previous, definition)
+
 
 class Model(ModelIdentity):
     """
@@ -969,7 +1021,7 @@ class Model(ModelIdentity):
         """
         define the model
         """
-        return relations.source(cls.SOURCE).model_define(cls, *args, **kwargs)
+        return relations.source(cls.SOURCE).model_define(cls.thy().define(), *args, **kwargs)
 
     def create(self, *args, **kwargs):
         """

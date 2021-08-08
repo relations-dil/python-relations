@@ -2,9 +2,11 @@
 Unittest Tools for Relations
 """
 
-# pylint: disable=unused-argument,arguments-differ
+# pylint: disable=unused-argument,arguments-differ,too-many-public-methods
 
+import glob
 import copy
+import json
 import relations
 
 class MockSource(relations.Source):
@@ -13,20 +15,17 @@ class MockSource(relations.Source):
     Mock Source for Testing
     """
 
+    KIND = "mock"
+
     ids = None  # ID's keyed by model names
     data = None # Data keyed by model names
+    migrations = None # Migrations applied so far
 
     def __init__(self, name, **kwargs):
 
         self.ids = {}
         self.data = {}
-
-    def field_init(self, field):
-        """
-        Make sure there's auto_increment
-        """
-
-        self.ensure_attribute(field, "auto_increment")
+        self.migrations = None
 
     def model_init(self, model):
         """
@@ -41,29 +40,75 @@ class MockSource(relations.Source):
         self.ids.setdefault(model.NAME, 0)
         self.data.setdefault(model.NAME, {})
 
-        if model._id is not None and model._fields._names[model._id].auto_increment is None:
+        if model._id is not None and model._fields._names[model._id].auto is None:
             model._fields._names[model._id].auto = True
 
     def field_define(self, field, definitions):
         """
         define the field
         """
-        definitions[field.store] = field.kind
+        definitions.append(field)
 
-    def model_define(self, cls):
+    def model_define(self, model):
         """
         define the model
         """
 
-        model = cls.thy()
+        definitions = []
 
-        definitions = {}
+        self.record_define(model['fields'], definitions)
 
-        self.record_define(model._fields, definitions)
+        return [{"ACTION": "add", **model, "fields": definitions}]
 
-        return {
-            model.NAME: definitions
-        }
+    def field_add(self, migration, migrations):
+        """
+        add the field
+        """
+
+        definitions = []
+
+        self.field_define(migration, definitions)
+
+        migrations.extend([{**definition, "ACTION": "add"} for definition in definitions])
+
+    def field_remove(self, definition, migrations):
+        """
+        remove the field
+        """
+
+        migrations.append({"ACTION": "remove", **definition})
+
+    def field_change(self, definition, migration, migrations):
+        """
+        change the field
+        """
+
+        migrations.append({"ACTION": "change", "DEFINITION": definition, "MIGRATION": migration})
+
+    def model_add(self, definition):
+        """
+        add the model
+        """
+
+        return self.model_define(definition)
+
+    def model_remove(self, definition):
+        """
+        remove the model
+        """
+
+        return [{"ACTION": "remove", **definition}]
+
+    def model_change(self, definition, migration):
+        """
+        change the model
+        """
+
+        migrations = []
+
+        self.record_change(definition['fields'], migration.get("fields", {}), migrations)
+
+        return [{"ACTION": "change", "DEFINITION": definition, "MIGRATION": {**migration, "fields": migrations}}]
 
     @staticmethod
     def extract(model, values):
@@ -298,3 +343,138 @@ class MockSource(relations.Source):
             del self.data[model.NAME][id]
 
         return len(ids)
+
+    def definition_convert(self, file_path, source_path):
+        """"
+        Converts a definition file to a source definition file
+        """
+
+        definitions = []
+
+        with open(file_path, "r") as definition_file:
+            definition = json.load(definition_file)
+            for name in sorted(definition.keys()):
+                if definition[name]["source"] == self.name:
+                    definitions.extend(self.model_define(definition[name]))
+
+        if definitions:
+            file_name = file_path.split("/")[-1].split('.')[0]
+            with open(f"{source_path}/{file_name}.json", "w") as source_file:
+                source_file.write(json.dumps(definitions))
+                source_file.write("\n")
+
+    def migration_convert(self, file_path, source_path):
+        """"
+        Converts a migration file to a source definition file
+        """
+
+        migrations = []
+
+        with open(file_path, "r") as migration_file:
+            migration = json.load(migration_file)
+
+            for add in sorted(migration.get('add', {}).keys()):
+                if migration['add'][add]["source"] == self.name:
+                    migrations.extend(self.model_add(migration['add'][add]))
+
+            for remove in sorted(migration.get('remove', {}).keys()):
+                if migration['remove'][remove]["source"] == self.name:
+                    migrations.extend(self.model_remove(migration['remove'][remove]))
+
+            for change in sorted(migration.get('change', {}).keys()):
+                if migration['change'][change]['definition']["source"] == self.name:
+                    migrations.extend(
+                        self.model_change(migration['change'][change]['definition'], migration['change'][change]['migration'])
+                    )
+
+        if migrations:
+            file_name = file_path.split("/")[-1].split('.')[0]
+            with open(f"{source_path}/{file_name}.json", "w") as source_file:
+                source_file.write(json.dumps(migrations))
+                source_file.write("\n")
+
+    def execute(self, models): # pylint: disable=too-many-branches
+        """
+        execute the model or models
+        """
+
+        if not isinstance(models, list):
+            models = [models]
+
+        for model in models: # pylint: disable=too-many-nested-blocks
+
+            if model["ACTION"] == "add":
+
+                self.data.setdefault(model['name'], {})
+                self.ids.setdefault(model['name'], 0)
+
+            elif model["ACTION"] == "remove":
+
+                del self.data[model['name']]
+                del self.ids[model['name']]
+
+            elif model["ACTION"] == "change":
+
+                name = model["MIGRATION"].get("name", model["DEFINITION"]["name"])
+
+                if model["DEFINITION"]["name"] != name:
+
+                    self.data[name] = self.data[model["DEFINITION"]["name"]]
+                    self.ids[name] = self.ids[model["DEFINITION"]["name"]]
+
+                    del self.data[model["DEFINITION"]["name"]]
+                    del self.ids[model["DEFINITION"]["name"]]
+
+                for field in model["MIGRATION"].get("fields"):
+
+                    if field["ACTION"] == "add":
+
+                        for record in self.data[name].values():
+                            record[field['store']] = field.get("default")
+
+                    elif field["ACTION"] == "remove":
+
+                        for record in self.data[name].values():
+                            del record[field['store']]
+
+                    elif field["ACTION"] == "change":
+
+                        store = field["MIGRATION"].get("store", field["DEFINITION"]["store"])
+
+                        if field["DEFINITION"]["store"] != store:
+
+                            for record in self.data[name].values():
+                                record[store] = record[field["DEFINITION"]["store"]]
+                                del record[field["DEFINITION"]["store"]]
+
+    def migrate(self, source_path):
+        """
+        Migrate all the existing files to where we are
+        """
+
+        migrated = False
+
+        migration_paths = sorted(glob.glob(f"{source_path}/migration-*.json"))
+
+        if self.migrations is None:
+
+            self.migrations = []
+
+            with open(f"{source_path}/definition.json", 'r') as definition_file:
+                self.execute(json.load(definition_file))
+                migrated = True
+
+        else:
+
+            for migration_path in migration_paths:
+                if migration_path.rsplit("/migration-", 1)[-1].split('.')[0] not in self.migrations:
+                    with open(migration_path, 'r') as migration_file:
+                        self.execute(json.load(migration_file))
+                    migrated = True
+
+        for migration_path in migration_paths:
+            migration = migration_path.rsplit("/migration-", 1)[-1].split('.')[0]
+            if migration not in self.migrations:
+                self.migrations.append(migration)
+
+        return migrated

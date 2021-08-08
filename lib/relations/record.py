@@ -151,6 +151,13 @@ class Record:
 
         raise RecordError(self, f"unknown field '{key}'")
 
+    def define(self):
+        """
+        Gets all the defintions for fields
+        """
+
+        return [field.define() for field in self._order]
+
     def filter(self, criterion, value):
         """
         Sets criterion on a field

@@ -42,21 +42,31 @@ class Field: # pylint: disable=too-many-instance-attributes
     validation = None # How to validate values (if not None)
     length = None     # Length of the value
     format = None     # How to format the value instructions
-
-    value = None      # Value of the field
-    original = None   # Original value (as export)
-    changed = None    # Whether an field has changed for update only
     readonly = None   # Whether or not a field is readnoly
     auto = None       # Whether a field can be auto generated
     refresh = None    # Whether a field is to be refreshed if not touched
 
+    value = None      # Value of the field
+    original = None   # Original value (as export)
     criteria = None   # Values for searching
+    changed = None    # Whether an field has changed for update only
 
     # Operators supported and whether allwo multiple values
 
     ATTRIBUTES = [
         'default',
         'replace'
+    ]
+
+    UNDEFINE = [
+        "kind",
+        "attr",
+        "init",
+        "label",
+        "value",
+        "original",
+        "changed",
+        "criteria"
     ]
 
     OPERATORS = {
@@ -240,6 +250,26 @@ class Field: # pylint: disable=too-many-instance-attributes
             self.changed = True
 
         object.__setattr__(self, name, value)
+
+    def define(self):
+        """
+        Return data definitions structure
+        """
+
+        definition = {
+            "kind": self.kind.__name__
+        }
+
+        for attr in self.__dict__:
+            if attr == "extract":
+                definition[attr] = {store: kind.__name__ for store, kind in self.__dict__[attr].items()}
+            elif (
+                attr[0] != '_' and attr == attr.lower() and attr not in self.UNDEFINE and
+                getattr(self, attr) is not None and not callable(getattr(self, attr))
+            ):
+                definition[attr] = getattr(self, attr)
+
+        return definition
 
     def valid(self, value):
         """

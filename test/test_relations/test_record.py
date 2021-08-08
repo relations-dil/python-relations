@@ -148,6 +148,23 @@ class TestRecord(unittest.TestCase):
 
         self.assertRaisesRegex(relations.RecordError, "unknown field 'nope'", nope)
 
+    def test_define(self):
+
+        self.assertEqual(self.record.define(), [
+            {
+                "name": "id",
+                "kind": "int",
+                "store": "_id",
+                "none": True
+            },
+            {
+                "name": "name",
+                "kind": "str",
+                "store": "_name",
+                "none": True
+            }
+        ])
+
     def test_filter(self):
 
         self.meta = relations.Field(dict, name="meta")

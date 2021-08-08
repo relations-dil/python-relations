@@ -133,6 +133,46 @@ class TestField(unittest.TestCase):
         field.value = None
         self.assertIsNone(field.value)
 
+    def test_define(self):
+
+        field = relations.Field(int, name="test", default=False)
+        self.assertEqual(field.define(), {
+            "kind": 'int',
+            "name": "test",
+            "store": "test",
+            "none": False,
+            "default": False
+        })
+
+        field = relations.Field(int, name="test", default=int)
+        self.assertEqual(field.define(), {
+            "kind": 'int',
+            "name": "test",
+            "store": "test",
+            "none": False
+        })
+
+        field = relations.Field(dict, name='grab', extract={
+            "a__b__0___1": bool,
+            "c__b__0___1": int,
+            "c__d__0___1": float,
+            "c__d__1___1": str,
+            "c__d__1___2": list
+        })
+        self.assertEqual(field.define(), {
+            "kind": 'dict',
+            "name": "grab",
+            "store": "grab",
+            "none": False,
+            "extract": {
+                "a__b__0___1": 'bool',
+                "c__b__0___1": 'int',
+                "c__d__0___1": 'float',
+                "c__d__1___1": 'str',
+                "c__d__1___2": 'list'
+            }
+        })
+
     def test_valid(self):
 
         field = relations.Field(int, name="id", none=False)

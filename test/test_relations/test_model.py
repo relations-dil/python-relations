@@ -30,6 +30,9 @@ class TestModelError(unittest.TestCase):
 
 
 class People(relations.ModelIdentity):
+
+    EXTRA = "info"
+
     id = int
     name = str
     gender = ["free", "male", "female"]
@@ -117,6 +120,8 @@ relations.OneToOne(Test, Run)
 
 class TestModelIdentity(unittest.TestCase):
 
+    maxDiff = None
+
     def test_underscore(self):
 
         self.assertEqual(People.underscore("SomePeople"), "some_people")
@@ -172,6 +177,10 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(things._fields._names["name"].kind, str)
         self.assertEqual(things._fields._names["name"].storage, "id")
         self.assertIsNone(things._id)
+
+        Unit.thy()
+
+        self.assertEqual(Unit.SOURCE, "TestModel")
 
         Net.thy()
 
@@ -254,6 +263,94 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(test._ancestor("unit_id").Parent, Unit)
         self.assertIsNone(test._ancestor("nope"))
 
+    def test_define(self):
+
+        people = People.thy()
+
+        self.assertEqual(people.define(), {
+            "name": "people",
+            "title": "People",
+            "extra": "info",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                },
+                {
+                    "name": "gender",
+                    "kind": "str",
+                    "store": "gender",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "default": "free",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        })
+
+    def test_migrate(self):
+
+        people = People.thy()
+
+        self.assertEqual(people.migrate({
+            "name": "people",
+            "title": "People",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                },
+                {
+                    "name": "gender",
+                    "kind": "str",
+                    "store": "genders",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "default": "free",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }), {
+            "fields": {
+                "change": {
+                    "gender": {
+                        "store": "gender"
+                    }
+                }
+            }
+        })
 
 class TestModel(unittest.TestCase):
 
@@ -1286,12 +1383,32 @@ class TestModel(unittest.TestCase):
 
         Unit.define()
 
-        self.assertEqual(Unit.define(), {
-            "unit": {
-                "id": int,
-                "name": str
-            }
-        })
+        self.assertEqual(Unit.define(), [{
+            "ACTION": "add",
+            "source": "TestModel",
+            "name": "unit",
+            "title": "Unit",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }])
 
     def test_create(self):
 
