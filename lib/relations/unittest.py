@@ -447,13 +447,13 @@ class MockSource(relations.Source):
                                 record[store] = record[field["DEFINITION"]["store"]]
                                 del record[field["DEFINITION"]["store"]]
 
-    def load(self, file_path):
+    def load(self, load_path):
         """
         Load a file
         """
 
-        with open(file_path, 'r') as migration_file:
-            self.execute(json.load(migration_file))
+        with open(load_path, 'r') as load_path:
+            self.execute(json.load(load_path))
 
     def list(self, source_path):
         """
