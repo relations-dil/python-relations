@@ -267,6 +267,26 @@ class Migrations:
             elif file_name.startswith("migration"):
                 source.migration_convert(file_path, source_path)
 
+    def list(self, name):
+        """
+        List out the migrations pairs for a source
+        """
+
+        source = relations.source(name)
+
+        source_path = f"{self.directory}/{source.name}/{source.KIND}"
+
+        return source.list(source_path)
+
+    def load(self, name, file_path):
+        """
+        Load a file from a source
+        """
+
+        source = relations.source(name)
+
+        return source.load(file_path)
+
     def apply(self, name):
         """
         Applies source definitions and migrations based on a source name

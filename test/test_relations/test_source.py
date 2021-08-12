@@ -224,6 +224,14 @@ class TestSource(unittest.TestCase):
 
         self.source.execute(None)
 
+    def test_list(self):
+
+        self.source.list(None)
+
+    def test_load(self):
+
+        self.source.load(None)
+
     def test_migrate(self):
 
         self.source.migrate(None)

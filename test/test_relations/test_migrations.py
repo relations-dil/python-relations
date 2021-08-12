@@ -8,6 +8,7 @@ import freezegun
 
 import os
 import shutil
+import pathlib
 import json
 
 import relations
@@ -921,6 +922,106 @@ class TestMigrations(unittest.TestCase):
                     }
                 }
             ])
+
+    def test_list(self):
+
+        source = relations.unittest.MockSource("MigrationsSource")
+
+        os.makedirs(f"ddl/{source.name}/{source.KIND}")
+
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/migration-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition-2012-07-08.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/migration-2012-07-08.json").touch()
+
+        migrations = relations.Migrations()
+
+        self.assertEqual(migrations.list("MigrationsSource"), {
+            "2012-07-07": {
+                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-07.json",
+                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-07.json"
+            },
+            "2012-07-08": {
+                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-08.json",
+                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-08.json"
+            }
+        })
+
+    def test_list(self):
+
+        source = relations.unittest.MockSource("MigrationsSource")
+
+        os.makedirs(f"ddl/{source.name}/{source.KIND}")
+
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/migration-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/definition-2012-07-08.json").touch()
+        pathlib.Path(f"ddl/{source.name}/{source.KIND}/migration-2012-07-08.json").touch()
+
+        migrations = relations.Migrations()
+
+        self.assertEqual(migrations.list("MigrationsSource"), {
+            "2012-07-07": {
+                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-07.json",
+                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-07.json"
+            },
+            "2012-07-08": {
+                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-08.json",
+                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-08.json"
+            }
+        })
+
+    def test_load(self):
+
+        source = relations.unittest.MockSource("MigrationsSource")
+
+        source.ids = {}
+        source.data = {}
+
+        definition = [{
+            "ACTION": "add",
+            "source": "MigrationsSource",
+            "name": "people",
+            "title": "People",
+            "fields": [
+                {
+                    "name": "id",
+                    "kind": "int",
+                    "store": "id",
+                    "none": True,
+                    "auto": True
+                },
+                {
+                    "name": "name",
+                    "kind": "str",
+                    "store": "name",
+                    "none": False
+                }
+            ],
+            "id": "id",
+            "unique": {
+                "name": ["name"]
+            },
+            "index": {}
+        }]
+
+        os.makedirs("ddl/MigrationsSource/mock", exist_ok=True)
+
+        with open("ddl/MigrationsSource/mock/definition.json", 'w') as ddl_file:
+            json.dump(definition, ddl_file)
+
+        migrations = relations.Migrations()
+
+        migrations.load("MigrationsSource", "ddl/MigrationsSource/mock/definition.json")
+
+        self.assertEqual(source.ids, {
+            "people": 0
+        })
+        self.assertEqual(source.data, {
+            "people": {}
+        })
 
     def test_apply(self):
 

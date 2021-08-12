@@ -447,6 +447,30 @@ class MockSource(relations.Source):
                                 record[store] = record[field["DEFINITION"]["store"]]
                                 del record[field["DEFINITION"]["store"]]
 
+    def load(self, file_path):
+        """
+        Load a file
+        """
+
+        with open(file_path, 'r') as migration_file:
+            self.execute(json.load(migration_file))
+
+    def list(self, source_path):
+        """
+        List the migration by pairs
+        """
+
+        migrations = {}
+
+        for file_path in glob.glob(f"{source_path}/*-*.json"):
+
+            kind, stamp = file_path.rsplit("/", 1)[-1].split('.')[0].split('-', 1)
+
+            migrations.setdefault(stamp, {})
+            migrations[stamp][kind] = file_path
+
+        return migrations
+
     def migrate(self, source_path):
         """
         Migrate all the existing files to where we are
@@ -460,16 +484,14 @@ class MockSource(relations.Source):
 
             self.migrations = []
 
-            with open(f"{source_path}/definition.json", 'r') as definition_file:
-                self.execute(json.load(definition_file))
-                migrated = True
+            self.load(f"{source_path}/definition.json")
+            migrated = True
 
         else:
 
             for migration_path in migration_paths:
                 if migration_path.rsplit("/migration-", 1)[-1].split('.')[0] not in self.migrations:
-                    with open(migration_path, 'r') as migration_file:
-                        self.execute(json.load(migration_file))
+                    self.load(migration_path)
                     migrated = True
 
         for migration_path in migration_paths:

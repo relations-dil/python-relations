@@ -219,6 +219,16 @@ class Source:
         Execute a command or commands
         """
 
+    def list(self, source_path):
+        """
+        List the migration pairs in reverse order fro verification
+        """
+
+    def load(self, file_path):
+        """
+        Load a file into the database
+        """
+
     def migrate(self, source_path):
         """
         Execute a command or commands
