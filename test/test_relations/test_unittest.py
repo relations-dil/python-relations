@@ -1069,6 +1069,20 @@ class TestSource(unittest.TestCase):
             }
         }})
 
+    def test_load(self):
+
+        self.source.ids = {}
+        self.source.data = {}
+
+        migrations = relations.Migrations()
+
+        migrations.generate([Unit])
+        migrations.convert(self.source.name)
+
+        self.source.load(f"ddl/{self.source.name}/{self.source.KIND}/definition.json")
+
+        self.assertEqual(Unit.many().count(), 0)
+
     def test_list(self):
 
         os.makedirs(f"ddl/{self.source.name}/{self.source.KIND}")
@@ -1089,20 +1103,6 @@ class TestSource(unittest.TestCase):
                 "migration": "migration-2012-07-08.json"
             }
         })
-
-    def test_load(self):
-
-        self.source.ids = {}
-        self.source.data = {}
-
-        migrations = relations.Migrations()
-
-        migrations.generate([Unit])
-        migrations.convert(self.source.name)
-
-        self.source.load(f"ddl/{self.source.name}/{self.source.KIND}/definition.json")
-
-        self.assertEqual(Unit.many().count(), 0)
 
     def test_migrate(self):
 

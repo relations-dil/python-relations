@@ -228,9 +228,14 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.criteria["ne"], [1])
         field.filter(2.0, "ne")
         self.assertEqual(field.criteria["ne"], [1, 2])
+        field.filter(None, "ne")
+        self.assertFalse(field.criteria["null"])
 
         field.filter("1")
         self.assertEqual(field.criteria["eq"], 1)
+
+        field.filter(None)
+        self.assertTrue(field.criteria["null"])
 
         field.filter("1", "gt")
         self.assertEqual(field.criteria["gt"], 1)

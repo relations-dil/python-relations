@@ -990,7 +990,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(test.unit._mode, "one")
         self.assertEqual(test.unit._action, "retrieve")
         self.assertEqual(test.unit._record._action, "retrieve")
-        self.assertIsNone(test.unit._record._names["id"].criteria["eq"])
+        self.assertTrue(test.unit._record._names["id"].criteria["null"])
 
         test.unit_id = 1
         self.assertEqual(test.unit._related, {"id": 1})
