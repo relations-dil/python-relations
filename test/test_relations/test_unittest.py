@@ -3,6 +3,7 @@ import unittest.mock
 
 import os
 import shutil
+import pathlib
 import json
 import ipaddress
 
@@ -1067,6 +1068,41 @@ class TestSource(unittest.TestCase):
                 "fum": 6
             }
         }})
+
+    def test_list(self):
+
+        os.makedirs(f"ddl/{self.source.name}/{self.source.KIND}")
+
+        pathlib.Path(f"ddl/{self.source.name}/{self.source.KIND}/definition.json").touch()
+        pathlib.Path(f"ddl/{self.source.name}/{self.source.KIND}/definition-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{self.source.name}/{self.source.KIND}/migration-2012-07-07.json").touch()
+        pathlib.Path(f"ddl/{self.source.name}/{self.source.KIND}/definition-2012-07-08.json").touch()
+        pathlib.Path(f"ddl/{self.source.name}/{self.source.KIND}/migration-2012-07-08.json").touch()
+
+        self.assertEqual(self.source.list(f"ddl/{self.source.name}/{self.source.KIND}"), {
+            "2012-07-07": {
+                "definition": "definition-2012-07-07.json",
+                "migration": "migration-2012-07-07.json"
+            },
+            "2012-07-08": {
+                "definition": "definition-2012-07-08.json",
+                "migration": "migration-2012-07-08.json"
+            }
+        })
+
+    def test_load(self):
+
+        self.source.ids = {}
+        self.source.data = {}
+
+        migrations = relations.Migrations()
+
+        migrations.generate([Unit])
+        migrations.convert(self.source.name)
+
+        self.source.load(f"ddl/{self.source.name}/{self.source.KIND}/definition.json")
+
+        self.assertEqual(Unit.many().count(), 0)
 
     def test_migrate(self):
 
