@@ -464,10 +464,11 @@ class MockSource(relations.Source):
 
         for file_path in glob.glob(f"{source_path}/*-*.json"):
 
-            kind, stamp = file_path.rsplit("/", 1)[-1].split('.')[0].split('-', 1)
+            file_name = file_path.rsplit("/", 1)[-1]
+            kind, stamp = file_name.split('.')[0].split('-', 1)
 
             migrations.setdefault(stamp, {})
-            migrations[stamp][kind] = file_path
+            migrations[stamp][kind] = file_name
 
         return migrations
 

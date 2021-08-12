@@ -964,12 +964,12 @@ class TestMigrations(unittest.TestCase):
 
         self.assertEqual(migrations.list("MigrationsSource"), {
             "2012-07-07": {
-                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-07.json",
-                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-07.json"
+                "definition": "definition-2012-07-07.json",
+                "migration": "migration-2012-07-07.json"
             },
             "2012-07-08": {
-                "definition": f"ddl/{source.name}/{source.KIND}/definition-2012-07-08.json",
-                "migration": f"ddl/{source.name}/{source.KIND}/migration-2012-07-08.json"
+                "definition": "definition-2012-07-08.json",
+                "migration": "migration-2012-07-08.json"
             }
         })
 
@@ -1014,7 +1014,7 @@ class TestMigrations(unittest.TestCase):
 
         migrations = relations.Migrations()
 
-        migrations.load("MigrationsSource", "ddl/MigrationsSource/mock/definition.json")
+        migrations.load("MigrationsSource", "definition.json")
 
         self.assertEqual(source.ids, {
             "people": 0

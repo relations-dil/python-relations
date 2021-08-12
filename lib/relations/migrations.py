@@ -278,14 +278,14 @@ class Migrations:
 
         return source.list(source_path)
 
-    def load(self, name, file_path):
+    def load(self, name, file_name):
         """
         Load a file from a source
         """
 
         source = relations.source(name)
 
-        return source.load(file_path)
+        return source.load(f"{self.directory}/{source.name}/{source.KIND}/{file_name}")
 
     def apply(self, name):
         """

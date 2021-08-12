@@ -1081,12 +1081,12 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.list(f"ddl/{self.source.name}/{self.source.KIND}"), {
             "2012-07-07": {
-                "definition": f"ddl/{self.source.name}/{self.source.KIND}/definition-2012-07-07.json",
-                "migration": f"ddl/{self.source.name}/{self.source.KIND}/migration-2012-07-07.json"
+                "definition": "definition-2012-07-07.json",
+                "migration": "migration-2012-07-07.json"
             },
             "2012-07-08": {
-                "definition": f"ddl/{self.source.name}/{self.source.KIND}/definition-2012-07-08.json",
-                "migration": f"ddl/{self.source.name}/{self.source.KIND}/migration-2012-07-08.json"
+                "definition": "definition-2012-07-08.json",
+                "migration": "migration-2012-07-08.json"
             }
         })
 
