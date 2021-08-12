@@ -452,8 +452,8 @@ class MockSource(relations.Source):
         Load a file
         """
 
-        with open(load_path, 'r') as load_path:
-            self.execute(json.load(load_path))
+        with open(load_path, 'r') as load_file:
+            self.execute(json.load(load_file))
 
     def list(self, source_path):
         """
