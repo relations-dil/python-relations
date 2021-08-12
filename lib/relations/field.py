@@ -325,6 +325,11 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.criteria is None:
             self.criteria = {}
 
+        if value is None and operator in ["eq", "ne"]:
+            value = (operator == "eq")
+            operator = "null"
+            path = f"{path[:-2]}null"
+
         if self.OPERATORS[operator]:
 
             self.criteria.setdefault(path, [])
