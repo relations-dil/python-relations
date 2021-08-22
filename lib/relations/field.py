@@ -79,7 +79,10 @@ class Field: # pylint: disable=too-many-instance-attributes
         'lte': False,
         'like': False,
         'notlike': False,
-        'null': False
+        'null': False,
+        'has': True,
+        'any': True,
+        'all': True
     }
 
     RESERVED = [
@@ -337,7 +340,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if not isinstance(value, list):
                 value = [value]
 
-            if path != operator:
+            if path != operator or self.kind == list:
                 self.criteria[path].extend(value)
             else:
                 self.criteria[path].extend([self.valid(item) for item in value])
@@ -557,6 +560,16 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             if operator == "notlike" and str(satisfy).lower() in str(value).lower():
                 return False
+
+            if operator == "has" and not all(item in value for item in satisfy):
+                return False
+
+            if operator == "any" and not any(item in value for item in satisfy):
+                return False
+
+            if operator == "all" and set(value) != set(satisfy):
+                return False
+
 
         return True
 

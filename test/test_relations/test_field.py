@@ -272,6 +272,22 @@ class TestField(unittest.TestCase):
 
         self.assertRaisesRegex(relations.FieldError, "unknown operator 'nope'", field.filter, 0, "nope")
 
+        field = relations.Field(list)
+        field.filter("1", "has")
+        self.assertEqual(field.criteria["has"], ["1"])
+        field.filter("2", "has")
+        self.assertEqual(field.criteria["has"], ["1", "2"])
+
+        field.filter("1", "any")
+        self.assertEqual(field.criteria["any"], ["1"])
+        field.filter("2", "any")
+        self.assertEqual(field.criteria["any"], ["1", "2"])
+
+        field.filter("1", "all")
+        self.assertEqual(field.criteria["all"], ["1"])
+        field.filter("2", "all")
+        self.assertEqual(field.criteria["all"], ["1", "2"])
+
         field = relations.Field(dict)
         field.filter("1", "a")
         self.assertEqual(field.criteria["a__eq"], "1")
@@ -524,6 +540,21 @@ class TestField(unittest.TestCase):
         self.assertTrue(field.retrieve({"meta": [0, None]}))
         self.assertTrue(field.retrieve({"meta": []}))
         self.assertFalse(field.retrieve({"meta": ['0', '1']}))
+
+        field = relations.Field(list, store="meta")
+        field.filter("1", "has")
+        self.assertTrue(field.retrieve({"meta": ['1', '2']}))
+        self.assertFalse(field.retrieve({"meta": ['2']}))
+
+        field = relations.Field(list, store="meta")
+        field.filter(["1", "2"], "any")
+        self.assertTrue(field.retrieve({"meta": ['1']}))
+        self.assertFalse(field.retrieve({"meta": ['3']}))
+
+        field = relations.Field(list, store="meta")
+        field.filter(["1", "2"], "all")
+        self.assertTrue(field.retrieve({"meta": ['1', '2']}))
+        self.assertFalse(field.retrieve({"meta": ['3', '2', '1']}))
 
     def test_like(self):
 
