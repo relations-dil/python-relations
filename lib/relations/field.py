@@ -447,7 +447,8 @@ class Field: # pylint: disable=too-many-instance-attributes
             (isinstance(place, int) and not isinstance(values, list))
         ):
             return None
-        elif isinstance(values, list):
+
+        if isinstance(values, list):
             if (place if place > -1 else abs(place + 1)) > len(values) - 1:
                 return None
             return values[place]
