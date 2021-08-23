@@ -28,6 +28,7 @@ class Meta(SourceModel):
     name = str
     flag = bool
     spend = float
+    people = set
     stuff = list
     things = dict, {"extract": "for__0___1"}
     push = str, {"inject": "stuff__-1__relations.io___1"}
@@ -365,7 +366,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(simples._models, [])
 
-        yep = Meta("yep", True, 3.50, [1, None], {"a": 1, "for": [{"1": "yep"}]}, "sure").create()
+        yep = Meta("yep", True, 3.50, {"tom"}, [1, None], {"a": 1, "for": [{"1": "yep"}]}, "sure").create()
         self.assertTrue(Meta.one(yep.id).flag)
 
         nope = Meta("nope", False).create()
@@ -400,6 +401,7 @@ class TestSource(unittest.TestCase):
                     "name": "yep",
                     "flag": True,
                     "spend": 3.50,
+                    "people": ["tom"],
                     "stuff": [1, {"relations.io": {"1": "sure"}}],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
                     "things__for__0___1": "yep"
@@ -409,6 +411,7 @@ class TestSource(unittest.TestCase):
                     "name": "nope",
                     "flag": False,
                     "spend": None,
+                    "people": [],
                     "stuff": [{"relations.io": {"1": None}}],
                     "things": {},
                     "things__for__0___1": None

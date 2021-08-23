@@ -144,10 +144,10 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         self._none = self.none
 
-        # If we're list or dict, we can't be None and our default is
+        # If we're set, list, or dict, we can't be None and our default is
         # our type, so it's always a list or dict
 
-        if self.kind in [list, dict]:
+        if self.kind in [set, list, dict]:
             self.none = False
             if self.default is None:
                 self.default = self.kind
@@ -165,7 +165,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if not isinstance(self.default, self.kind):
                 raise FieldError(self, f"{self.default} default not {self.kind} for {self.name}")
 
-        if self.options is not None:
+        if self.options is not None and self.kind != set:
             for option in self.options: # pylint: disable=not-an-iterable
                 if not isinstance(option, self.kind):
                     raise FieldError(self, f"{option} option not {self.kind} for {self.name}")
@@ -175,7 +175,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         # If the field isn't a standard type and lacks attr, throw an error
 
-        if self.kind not in [bool, int, float, str, list, dict] and self.attr is None:
+        if self.kind not in [bool, int, float, str, set, list, dict] and self.attr is None:
             raise FieldError(self, f"{self.kind.__name__} requires at least attr")
 
        # if there's attr and no label, assume label is attr
@@ -294,8 +294,13 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 value = self.kind(value)
 
-        if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
-            raise FieldError(self, f"{value} not in {self.options} for {self.name}")
+        if self.options is not None:
+            if self.kind == set:
+                for each in value:
+                    if each not in self.options:
+                        raise FieldError(self, f"{each} not in {self.options} for {self.name}")
+            elif value not in self.options:
+                raise FieldError(self, f"{value} not in {self.options} for {self.name}")
 
         if self.validation is not None:
             if isinstance(self.validation, str):
@@ -335,15 +340,15 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if self.OPERATORS[operator]:
 
-            self.criteria.setdefault(path, [])
+            self.criteria.setdefault(path, set())
 
-            if not isinstance(value, list):
-                value = [value]
+            if not isinstance(value, (set, list, tuple)):
+                value = {value}
 
-            if path != operator or self.kind == list:
-                self.criteria[path].extend(value)
+            if path != operator or self.kind in [set, list]:
+                self.criteria[path].update(value)
             else:
-                self.criteria[path].extend([self.valid(item) for item in value])
+                self.criteria[path].update(self.valid(item) for item in value)
 
         else:
 
@@ -435,6 +440,11 @@ class Field: # pylint: disable=too-many-instance-attributes
         Create a dictionary of object attributes
         """
 
+        if self.kind == set:
+            if self.options is not None:
+                return [value for value in self.options if value in self.value]
+            return sorted(self.value)
+
         if self.value is None or self.attr is None:
             return self.value
 
@@ -514,7 +524,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             value = values.get(self.store)
 
-            if self.kind in [bool, int, float, str, list, dict]:
+            if self.kind in [bool, int, float, str, set, list, dict]:
                 value = self.valid(value)
             elif not value:
                 value = value or {}
@@ -567,9 +577,8 @@ class Field: # pylint: disable=too-many-instance-attributes
             if operator == "any" and not any(item in value for item in satisfy):
                 return False
 
-            if operator == "all" and set(value) != set(satisfy):
+            if operator == "all" and set(value) != satisfy:
                 return False
-
 
         return True
 
@@ -621,7 +630,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if path is None:
             path = []
 
-        if self.kind in [list, dict]:
+        if self.kind in [set, list, dict]:
             return [self.get(self.value, path)]
 
         values = self.export()
