@@ -126,7 +126,7 @@ class ModelIdentity:
                 field = relations.Field(type(attribute()), default=attribute)
             elif isinstance(attribute, set):
                 field = relations.Field(set, options=sorted(attribute))
-            elif isinstance(attribute, tuple) and len(attribute) and isinstance(attribute[0], str):
+            elif isinstance(attribute, tuple) and attribute and isinstance(attribute[0], str):
                 field = relations.Field(set, options=list(attribute))
             elif isinstance(attribute, list):
                 field = relations.Field(type(attribute[0]), default=attribute[0], options=attribute)

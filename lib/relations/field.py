@@ -2,7 +2,7 @@
 Relations Module for handling fields
 """
 
-# pylint: disable=not-callable
+# pylint: disable=not-callable,unsupported-membership-test,not-an-iterable
 
 import re
 import relations
@@ -274,7 +274,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return definition
 
-    def valid(self, value):
+    def valid(self, value): # pylint: disable=too-many-branches
         """
         Returns the valid value, raising issues if invalid
         """
