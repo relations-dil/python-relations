@@ -523,13 +523,14 @@ class TestSource(unittest.TestCase):
         unit.test.add("things")[0].case.add("persons")
         unit.update()
 
-        model = Unit.many(test__name="things")
+        Meta("yep", True, 1.1, {"tom"}, [1, None], {"a": 1}).create()
+        model = Meta.one(name="yep")
 
-        self.assertEqual(model.id, [2])
-        self.assertEqual(model[0]._action, "update")
-        self.assertEqual(model[0]._record._action, "update")
-        self.assertEqual(model[0].test[0].id, 1)
-        self.assertEqual(model[0].test[0].case.name, "persons")
+        self.assertEqual(model.flag, True)
+        self.assertEqual(model.spend, 1.1)
+        self.assertEqual(model.people, {"tom"})
+        self.assertEqual(model.stuff, [1, {"relations.io": {"1": None}}])
+        self.assertEqual(model.things, {"a": 1})
 
         self.assertEqual(Unit.many().name, ["people", "stuff"])
         self.assertEqual(Unit.many().sort("-name").limit(1).name, ["stuff"])
@@ -605,13 +606,13 @@ class TestSource(unittest.TestCase):
         model = Meta.many(things__a__b__all=[3, 2, 1])
         self.assertEqual(len(model), 0)
 
-        model = Meta.many(people__has="tom")
+        model = Meta.many(people__has="mary")
         self.assertEqual(len(model), 1)
 
         model = Meta.many(people__has="dick")
         self.assertEqual(len(model), 0)
 
-        model = Meta.many(people__any=["tom", "dick"])
+        model = Meta.many(people__any=["mary", "dick"])
         self.assertEqual(len(model), 1)
 
         model = Meta.many(people__any=["harry", "dick"])

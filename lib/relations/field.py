@@ -359,8 +359,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
-    @staticmethod
-    def find(values, path, write=False): # pylint: disable=too-many-branches
+    def find(self, values, path, write=False): # pylint: disable=too-many-branches
         """
         Traverse a values to get to the last structure
         """
@@ -386,6 +385,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                 if write:
 
+                    if isinstance(place, str) and not isinstance(values, dict):
+                        raise FieldError(self, f"key {place} mismatches {values}")
+
+                    if isinstance(place, int) and not isinstance(values, list):
+                        raise FieldError(self, f"index {place} mismatches {values}")
+
                     if isinstance(values, dict):
                         values.setdefault(place, default)
                     else:
@@ -398,7 +403,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                 else:
 
-                    if isinstance(values, dict):
+                    if (
+                        (isinstance(place, str) and not isinstance(values, dict)) or
+                        (isinstance(place, int) and not isinstance(values, list))
+                    ):
+                        values = default
+                    elif isinstance(values, dict):
                         values = values.get(place, default)
                     elif (place if place > -1 else abs(place + 1)) > len(values) - 1 or values[place] is None:
                         values = default
@@ -407,18 +417,22 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values, place
 
-    @classmethod
-    def set(cls, values, path, value):
+    def set(self, values, path, value):
         """
         Retrieve value at path filling in what's expected
         """
 
-        values, place = cls.find(values, path, write=True)
+        values, place = self.find(values, path, write=True)
+
+        if isinstance(place, str) and not isinstance(values, dict):
+            raise FieldError(self, f"key {place} mismatches {values}")
+
+        if isinstance(place, int) and not isinstance(values, list):
+            raise FieldError(self, f"index {place} mismatches {values}")
 
         values[place] = value
 
-    @classmethod
-    def get(cls, values, path):
+    def get(self, values, path):
         """
         Retrieve value at path filling in what's expected
         """
@@ -426,9 +440,14 @@ class Field: # pylint: disable=too-many-instance-attributes
         if not path:
             return values
 
-        values, place = cls.find(values, path)
+        values, place = self.find(values, path)
 
-        if isinstance(values, list):
+        if (
+            (isinstance(place, str) and not isinstance(values, dict)) or
+            (isinstance(place, int) and not isinstance(values, list))
+        ):
+            return None
+        elif isinstance(values, list):
             if (place if place > -1 else abs(place + 1)) > len(values) - 1:
                 return None
             return values[place]
