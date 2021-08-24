@@ -1138,8 +1138,8 @@ class TestModel(unittest.TestCase):
         test = Test.one(unit__name="ya", case__name="whatever")
         test._collate()
 
-        self.assertEqual(test._record._names['unit_id'].criteria["in"], {1})
-        self.assertEqual(test._record._names['id'].criteria["in"], {2})
+        self.assertEqual(test._record._names['unit_id'].criteria["in"], [1])
+        self.assertEqual(test._record._names['id'].criteria["in"], [2])
         self.assertEqual(test.case[0].id, 1)
 
         test = Test.one()
@@ -1286,12 +1286,12 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(models._record._action, "retrieve")
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._record._names["name"].criteria["ne"], {"unittest"})
+        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
 
         unit = Unit.many().filter(test__id__in=[1], like="fuzzy")
 
-        self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], {1})
-        self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], {1})
+        self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], [1])
+        self.assertEqual(unit._children['test']._record._names['id'].criteria['in'], [1])
 
         test = Test.many().filter(like="fuzzy")
 
@@ -1326,7 +1326,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._action, "retrieve")
         self.assertEqual(models._record._action, "retrieve")
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._record._names["name"].criteria["ne"], {"unittest"})
+        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
 
     def test_sort(self):
 

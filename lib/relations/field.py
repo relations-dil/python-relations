@@ -340,15 +340,15 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if self.OPERATORS[operator]:
 
-            self.criteria.setdefault(path, set())
+            self.criteria.setdefault(path, [])
 
             if not isinstance(value, (set, list, tuple)):
-                value = {value}
+                value = [value]
 
             if path != operator or self.kind in [set, list]:
-                self.criteria[path].update(value)
+                self.criteria[path].extend(value)
             else:
-                self.criteria[path].update(self.valid(item) for item in value)
+                self.criteria[path].extend(self.valid(item) for item in value)
 
         else:
 
@@ -597,7 +597,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if operator == "any" and not any(item in value for item in satisfy):
                 return False
 
-            if operator == "all" and set(value) != satisfy:
+            if operator == "all" and not (all(item in value for item in satisfy) and len(value) == len(satisfy)):
                 return False
 
         return True

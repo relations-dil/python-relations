@@ -224,14 +224,14 @@ class TestField(unittest.TestCase):
         field = relations.Field(int)
 
         field.filter("1", "in")
-        self.assertEqual(field.criteria["in"], {1})
+        self.assertEqual(field.criteria["in"], [1])
         field.filter(2.0, "in")
-        self.assertEqual(field.criteria["in"], {1, 2})
+        self.assertEqual(field.criteria["in"], [1, 2])
 
         field.filter("1", "ne")
-        self.assertEqual(field.criteria["ne"], {1})
+        self.assertEqual(field.criteria["ne"], [1])
         field.filter(2.0, "ne")
-        self.assertEqual(field.criteria["ne"], {1, 2})
+        self.assertEqual(field.criteria["ne"], [1, 2])
         field.filter(None, "ne")
         self.assertFalse(field.criteria["null"])
 
@@ -278,19 +278,19 @@ class TestField(unittest.TestCase):
 
         field = relations.Field(list)
         field.filter("1", "has")
-        self.assertEqual(field.criteria["has"], {"1"})
+        self.assertEqual(field.criteria["has"], ["1"])
         field.filter("2", "has")
-        self.assertEqual(field.criteria["has"], {"1", "2"})
+        self.assertEqual(field.criteria["has"], ["1", "2"])
 
         field.filter("1", "any")
-        self.assertEqual(field.criteria["any"], {"1"})
+        self.assertEqual(field.criteria["any"], ["1"])
         field.filter("2", "any")
-        self.assertEqual(field.criteria["any"], {"1", "2"})
+        self.assertEqual(field.criteria["any"], ["1", "2"])
 
         field.filter("1", "all")
-        self.assertEqual(field.criteria["all"], {"1"})
+        self.assertEqual(field.criteria["all"], ["1"])
         field.filter("2", "all")
-        self.assertEqual(field.criteria["all"], {"1", "2"})
+        self.assertEqual(field.criteria["all"], ["1", "2"])
 
         field = relations.Field(dict)
         field.filter("1", "a")
@@ -298,7 +298,7 @@ class TestField(unittest.TestCase):
 
         field = relations.Field(dict)
         field.filter("1", "a__in")
-        self.assertEqual(field.criteria["a__in"], {"1"})
+        self.assertEqual(field.criteria["a__in"], ["1"])
 
     def test_find(self):
 

@@ -555,8 +555,17 @@ class TestSource(unittest.TestCase):
         model = Meta.many(stuff=[1, 2, 3, {"relations.io": {"1": None}}])
         self.assertEqual(model[0].name, "dive")
 
+        model = Meta.many(stuff__ne=[1, [1, 2, 3, {"relations.io": {"1": None}}]])
+        self.assertEqual(model[0].name, "yep")
+
         model = Meta.many(things={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
         self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__in={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__ne={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        self.assertEqual(model[0].name, "yep")
 
         model = Meta.many(stuff__1=2)
         self.assertEqual(model[0].name, "dive")
