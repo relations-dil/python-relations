@@ -28,6 +28,7 @@ class Meta(SourceModel):
     name = str
     flag = bool
     spend = float
+    people = set
     stuff = list
     things = dict, {"extract": "for__0___1"}
     push = str, {"inject": "stuff__-1__relations.io___1"}
@@ -365,7 +366,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(simples._models, [])
 
-        yep = Meta("yep", True, 3.50, [1, None], {"a": 1, "for": [{"1": "yep"}]}, "sure").create()
+        yep = Meta("yep", True, 3.50, {"tom"}, [1, None], {"a": 1, "for": [{"1": "yep"}]}, "sure").create()
         self.assertTrue(Meta.one(yep.id).flag)
 
         nope = Meta("nope", False).create()
@@ -400,6 +401,7 @@ class TestSource(unittest.TestCase):
                     "name": "yep",
                     "flag": True,
                     "spend": 3.50,
+                    "people": ["tom"],
                     "stuff": [1, {"relations.io": {"1": "sure"}}],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
                     "things__for__0___1": "yep"
@@ -409,6 +411,7 @@ class TestSource(unittest.TestCase):
                     "name": "nope",
                     "flag": False,
                     "spend": None,
+                    "people": [],
                     "stuff": [{"relations.io": {"1": None}}],
                     "things": {},
                     "things__for__0___1": None
@@ -520,13 +523,14 @@ class TestSource(unittest.TestCase):
         unit.test.add("things")[0].case.add("persons")
         unit.update()
 
-        model = Unit.many(test__name="things")
+        Meta("yep", True, 1.1, {"tom"}, [1, None], {"a": 1}).create()
+        model = Meta.one(name="yep")
 
-        self.assertEqual(model.id, [2])
-        self.assertEqual(model[0]._action, "update")
-        self.assertEqual(model[0]._record._action, "update")
-        self.assertEqual(model[0].test[0].id, 1)
-        self.assertEqual(model[0].test[0].case.name, "persons")
+        self.assertEqual(model.flag, True)
+        self.assertEqual(model.spend, 1.1)
+        self.assertEqual(model.people, {"tom"})
+        self.assertEqual(model.stuff, [1, {"relations.io": {"1": None}}])
+        self.assertEqual(model.things, {"a": 1})
 
         self.assertEqual(Unit.many().name, ["people", "stuff"])
         self.assertEqual(Unit.many().sort("-name").limit(1).name, ["stuff"])
@@ -543,7 +547,25 @@ class TestSource(unittest.TestCase):
         self.assertEqual(model.name, ["things"])
         self.assertTrue(model.overflow)
 
-        Meta("dive", stuff=[1, 2, 3, None], things={"a": {"b": [1], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]}).create()
+        Meta("dive", people={"tom", "mary"}, stuff=[1, 2, 3, None], things={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]}).create()
+
+        model = Meta.many(people={"tom", "mary"})
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(stuff=[1, 2, 3, {"relations.io": {"1": None}}])
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(stuff__ne=[1, [1, 2, 3, {"relations.io": {"1": None}}]])
+        self.assertEqual(model[0].name, "yep")
+
+        model = Meta.many(things={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__in={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        self.assertEqual(model[0].name, "dive")
+
+        model = Meta.many(things__ne={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        self.assertEqual(model[0].name, "yep")
 
         model = Meta.many(stuff__1=2)
         self.assertEqual(model[0].name, "dive")
@@ -570,6 +592,45 @@ class TestSource(unittest.TestCase):
         self.assertEqual(len(model), 0)
 
         model = Meta.many(things___4=6)
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things___4=6)
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things__a__b__has=1)
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(things__a__b__has=3)
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things__a__b__any=[1, 3])
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(things__a__b__any=[4, 3])
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(things__a__b__all=[2, 1])
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(things__a__b__all=[3, 2, 1])
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(people__has="mary")
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(people__has="dick")
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(people__any=["mary", "dick"])
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(people__any=["harry", "dick"])
+        self.assertEqual(len(model), 0)
+
+        model = Meta.many(people__all=["mary", "tom"])
+        self.assertEqual(len(model), 1)
+
+        model = Meta.many(people__all=["tom", "dick", "mary"])
         self.assertEqual(len(model), 0)
 
         Net(ip="1.2.3.4", subnet="1.2.3.0/24").create()

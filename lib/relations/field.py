@@ -2,7 +2,7 @@
 Relations Module for handling fields
 """
 
-# pylint: disable=not-callable
+# pylint: disable=not-callable,unsupported-membership-test,not-an-iterable
 
 import re
 import relations
@@ -144,10 +144,10 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         self._none = self.none
 
-        # If we're list or dict, we can't be None and our default is
+        # If we're set, list, or dict, we can't be None and our default is
         # our type, so it's always a list or dict
 
-        if self.kind in [list, dict]:
+        if self.kind in [set, list, dict]:
             self.none = False
             if self.default is None:
                 self.default = self.kind
@@ -165,7 +165,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if not isinstance(self.default, self.kind):
                 raise FieldError(self, f"{self.default} default not {self.kind} for {self.name}")
 
-        if self.options is not None:
+        if self.options is not None and self.kind != set:
             for option in self.options: # pylint: disable=not-an-iterable
                 if not isinstance(option, self.kind):
                     raise FieldError(self, f"{option} option not {self.kind} for {self.name}")
@@ -175,7 +175,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         # If the field isn't a standard type and lacks attr, throw an error
 
-        if self.kind not in [bool, int, float, str, list, dict] and self.attr is None:
+        if self.kind not in [bool, int, float, str, set, list, dict] and self.attr is None:
             raise FieldError(self, f"{self.kind.__name__} requires at least attr")
 
        # if there's attr and no label, assume label is attr
@@ -274,7 +274,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return definition
 
-    def valid(self, value):
+    def valid(self, value): # pylint: disable=too-many-branches
         """
         Returns the valid value, raising issues if invalid
         """
@@ -294,8 +294,13 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 value = self.kind(value)
 
-        if self.options is not None and value not in self.options: # pylint: disable=unsupported-membership-test
-            raise FieldError(self, f"{value} not in {self.options} for {self.name}")
+        if self.options is not None:
+            if self.kind == set:
+                for each in value:
+                    if each not in self.options:
+                        raise FieldError(self, f"{each} not in {self.options} for {self.name}")
+            elif value not in self.options:
+                raise FieldError(self, f"{value} not in {self.options} for {self.name}")
 
         if self.validation is not None:
             if isinstance(self.validation, str):
@@ -337,13 +342,13 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             self.criteria.setdefault(path, [])
 
-            if not isinstance(value, list):
+            if not isinstance(value, (set, list, tuple)):
                 value = [value]
 
-            if path != operator or self.kind == list:
+            if path != operator or self.kind in [set, list]:
                 self.criteria[path].extend(value)
             else:
-                self.criteria[path].extend([self.valid(item) for item in value])
+                self.criteria[path].extend(self.valid(item) for item in value)
 
         else:
 
@@ -354,8 +359,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[path] = self.valid(value)
 
-    @staticmethod
-    def find(values, path, write=False): # pylint: disable=too-many-branches
+    def find(self, values, path, write=False): # pylint: disable=too-many-branches
         """
         Traverse a values to get to the last structure
         """
@@ -381,6 +385,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                 if write:
 
+                    if isinstance(place, str) and not isinstance(values, dict):
+                        raise FieldError(self, f"key {place} mismatches {values}")
+
+                    if isinstance(place, int) and not isinstance(values, list):
+                        raise FieldError(self, f"index {place} mismatches {values}")
+
                     if isinstance(values, dict):
                         values.setdefault(place, default)
                     else:
@@ -393,7 +403,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
                 else:
 
-                    if isinstance(values, dict):
+                    if (
+                        (isinstance(place, str) and not isinstance(values, dict)) or
+                        (isinstance(place, int) and not isinstance(values, list))
+                    ):
+                        values = default
+                    elif isinstance(values, dict):
                         values = values.get(place, default)
                     elif (place if place > -1 else abs(place + 1)) > len(values) - 1 or values[place] is None:
                         values = default
@@ -402,18 +417,22 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values, place
 
-    @classmethod
-    def set(cls, values, path, value):
+    def set(self, values, path, value):
         """
         Retrieve value at path filling in what's expected
         """
 
-        values, place = cls.find(values, path, write=True)
+        values, place = self.find(values, path, write=True)
+
+        if isinstance(place, str) and not isinstance(values, dict):
+            raise FieldError(self, f"key {place} mismatches {values}")
+
+        if isinstance(place, int) and not isinstance(values, list):
+            raise FieldError(self, f"index {place} mismatches {values}")
 
         values[place] = value
 
-    @classmethod
-    def get(cls, values, path):
+    def get(self, values, path):
         """
         Retrieve value at path filling in what's expected
         """
@@ -421,7 +440,13 @@ class Field: # pylint: disable=too-many-instance-attributes
         if not path:
             return values
 
-        values, place = cls.find(values, path)
+        values, place = self.find(values, path)
+
+        if (
+            (isinstance(place, str) and not isinstance(values, dict)) or
+            (isinstance(place, int) and not isinstance(values, list))
+        ):
+            return None
 
         if isinstance(values, list):
             if (place if place > -1 else abs(place + 1)) > len(values) - 1:
@@ -434,6 +459,11 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
         Create a dictionary of object attributes
         """
+
+        if self.kind == set:
+            if self.options is not None:
+                return [value for value in self.options if value in self.value]
+            return sorted(self.value)
 
         if self.value is None or self.attr is None:
             return self.value
@@ -514,7 +544,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             value = values.get(self.store)
 
-            if self.kind in [bool, int, float, str, list, dict]:
+            if self.kind in [bool, int, float, str, set, list, dict]:
                 value = self.valid(value)
             elif not value:
                 value = value or {}
@@ -567,9 +597,8 @@ class Field: # pylint: disable=too-many-instance-attributes
             if operator == "any" and not any(item in value for item in satisfy):
                 return False
 
-            if operator == "all" and set(value) != set(satisfy):
+            if operator == "all" and not (all(item in value for item in satisfy) and len(value) == len(satisfy)):
                 return False
-
 
         return True
 
@@ -621,7 +650,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if path is None:
             path = []
 
-        if self.kind in [list, dict]:
+        if self.kind in [set, list, dict]:
             return [self.get(self.value, path)]
 
         values = self.export()

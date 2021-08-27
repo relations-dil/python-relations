@@ -36,6 +36,8 @@ class People(relations.ModelIdentity):
     id = int
     name = str
     gender = ["free", "male", "female"]
+    interest = {"free", "male", "female"}
+    disinterest = ("free", "male", "female")
 
 
 def stuffit():
@@ -145,6 +147,12 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[2].kind, str)
         self.assertEqual(people._fields._order[2].options, ["free", "male", "female"])
         self.assertEqual(people._fields._order[2].default, "free")
+        self.assertEqual(people._fields._order[3].name, "interest")
+        self.assertEqual(people._fields._order[3].kind, set)
+        self.assertEqual(people._fields._order[3].options, ["female", "free", "male"])
+        self.assertEqual(people._fields._order[4].name, "disinterest")
+        self.assertEqual(people._fields._order[4].kind, set)
+        self.assertEqual(people._fields._order[4].options, ["free", "male", "female"])
         self.assertEqual(people._id, "id")
         self.assertEqual(people._label, ["name"])
         self.assertEqual(people._list, ["id", "name"])
@@ -295,6 +303,28 @@ class TestModelIdentity(unittest.TestCase):
                     ],
                     "default": "free",
                     "none": False
+                },
+                {
+                    "name": "interest",
+                    "kind": "set",
+                    "store": "interest",
+                    "options": [
+                        "female",
+                        "free",
+                        "male"
+                    ],
+                    "none": False
+                },
+                {
+                    "name": "disinterest",
+                    "kind": "set",
+                    "store": "disinterest",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
+                    "none": False
                 }
             ],
             "id": "id",
@@ -334,6 +364,28 @@ class TestModelIdentity(unittest.TestCase):
                         "female"
                     ],
                     "default": "free",
+                    "none": False
+                },
+                {
+                    "name": "interest",
+                    "kind": "set",
+                    "store": "interest",
+                    "options": [
+                        "female",
+                        "free",
+                        "male"
+                    ],
+                    "none": False
+                },
+                {
+                    "name": "disinterest",
+                    "kind": "set",
+                    "store": "disinterest",
+                    "options": [
+                        "free",
+                        "male",
+                        "female"
+                    ],
                     "none": False
                 }
             ],

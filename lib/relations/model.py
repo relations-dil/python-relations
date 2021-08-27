@@ -120,10 +120,14 @@ class ModelIdentity:
             if name.startswith('_') or name != name.lower():
                 continue # pragma: no cover
 
-            if attribute in [bool, int, float, str, list, dict]:
+            if attribute in [bool, int, float, str, set, list, dict]:
                 field = relations.Field(attribute)
             elif callable(attribute):
                 field = relations.Field(type(attribute()), default=attribute)
+            elif isinstance(attribute, set):
+                field = relations.Field(set, options=sorted(attribute))
+            elif isinstance(attribute, tuple) and attribute and isinstance(attribute[0], str):
+                field = relations.Field(set, options=list(attribute))
             elif isinstance(attribute, list):
                 field = relations.Field(type(attribute[0]), default=attribute[0], options=attribute)
             elif isinstance(attribute, tuple):

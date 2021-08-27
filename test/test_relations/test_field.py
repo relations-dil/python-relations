@@ -204,6 +204,10 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.valid("1"), 1)
         self.assertRaisesRegex(relations.FieldError, "2 not in \[1\] for id", field.valid, 2)
 
+        field = relations.Field(set, name="id", options=[1])
+        self.assertEqual(field.valid({1}), {1})
+        self.assertRaisesRegex(relations.FieldError, "2 not in \[1\] for id", field.valid, {2})
+
         field = relations.Field(str, name="name", validation="yep")
         self.assertEqual(field.valid("yepyep"), "yepyep")
         self.assertRaisesRegex(relations.FieldError, "nope doesn't match yep for name", field.valid, "nope")
@@ -298,35 +302,56 @@ class TestField(unittest.TestCase):
 
     def test_find(self):
 
-        self.assertEqual(relations.Field.find({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), ({"1": "yep"}, "1"))
-        self.assertEqual(relations.Field.find(None, "things__a__b__-7___1"), ({}, "1"))
-        self.assertEqual(relations.Field.find(None, "-7___1"), ({}, "1"))
+        field = relations.Field(dict)
+
+        self.assertEqual(field.find({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), ({"1": "yep"}, "1"))
+        self.assertEqual(field.find({"things": {"a": 1}}, "things__a__b__0___1"), ({}, "1"))
+        self.assertEqual(field.find(None, "things__a__b__-7___1"), ({}, "1"))
+        self.assertEqual(field.find(None, "-7___1"), ({}, "1"))
 
         values = {}
-        relations.Field.find(values, "things__a__b__0___1")
+        field.find(values, "things__a__b__0___1")
         self.assertEqual(values, {})
 
         values = {}
-        relations.Field.find(values, "things__a__b__0___1", write=True)
+        field.find(values, "things__a__b__0___1", write=True)
         self.assertEqual(values, {"things": {"a":{"b": [{}]}}})
+        self.assertRaisesRegex(relations.FieldError, "key b mismatches \[\]", field.find, {"stuff": {"a": []}}, "stuff__a__b__C", write=True)
+        self.assertRaisesRegex(relations.FieldError, "index 1 mismatches \{\}", field.find, {"stuff": {"a": {}}}, "stuff__a__1__2", write=True)
 
     def test_set(self):
 
+        field = relations.Field(dict)
         values = {}
-        relations.Field.set(values, "things__a__b__-2___1", "yep")
+        field.set(values, "things__a__b__-2___1", "yep")
         self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}, None]}}})
+
+        self.assertRaisesRegex(relations.FieldError, "key b mismatches \[\]", field.set, {"stuff": {"a": []}}, "stuff__a__b", "c")
+        self.assertRaisesRegex(relations.FieldError, "index 1 mismatches \{\}", field.set, {"stuff": {"a": {}}}, "stuff__a__1", 2)
 
     def test_get(self):
 
-        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
-        self.assertEqual(relations.Field.get({}, "things__a__b__0___1"), None)
-        self.assertEqual(relations.Field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
+        field = relations.Field(dict)
+        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
+        self.assertEqual(field.get({}, "things__a__b__0___1"), None)
+        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
+
+        self.assertIsNone(field.get({"stuff": {"a": []}}, "stuff__a__b"))
+        self.assertIsNone(field.get({"stuff": {"a": {}}}, "stuff__a__1"))
 
     def test_export(self):
 
         field = relations.Field(int)
         field.value = 1
         self.assertEqual(field.export(), 1)
+
+        field = relations.Field(set)
+        field.value = {"people", "stuff", "things"}
+        self.assertEqual(field.export(), ["people", "stuff", "things"])
+
+        field.options = ["stuff", "people", "things"]
+        field.value = {"people", "stuff"}
+        self.assertEqual(field.export(), ["stuff", "people"])
 
         field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
         field.value = "1.2.3.4"
