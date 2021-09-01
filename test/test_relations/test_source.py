@@ -140,6 +140,10 @@ class TestSource(unittest.TestCase):
 
         mock_field.assert_called_once_with(record)
 
+    def test_query_create(self):
+
+        self.source.query_create(None)
+
     def test_model_create(self):
 
         self.source.model_create(None)
@@ -158,9 +162,29 @@ class TestSource(unittest.TestCase):
 
         mock_field.assert_called_once_with(record)
 
+    def test_query_count(self):
+
+        self.source.query_count(None)
+
+    def test_model_count(self):
+
+        self.source.model_retrieve(None)
+
+    def test_query_retrieve(self):
+
+        self.source.query_retrieve(None)
+
     def test_model_retrieve(self):
 
         self.source.model_retrieve(None)
+
+    def test_query_labels(self):
+
+        self.source.query_labels(None)
+
+    def test_model_labels(self):
+
+        self.source.model_labels(None)
 
     def test_field_update(self):
 
@@ -190,6 +214,10 @@ class TestSource(unittest.TestCase):
 
         mock_field.assert_called_once_with(record)
 
+    def test_query_update(self):
+
+        self.source.query_update(None)
+
     def test_model_update(self):
 
         self.source.model_update(None)
@@ -207,6 +235,10 @@ class TestSource(unittest.TestCase):
         self.source.record_delete(record)
 
         mock_field.assert_called_once_with(record)
+
+    def test_query_delete(self):
+
+        self.source.query_delete(None)
 
     def test_model_delete(self):
 

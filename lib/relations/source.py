@@ -131,7 +131,12 @@ class Source:
         for field in record._order:
             self.field_create(field, *args, **kwargs)
 
-    def model_create(self, model):
+    def query_create(self, model, *args, **kwargs):
+        """
+        Create query
+        """
+
+    def model_create(self, model, *args, **kwargs):
         """
         create the model
         """
@@ -148,12 +153,32 @@ class Source:
         for field in record._order:
             self.field_retrieve(field, *args, **kwargs)
 
-    def model_retrieve(self, model, verify=True):
+    def query_count(self, model, *args, **kwargs):
+        """
+        Count query
+        """
+
+    def model_count(self, model, *args, **kwargs):
         """
         retrieve the model
         """
 
-    def model_labels(self, model):
+    def query_retrieve(self, model, *args, **kwargs):
+        """
+        retrieve query
+        """
+
+    def model_retrieve(self, model, verify=True, *args, **kwargs):
+        """
+        retrieve the model
+        """
+
+    def query_labels(self, model, *args, **kwargs):
+        """
+        labels query
+        """
+
+    def model_labels(self, model, *args, **kwargs):
         """
         labels of the model
         """
@@ -182,7 +207,12 @@ class Source:
         for field in record._order:
             self.field_mass(field, *args, **kwargs)
 
-    def model_update(self, model):
+    def query_update(self, model, *args, **kwargs):
+        """
+        update query
+        """
+
+    def model_update(self, model, *args, **kwargs):
         """
         update the model
         """
@@ -199,7 +229,12 @@ class Source:
         for field in record._order:
             self.field_delete(field, *args, **kwargs)
 
-    def model_delete(self, model):
+    def query_delete(self, model, *args, **kwargs):
+        """
+        delete query
+        """
+
+    def model_delete(self, model, *args, **kwargs):
         """
         delete the model
         """

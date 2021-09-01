@@ -122,6 +122,13 @@ class MockSource(relations.Source):
 
         return values
 
+    def query_create(self, model):
+        """
+        create query
+        """
+
+        return "CREATE"
+
     def model_create(self, model):
         """
         Executes the create
@@ -200,6 +207,13 @@ class MockSource(relations.Source):
         model._models = model._models[model._offset:model._offset + model._limit]
         model.overflow = model.overflow or len(model._models) >= model._limit
 
+    def query_count(self, model):
+        """
+        count query
+        """
+
+        return "COUNT"
+
     def model_count(self, model):
         """
         Executes the retrieve
@@ -216,6 +230,13 @@ class MockSource(relations.Source):
                 matches += 1
 
         return matches
+
+    def query_retrieve(self, model):
+        """
+        retrieve query
+        """
+
+        return "RETRIEVE"
 
     def model_retrieve(self, model, verify=True):
         """
@@ -263,6 +284,13 @@ class MockSource(relations.Source):
 
         return model
 
+    def query_labels(self, model):
+        """
+        labels query
+        """
+
+        return "LABELS"
+
     def model_labels(self, model):
         """
         Creates the labels structure
@@ -277,6 +305,13 @@ class MockSource(relations.Source):
             labels.add(labeling)
 
         return labels
+
+    def query_update(self, model):
+        """
+        update query
+        """
+
+        return "UPDATE"
 
     def model_update(self, model):
         """
@@ -313,6 +348,13 @@ class MockSource(relations.Source):
             raise relations.model.ModelError(model, "nothing to update from")
 
         return updated
+
+    def query_delete(self, model):
+        """
+        delete query
+        """
+
+        return "DELETE"
 
     def model_delete(self, model):
         """
