@@ -1089,3 +1089,25 @@ class Model(ModelIdentity):
             self.retrieve()
 
         return relations.source(self.SOURCE).model_delete(self, *args, **kwargs)
+
+    def query(self, action=None, *args, **kwargs):
+        """
+        get the current query for the model
+        """
+
+        if self._action == "create":
+            return relations.source(self.SOURCE).query_create(self, *args, **kwargs)
+
+        if self._action == "retrieve" and action == "count":
+            return relations.source(self.SOURCE).query_count(self, *args, **kwargs)
+
+        if self._action == "retrieve" and action == "labels":
+            return relations.source(self.SOURCE).query_labels(self, *args, **kwargs)
+
+        if action == "update" or (action is None and self._action == "update"):
+            return relations.source(self.SOURCE).query_update(self, *args, **kwargs)
+
+        if action == "delete":
+            return relations.source(self.SOURCE).query_delete(self, *args, **kwargs)
+
+        return relations.source(self.SOURCE).query_retrieve(self, *args, **kwargs)

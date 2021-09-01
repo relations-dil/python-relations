@@ -1523,3 +1523,20 @@ class TestModel(unittest.TestCase):
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot delete during create", unit.delete)
+
+    def test_query(self):
+
+        unit = Unit("yep")
+        self.assertEqual(unit.query(), "CREATE")
+
+        unit.create()
+        self.assertEqual(unit.query("update"), "UPDATE")
+        self.assertEqual(unit.query("delete"), "DELETE")
+        self.assertEqual(unit.query(), "UPDATE")
+
+        unit = Unit.one()
+        self.assertEqual(unit.query("count"), "COUNT")
+        self.assertEqual(unit.query("labels"), "LABELS")
+        self.assertEqual(unit.query("update"), "UPDATE")
+        self.assertEqual(unit.query("delete"), "DELETE")
+        self.assertEqual(unit.query(), "RETRIEVE")

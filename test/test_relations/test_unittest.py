@@ -348,6 +348,11 @@ class TestSource(unittest.TestCase):
         self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0___1"], "yep")
         self.assertIsNone(self.source.extract(Meta(), {})["things__for__0___1"])
 
+    def test_query_create(self):
+
+        simple = Simple("sure")
+        self.assertEqual(simple.query(), "CREATE")
+
     def test_model_create(self):
 
         simple = Simple("sure")
@@ -489,6 +494,11 @@ class TestSource(unittest.TestCase):
         self.assertEqual(unit._models, [2, 3])
         self.assertTrue(unit.overflow)
 
+    def test_query_count(self):
+
+        simple = Simple("sure").one()
+        self.assertEqual(simple.query("count"), "COUNT")
+
     def test_model_count(self):
 
         Unit([["stuff"], ["people"]]).create()
@@ -498,6 +508,11 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Unit.many(name="people").count(), 1)
 
         self.assertEqual(Unit.many(like="p").count(), 1)
+
+    def test_query_retrieve(self):
+
+        simple = Simple("sure").one()
+        self.assertEqual(simple.query(), "RETRIEVE")
 
     def test_model_retrieve(self):
 
@@ -663,6 +678,11 @@ class TestSource(unittest.TestCase):
         model = Net.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
+    def test_query_labels(self):
+
+        simple = Simple("sure").one()
+        self.assertEqual(simple.query("labels"), "LABELS")
+
     def test_model_labels(self):
 
         Unit("people").create().test.add("stuff").add("things").create()
@@ -701,6 +721,11 @@ class TestSource(unittest.TestCase):
             1: ["1.2.3.4"]
         })
 
+    def test_query_update(self):
+
+        simple = Simple("sure").one()
+        self.assertEqual(simple.query("update"), "UPDATE")
+
     def test_model_update(self):
 
         Unit([["people"], ["stuff"]]).create()
@@ -733,6 +758,11 @@ class TestSource(unittest.TestCase):
         Net.one(ping.id).set(ip="13.14.15.16").update()
         self.assertEqual(Net.one(ping.id).ip.compressed, "13.14.15.16")
         self.assertEqual(Net.one(pong.id).ip.compressed, "5.6.7.8")
+
+    def test_query_delete(self):
+
+        simple = Simple("sure").one()
+        self.assertEqual(simple.query("delete"), "DELETE")
 
     def test_model_delete(self):
 
