@@ -2,7 +2,7 @@
 Relations Module for handling fields
 """
 
-# pylint: disable=not-callable,unsupported-membership-test,not-an-iterable
+# pylint: disable=not-callable,unsupported-membership-test,not-an-iterable,misplaced-comparison-constant
 
 import re
 import relations
@@ -70,16 +70,16 @@ class Field: # pylint: disable=too-many-instance-attributes
     ]
 
     OPERATORS = {
-        'in': True,
-        'ne': True,
+        'null': False,
         'eq': False,
         'gt': False,
         'gte': False,
         'lt': False,
         'lte': False,
         'like': False,
-        'notlike': False,
-        'null': False,
+        'start': False,
+        'end': False,
+        'in': True,
         'has': True,
         'any': True,
         'all': True
@@ -312,148 +312,173 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return value
 
-    def filter(self, value, operator="eq"):
+    @staticmethod
+    def split(field): # pylint: disable=too-many-branches
+        """
+        Splits field value into name and path
+        """
+
+        count = 0
+        place = []
+        places = []
+
+        state = "place"
+
+        for letter in field:
+
+            if state == "place":
+
+                place.append(letter)
+
+                if letter != '_':
+                    state = "placing"
+
+            elif state == "placing":
+
+                if letter == '_':
+                    count += 1
+                else:
+                    count = 0
+
+                if count == 2 and letter == '_':
+                    places.append(''.join(place[:-1]))
+                    place = []
+                    count = 0
+                    state = "place"
+                else:
+                    place.append(letter)
+
+        if place:
+            places.append(''.join(place))
+
+        path = []
+
+        for place in places:
+            if '0' <= place[0] and place[0] <= '9':
+                path.append(int(place))
+            elif place[:1] == '_' and '0' <= place[1] and place[1] <= '9':
+                path.append(-int(place[1:]))
+            elif place[:2] == '__' and '0' <= place[2] and place[2] <= '9':
+                path.append(place[2:])
+            elif place[:3] == '___' and '0' <= place[3] and place[3] <= '9':
+                path.append(str(-int(place[3:])))
+            else:
+                path.append(place)
+
+        return path
+
+    def filter(self, value, criterion="eq"): # pylint: disable=too-many-branches
         """
         Set a criterion in criteria
         """
 
-        path = operator
+        path = self.split(criterion)
 
-        if operator not in self.OPERATORS:
+        if not isinstance(path[-1], str) or path[-1].split("not_", 1)[-1] not in self.OPERATORS:
+            operator = "eq"
+            criterion = f"{criterion}__eq"
+        else:
+            operator = path.pop(-1)
+            if operator.startswith("not_"):
+                operator = operator.split("not_", 1)[-1]
 
-            if self.kind in [bool, int, float, str]:
-                raise FieldError(self, f"unknown operator '{operator}'")
-
-            operator = operator.split("__")[-1]
-
-            if operator not in self.OPERATORS:
-                operator = "eq"
-                path = f"{path}__eq"
+        if path and self.kind in [bool, int, float, str]:
+            raise FieldError(self, f"no path {path} with kind {self.kind.__name__}")
 
         if self.criteria is None:
             self.criteria = {}
 
-        if value is None and operator in ["eq", "ne"]:
-            value = (operator == "eq")
+        if value is None and operator == "eq":
+            value = True
             operator = "null"
-            path = f"{path[:-2]}null"
+            criterion = f"{criterion[:-2]}null"
 
         if self.OPERATORS[operator]:
 
-            self.criteria.setdefault(path, [])
+            self.criteria.setdefault(criterion, [])
 
             if not isinstance(value, (set, list, tuple)):
                 value = [value]
 
-            if path != operator or self.kind in [set, list]:
-                self.criteria[path].extend(value)
+            if path or self.kind in [set, list]:
+                self.criteria[criterion].extend(value)
             else:
-                self.criteria[path].extend(self.valid(item) for item in value)
+                self.criteria[criterion].extend(self.valid(item) for item in value)
 
         else:
 
             if operator == "null":
-                self.criteria[path] = not (value == "false" or value == "no" or value == "0" or value == 0 or not value)
-            elif path != operator:
-                self.criteria[path] = value
+                self.criteria[criterion] = not (value == "false" or value == "no" or value == "0" or value == 0 or not value)
+            elif path:
+                self.criteria[criterion] = value
             else:
-                self.criteria[path] = self.valid(value)
-
-    def find(self, values, path, write=False): # pylint: disable=too-many-branches
-        """
-        Traverse a values to get to the last structure
-        """
-
-        if isinstance(path, str):
-            path = path.split('__')
-
-        for index, place in enumerate(path):
-
-            if relations.INDEX.match(place):
-                if values is None:
-                    values = []
-                place = int(place)
-            else:
-                if values is None:
-                    values = {}
-                if place[0] == '_':
-                    place = place[1:]
-
-            if index < len(path) - 1:
-
-                default = [] if relations.INDEX.match(path[index+1]) else {}
-
-                if write:
-
-                    if isinstance(place, str) and not isinstance(values, dict):
-                        raise FieldError(self, f"key {place} mismatches {values}")
-
-                    if isinstance(place, int) and not isinstance(values, list):
-                        raise FieldError(self, f"index {place} mismatches {values}")
-
-                    if isinstance(values, dict):
-                        values.setdefault(place, default)
-                    else:
-                        while (place if place > -1 else abs(place + 1)) > len(values) - 1:
-                            values.append(None)
-                        if values[place] is None:
-                            values[place] = default
-
-                    values = values[place]
-
-                else:
-
-                    if (
-                        (isinstance(place, str) and not isinstance(values, dict)) or
-                        (isinstance(place, int) and not isinstance(values, list))
-                    ):
-                        values = default
-                    elif isinstance(values, dict):
-                        values = values.get(place, default)
-                    elif (place if place > -1 else abs(place + 1)) > len(values) - 1 or values[place] is None:
-                        values = default
-                    else:
-                        values = values[place]
-
-        return values, place
-
-    def set(self, values, path, value):
-        """
-        Retrieve value at path filling in what's expected
-        """
-
-        values, place = self.find(values, path, write=True)
-
-        if isinstance(place, str) and not isinstance(values, dict):
-            raise FieldError(self, f"key {place} mismatches {values}")
-
-        if isinstance(place, int) and not isinstance(values, list):
-            raise FieldError(self, f"index {place} mismatches {values}")
-
-        values[place] = value
+                self.criteria[criterion] = self.valid(value)
 
     def get(self, values, path):
         """
-        Retrieve value at path filling in what's expected
+        Walk along to get a value
         """
 
-        if not path:
-            return values
+        if isinstance(path, str):
+            path = self.split(path)
 
-        values, place = self.find(values, path)
+        for place in path:
+            if isinstance(place, int):
+                if (
+                    (not isinstance(values, list)) or
+                    (place >= 0 and len(values) < place + 1) or
+                    (place < 0 and len(values) < abs(place))
+                ):
+                    return None
+            else:
+                if (
+                    (not isinstance(values, dict)) or
+                    (place not in values)
+                ):
+                    return None
+            values = values[place]
 
-        if (
-            (isinstance(place, str) and not isinstance(values, dict)) or
-            (isinstance(place, int) and not isinstance(values, list))
-        ):
-            return None
+        return values
 
-        if isinstance(values, list):
-            if (place if place > -1 else abs(place + 1)) > len(values) - 1:
-                return None
-            return values[place]
+    def set(self, values, path, value):
+        """
+        Walk along to get a value
+        """
 
-        return values.get(place)
+        if isinstance(path, str):
+            path = self.split(path)
+
+        for index, place in enumerate(path):
+
+            if index < len(path) - 1:
+                default = {} if isinstance(path[index+1], str) else []
+            else:
+                default = value
+
+            if isinstance(values, dict):
+
+                if isinstance(place, int):
+                    raise relations.FieldError(self, f"index {place} invalid for dict {values}")
+
+                if place not in values:
+                    values[place] = default
+
+            else:
+
+                if isinstance(place, str):
+                    raise relations.FieldError(self, f"key {place} invalid for list {values}")
+
+                while (
+                    (place >= 0 and len(values) < place + 1) or
+                    (place < 0 and len(values) < abs(place))
+                ):
+                    values.append(None)
+
+                if values[place] is None:
+                    values[place] = default
+
+            if index < len(path) - 1:
+                values = values[place]
 
     def export(self):
         """
@@ -493,7 +518,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         values = self.export()
 
         if values is None:
-            values = [] if self.kind == list else {}
+            values = [] if self.kind in [set, list] else {}
 
         self.set(values, path, value)
         self.value = values
@@ -522,7 +547,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         value = self.export()
         if self.inject:
-            self.set(values, self.inject.split('__')[1:], value)
+            self.set(values, self.inject.split('__', 1)[-1], value)
         else:
             values[self.store] = value
 
@@ -549,55 +574,59 @@ class Field: # pylint: disable=too-many-instance-attributes
             elif not value:
                 value = value or {}
 
-            if operator not in self.OPERATORS:
+            path = self.split(operator)
+            operator = path.pop().split('_')
+            operator, invert = (operator[-1], len(operator) > 1)
+            condition = False
 
-                path = operator.split("__")
-                operator = path.pop()
-
-                value = self.get(value, path)
+            value = self.get(value, path)
 
             if operator == "null":
-                if satisfy != (value is None):
-                    return False
-                continue # pragma: no cover
+                condition = (satisfy == (value is None))
 
-            if value is None:
-                return False
+            elif value is None:
+                condition = False
 
-            if operator == "in" and value not in satisfy:
-                return False
+            elif operator == "in":
+                condition = value  in satisfy
 
-            if operator in "ne" and value in satisfy:
-                return False
+            elif operator == "eq":
+                condition = value == satisfy
 
-            if operator == "eq" and value != satisfy:
-                return False
+            elif operator == "gt":
+                condition = value > satisfy
 
-            if operator == "gt" and value <= satisfy:
-                return False
+            elif operator == "gte":
+                condition = value >= satisfy
 
-            if operator == "gte" and value < satisfy:
-                return False
+            elif operator == "lt":
+                condition = value < satisfy
 
-            if operator == "lt" and value >= satisfy:
-                return False
+            elif operator == "lte":
+                condition = value <= satisfy
 
-            if operator == "lte" and value > satisfy:
-                return False
+            elif operator == "like":
+                condition = str(satisfy).lower() in str(value).lower()
 
-            if operator == "like" and str(satisfy).lower() not in str(value).lower():
-                return False
+            elif operator == "start":
+                condition = str(value).lower().startswith(str(satisfy).lower())
 
-            if operator == "notlike" and str(satisfy).lower() in str(value).lower():
-                return False
+            elif operator == "end":
+                condition = str(value).lower().endswith(str(satisfy).lower())
 
-            if operator == "has" and not all(item in value for item in satisfy):
-                return False
+            elif operator == "has":
+                condition = all(item in value for item in satisfy)
 
-            if operator == "any" and not any(item in value for item in satisfy):
-                return False
+            elif operator == "any":
+                condition = any(item in value for item in satisfy)
 
-            if operator == "all" and not (all(item in value for item in satisfy) and len(value) == len(satisfy)):
+            elif operator == "all":
+                condition = all(item in value for item in satisfy) and len(value) == len(satisfy)
+
+            if invert:
+                condition = not condition
+
+            if not condition:
                 return False
 
         return True
@@ -633,7 +662,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
 
         if self.inject:
-            self.value = self.get(values, self.inject.split('__')[1:])
+            self.value = self.get(values, self.inject.split('__', 1)[-1])
         else:
             self.value = values.get(self.store)
 

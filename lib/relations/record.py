@@ -2,6 +2,8 @@
 Model Record Module
 """
 
+import relations
+
 class RecordError(Exception):
     """
     Record Error excception which capture the record with the issue
@@ -55,7 +57,7 @@ class Record:
             self._names[name].value = value
             return
 
-        apply = name.split('__')
+        apply = relations.Field.split(name)
 
         if apply[0] in (self._names or []):
             self._names[apply[0]].apply(apply[1:], value)
@@ -71,7 +73,7 @@ class Record:
         if name in (self._names or []):
             return self._names[name].value
 
-        access = name.split('__')
+        access = relations.Field.split(name)
 
         if access[0] in (self._names or []):
             return self._names[access[0]].access(access[1:])
@@ -124,7 +126,7 @@ class Record:
             self._names[key].value = value
             return
 
-        apply = key.split('__')
+        apply = relations.Field.split(key)
 
         if apply[0] in (self._names or []):
             self._names[apply[0]].apply(apply[1:], value)
@@ -144,7 +146,7 @@ class Record:
         if key in self._names:
             return self._names[key].value
 
-        access = key.split('__')
+        access = relations.Field.split(key)
 
         if access[0] in (self._names or []):
             return self._names[access[0]].access(access[1:])
@@ -218,7 +220,7 @@ class Record:
         """
 
         for field in label:
-            field = field.split('__')
+            field = relations.Field.split(field)
             if self._names[field[0]].like(values, like, parents, field[1:]):
                 return True
 
