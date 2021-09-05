@@ -30,8 +30,8 @@ class Meta(SourceModel):
     spend = float
     people = set
     stuff = list
-    things = dict, {"extract": "for__0___1"}
-    push = str, {"inject": "stuff__-1__relations.io___1"}
+    things = dict, {"extract": "for__0____1"}
+    push = str, {"inject": "stuff___1__relations.io____1"}
 
 def subnet_attr(values, value):
 
@@ -345,8 +345,8 @@ class TestSource(unittest.TestCase):
 
     def test_extract(self):
 
-        self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0___1"], "yep")
-        self.assertIsNone(self.source.extract(Meta(), {})["things__for__0___1"])
+        self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0____1"], "yep")
+        self.assertIsNone(self.source.extract(Meta(), {})["things__for__0____1"])
 
     def test_query_create(self):
 
@@ -409,7 +409,7 @@ class TestSource(unittest.TestCase):
                     "people": ["tom"],
                     "stuff": [1, {"relations.io": {"1": "sure"}}],
                     "things": {"a": 1, "for": [{"1": "yep"}]},
-                    "things__for__0___1": "yep"
+                    "things__for__0____1": "yep"
                 },
                 2: {
                     "id": 2,
@@ -419,7 +419,7 @@ class TestSource(unittest.TestCase):
                     "people": [],
                     "stuff": [{"relations.io": {"1": None}}],
                     "things": {},
-                    "things__for__0___1": None
+                    "things__for__0____1": None
                 }
             }
         })
@@ -570,7 +570,7 @@ class TestSource(unittest.TestCase):
         model = Meta.many(stuff=[1, 2, 3, {"relations.io": {"1": None}}])
         self.assertEqual(model[0].name, "dive")
 
-        model = Meta.many(stuff__ne=[1, [1, 2, 3, {"relations.io": {"1": None}}]])
+        model = Meta.many(stuff__not_in=[1, [1, 2, 3, {"relations.io": {"1": None}}]])
         self.assertEqual(model[0].name, "yep")
 
         model = Meta.many(things={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
@@ -579,7 +579,7 @@ class TestSource(unittest.TestCase):
         model = Meta.many(things__in={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
         self.assertEqual(model[0].name, "dive")
 
-        model = Meta.many(things__ne={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
+        model = Meta.many(things__not_in={"a": {"b": [1, 2], "c": "sure"}, "4": 5, "for": [{"1": "yep"}]})
         self.assertEqual(model[0].name, "yep")
 
         model = Meta.many(stuff__1=2)
@@ -594,7 +594,7 @@ class TestSource(unittest.TestCase):
         model = Meta.many(things__a__d__null=True)
         self.assertEqual(model[0].name, "dive")
 
-        model = Meta.many(things___4=5)
+        model = Meta.many(things____4=5)
         self.assertEqual(model[0].name, "dive")
 
         model = Meta.many(things__a__b__0__gt=1)

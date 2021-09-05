@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.5.7
+VERSION?=0.6.0
 DEBUG_PORT=5678
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/lib:/opt/service/lib \
@@ -33,8 +33,6 @@ setup:
 	docker run $(TTY) $(VOLUMES) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
 	python setup.py install && \
 	python -m relations.source && \
-	python -m relations.sql && \
-	python -m relations.query && \
 	python -m relations.unittest && \
 	python -m relations.field && \
 	python -m relations.labels && \

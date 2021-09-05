@@ -3,13 +3,11 @@
 from setuptools import setup
 setup(
     name="relations",
-    version="0.5.7",
+    version="0.6.0",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',
         'relations.source',
-        'relations.sql',
-        'relations.query',
         'relations.unittest',
         'relations.field',
         'relations.labels',

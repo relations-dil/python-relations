@@ -1282,11 +1282,11 @@ class TestModel(unittest.TestCase):
 
     def test_filter(self):
 
-        models = UnitTest(_action="retrieve", _mode="many").filter(1).filter(name__ne="unittest")
+        models = UnitTest(_action="retrieve", _mode="many").filter(1).filter(name__not_in="unittest")
 
         self.assertEqual(models._record._action, "retrieve")
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
+        self.assertEqual(models._record._names["name"].criteria["not_in"], ["unittest"])
 
         unit = Unit.many().filter(test__id__in=[1], like="fuzzy")
 
@@ -1320,13 +1320,13 @@ class TestModel(unittest.TestCase):
 
     def test_many(self):
 
-        models = UnitTest.many(1, name__ne="unittest")
+        models = UnitTest.many(1, name__not_in="unittest")
 
         self.assertEqual(models._mode, "many")
         self.assertEqual(models._action, "retrieve")
         self.assertEqual(models._record._action, "retrieve")
         self.assertEqual(models._record._names["id"].criteria["eq"], 1)
-        self.assertEqual(models._record._names["name"].criteria["ne"], ["unittest"])
+        self.assertEqual(models._record._names["name"].criteria["not_in"], ["unittest"])
 
     def test_sort(self):
 

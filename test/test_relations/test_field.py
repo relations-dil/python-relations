@@ -219,45 +219,36 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.valid("yepyep"), "yepyep")
         self.assertRaisesRegex(relations.FieldError, "nope invalid for name", field.valid, "nope")
 
+    def test_split(self):
+
+        self.assertEqual(relations.Field.split("1"), [1])
+        self.assertEqual(relations.Field.split("_1"), [-1])
+        self.assertEqual(relations.Field.split("__1"), ['1'])
+        self.assertEqual(relations.Field.split("___1"), ['-1'])
+        self.assertEqual(relations.Field.split("_order"), ['_order'])
+        self.assertEqual(relations.Field.split("a__0___1____2_____3"), ["a", 0, -1, "2", "-3"])
+
     def test_filter(self):
 
         field = relations.Field(int)
 
-        field.filter("1", "in")
-        self.assertEqual(field.criteria["in"], [1])
-        field.filter(2.0, "in")
-        self.assertEqual(field.criteria["in"], [1, 2])
-
-        field.filter("1", "ne")
-        self.assertEqual(field.criteria["ne"], [1])
-        field.filter(2.0, "ne")
-        self.assertEqual(field.criteria["ne"], [1, 2])
-        field.filter(None, "ne")
-        self.assertFalse(field.criteria["null"])
-
         field.filter("1")
         self.assertEqual(field.criteria["eq"], 1)
 
+        field.filter("1", "eq")
+        self.assertEqual(field.criteria["eq"], 1)
+
+        field.filter("1", "not_eq")
+        self.assertEqual(field.criteria["not_eq"], 1)
+
         field.filter(None)
-        self.assertTrue(field.criteria["null"])
-
-        field.filter("1", "gt")
-        self.assertEqual(field.criteria["gt"], 1)
-
-        field.filter("1", "gte")
-        self.assertEqual(field.criteria["gte"], 1)
-
-        field.filter("1", "lt")
-        self.assertEqual(field.criteria["lt"], 1)
-
-        field.filter("1", "lte")
-        self.assertEqual(field.criteria["lte"], 1)
-
-        field.filter("1", "like")
-        self.assertEqual(field.criteria["like"], 1)
+        self.assertEqual(field.criteria["null"], True)
 
         field.filter("true", "null")
         self.assertEqual(field.criteria["null"], True)
+
+        field.filter("true", "not_null")
+        self.assertEqual(field.criteria["not_null"], True)
 
         field.filter("false", "null")
         self.assertEqual(field.criteria["null"], False)
@@ -274,7 +265,34 @@ class TestField(unittest.TestCase):
         field.filter(False, "null")
         self.assertEqual(field.criteria["null"], False)
 
-        self.assertRaisesRegex(relations.FieldError, "unknown operator 'nope'", field.filter, 0, "nope")
+        field.filter("1", "gt")
+        self.assertEqual(field.criteria["gt"], 1)
+
+        field.filter("1", "not_gt")
+        self.assertEqual(field.criteria["not_gt"], 1)
+
+        field.filter("1", "gte")
+        self.assertEqual(field.criteria["gte"], 1)
+
+        field.filter("1", "lt")
+        self.assertEqual(field.criteria["lt"], 1)
+
+        field.filter("1", "lte")
+        self.assertEqual(field.criteria["lte"], 1)
+
+        field.filter("1", "like")
+        self.assertEqual(field.criteria["like"], 1)
+
+        field.filter("1", "start")
+        self.assertEqual(field.criteria["start"], 1)
+
+        field.filter("1", "end")
+        self.assertEqual(field.criteria["end"], 1)
+
+        field.filter("1", "in")
+        self.assertEqual(field.criteria["in"], [1])
+        field.filter(2.0, "in")
+        self.assertEqual(field.criteria["in"], [1, 2])
 
         field = relations.Field(list)
         field.filter("1", "has")
@@ -300,44 +318,28 @@ class TestField(unittest.TestCase):
         field.filter("1", "a__in")
         self.assertEqual(field.criteria["a__in"], ["1"])
 
-    def test_find(self):
+        field = relations.Field(int)
+        self.assertRaisesRegex(relations.FieldError, "no path \['nope'\] with kind int", field.filter, 0, "nope")
+
+    def test_get(self):
 
         field = relations.Field(dict)
+        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0____1"), "yep")
+        self.assertEqual(field.get({}, "things__a__b__0____1"), None)
+        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b___2"), None)
 
-        self.assertEqual(field.find({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), ({"1": "yep"}, "1"))
-        self.assertEqual(field.find({"things": {"a": 1}}, "things__a__b__0___1"), ({}, "1"))
-        self.assertEqual(field.find(None, "things__a__b__-7___1"), ({}, "1"))
-        self.assertEqual(field.find(None, "-7___1"), ({}, "1"))
-
-        values = {}
-        field.find(values, "things__a__b__0___1")
-        self.assertEqual(values, {})
-
-        values = {}
-        field.find(values, "things__a__b__0___1", write=True)
-        self.assertEqual(values, {"things": {"a":{"b": [{}]}}})
-        self.assertRaisesRegex(relations.FieldError, "key b mismatches \[\]", field.find, {"stuff": {"a": []}}, "stuff__a__b__C", write=True)
-        self.assertRaisesRegex(relations.FieldError, "index 1 mismatches \{\}", field.find, {"stuff": {"a": {}}}, "stuff__a__1__2", write=True)
+        self.assertIsNone(field.get({"stuff": {"a": []}}, "stuff__a__b"))
+        self.assertIsNone(field.get({"stuff": {"a": {}}}, "stuff__a__1"))
 
     def test_set(self):
 
         field = relations.Field(dict)
         values = {}
-        field.set(values, "things__a__b__-2___1", "yep")
+        field.set(values, "things__a__b___2____1", "yep")
         self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}, None]}}})
 
-        self.assertRaisesRegex(relations.FieldError, "key b mismatches \[\]", field.set, {"stuff": {"a": []}}, "stuff__a__b", "c")
-        self.assertRaisesRegex(relations.FieldError, "index 1 mismatches \{\}", field.set, {"stuff": {"a": {}}}, "stuff__a__1", 2)
-
-    def test_get(self):
-
-        field = relations.Field(dict)
-        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0___1"), "yep")
-        self.assertEqual(field.get({}, "things__a__b__0___1"), None)
-        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__-2"), None)
-
-        self.assertIsNone(field.get({"stuff": {"a": []}}, "stuff__a__b"))
-        self.assertIsNone(field.get({"stuff": {"a": {}}}, "stuff__a__1"))
+        self.assertRaisesRegex(relations.FieldError, "key b invalid for list \[\]", field.set, {"stuff": {"a": []}}, "stuff__a__b", "c")
+        self.assertRaisesRegex(relations.FieldError, "index 1 invalid for dict \{\}", field.set, {"stuff": {"a": {}}}, "stuff__a__1", 2)
 
     def test_export(self):
 
@@ -435,7 +437,7 @@ class TestField(unittest.TestCase):
         field.write(values)
         self.assertEqual(values, {'ip': {"address": "1.2.3.4", "value": 16909060}})
 
-        field = relations.Field(str, inject="things__a__b__0___1")
+        field = relations.Field(str, inject="things__a__b__0____1")
         field.value = "yep"
         values = {}
         field.write(values)
@@ -460,15 +462,20 @@ class TestField(unittest.TestCase):
 
     def test_retrieve(self):
 
-        field = relations.Field(int, store="_id")
-        field.filter("1", "in")
-        self.assertTrue(field.retrieve({"_id": '1'}))
-        self.assertFalse(field.retrieve({"_id": '2'}))
+        field = relations.Field(str, store="name")
+        field.filter("yes", "null")
+        self.assertTrue(field.retrieve({"name": None}))
+        self.assertFalse(field.retrieve({"name": ''}))
 
-        field = relations.Field(int, store="_id")
-        field.filter("1", "ne")
-        self.assertTrue(field.retrieve({"_id": '2'}))
-        self.assertFalse(field.retrieve({"_id": '1'}))
+        field = relations.Field(str, store="name")
+        field.filter("no", "null")
+        self.assertTrue(field.retrieve({"name": ''}))
+        self.assertFalse(field.retrieve({"name": None}))
+
+        field = relations.Field(str, store="name")
+        field.filter("no", "not_null")
+        self.assertTrue(field.retrieve({"name": None}))
+        self.assertFalse(field.retrieve({"name": ''}))
 
         field = relations.Field(int, store="_id")
         field.filter("1")
@@ -501,19 +508,14 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.retrieve({"name": 'no'}))
 
         field = relations.Field(str, store="name")
-        field.filter("Yes", "notlike")
-        self.assertTrue(field.retrieve({"name": 'no'}))
-        self.assertFalse(field.retrieve({"name": ' yES adsfadsf'}))
+        field.filter("Yes", "start")
+        self.assertTrue(field.retrieve({"name": 'yES adsfadsf'}))
+        self.assertFalse(field.retrieve({"name": 'no yes'}))
 
         field = relations.Field(str, store="name")
-        field.filter("yes", "null")
-        self.assertTrue(field.retrieve({"name": None}))
-        self.assertFalse(field.retrieve({"name": ''}))
-
-        field = relations.Field(str, store="name")
-        field.filter("no", "null")
-        self.assertTrue(field.retrieve({"name": ''}))
-        self.assertFalse(field.retrieve({"name": None}))
+        field.filter("Yes", "end")
+        self.assertTrue(field.retrieve({"name": 'sure yes'}))
+        self.assertFalse(field.retrieve({"name": 'yes no'}))
 
         field = relations.Field(dict, store="meta")
         field.filter(1, "a")
@@ -526,7 +528,7 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.retrieve({"meta": {"a": '1'}}))
 
         field = relations.Field(dict, store="meta")
-        field.filter(1, "a__ne")
+        field.filter(1, "a__not_eq")
         self.assertTrue(field.retrieve({"meta": {"a": '1'}}))
         self.assertFalse(field.retrieve({"meta": {"a": 1}}))
 
@@ -537,13 +539,13 @@ class TestField(unittest.TestCase):
         self.assertFalse(field.retrieve({"meta": {}}))
 
         field = relations.Field(dict, store="meta")
-        field.filter(1, "a__b___1__in")
+        field.filter(1, "a__b____1__in")
         self.assertTrue(field.retrieve({"meta": {"a": {"b": {"1": 1}}}}))
         self.assertFalse(field.retrieve({"meta": {"a": {"b": {"1": '1'}}}}))
         self.assertFalse(field.retrieve({"meta": {}}))
 
         field = relations.Field(dict, store="meta")
-        field.filter(1, "_1__in")
+        field.filter(1, "__1__in")
         self.assertTrue(field.retrieve({"meta": {"1": 1}}))
         self.assertFalse(field.retrieve({"meta": {"1": '1'}}))
         self.assertFalse(field.retrieve({"meta": {}}))
@@ -552,7 +554,12 @@ class TestField(unittest.TestCase):
         field.filter(1, "a__b__1__null")
         self.assertTrue(field.retrieve({"meta": {"a": {"b": [0, None]}}}))
         self.assertTrue(field.retrieve({"meta": {}}))
-        self.assertFalse(field.retrieve({"meta": {"a": {"b": ['0', '1']}}}))
+        self.assertFalse(field.retrieve({"meta": {"a": {"b": [0, '1']}}}))
+
+        field = relations.Field(int, store="_id")
+        field.filter("1", "in")
+        self.assertTrue(field.retrieve({"_id": '1'}))
+        self.assertFalse(field.retrieve({"_id": '2'}))
 
         field = relations.Field(list, store="meta")
         field.filter(1, "1__in")
@@ -606,7 +613,7 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.value, 1)
         self.assertFalse(field.delta())
 
-        field = relations.Field(str, inject="things__a__b__0___1")
+        field = relations.Field(str, inject="things__a__b__0____1")
         field.read({"a":{"b": [{"1": "yep"}]}})
         self.assertEqual(field.value, "yep")
         self.assertFalse(field.delta())
@@ -637,7 +644,7 @@ class TestField(unittest.TestCase):
         field = relations.Field(dict)
         field.value = {"a":{"b": [{"1": "yep"}]}}
         self.assertEqual(field.labels(), [{"a":{"b": [{"1": "yep"}]}}])
-        self.assertEqual(field.labels("a__b__0___1"), ["yep"])
+        self.assertEqual(field.labels("a__b__0____1"), ["yep"])
 
         field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, label=["ip__address", "ip__value"])
         field.value = "1.2.3.4"

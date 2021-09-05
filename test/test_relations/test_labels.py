@@ -31,7 +31,7 @@ class Meta(LabelsModel):
     stuff = list
     things = dict
 
-    LABEL = "things__a__b__0___1"
+    LABEL = "things__a__b__0____1"
     UNIQUE = False
 
 def subnet_attr(values, value):

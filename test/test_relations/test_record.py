@@ -74,7 +74,7 @@ class TestRecord(unittest.TestCase):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
         self.record.append(self.things)
-        self.record.things__a__b__0___1 = "yep"
+        self.record.things__a__b__0____1 = "yep"
         self.assertEqual(self.things.value, {"a":{"b": [{"1": "yep"}]}})
 
     def test___getattr__(self):
@@ -85,7 +85,7 @@ class TestRecord(unittest.TestCase):
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
         self.record.append(self.things)
         self.things.value = {"a":{"b": [{"1": "yep"}]}}
-        self.assertEqual(self.record.things__a__b__0___1, "yep")
+        self.assertEqual(self.record.things__a__b__0____1, "yep")
 
         def nope():
             self.record.nope
@@ -124,7 +124,7 @@ class TestRecord(unittest.TestCase):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
         self.record.append(self.things)
-        self.record['things__a__b__0___1'] = "yep"
+        self.record['things__a__b__0____1'] = "yep"
         self.assertEqual(self.things.value, {"a":{"b": [{"1": "yep"}]}})
 
         def nope():
@@ -141,7 +141,7 @@ class TestRecord(unittest.TestCase):
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
         self.record.append(self.things)
         self.things.value = {"a":{"b": [{"1": "yep"}]}}
-        self.assertEqual(self.record["things__a__b__0___1"], "yep")
+        self.assertEqual(self.record["things__a__b__0____1"], "yep")
 
         def nope():
             self.record['nope']
@@ -176,18 +176,18 @@ class TestRecord(unittest.TestCase):
         self.record.filter("id", "1")
         self.assertEqual(self.id.criteria["eq"], 1)
 
-        self.record.filter("id__ne", "2")
-        self.assertEqual(self.id.criteria["ne"], [2])
+        self.record.filter("id__not_eq", "2")
+        self.assertEqual(self.id.criteria["not_eq"], 2)
 
-        self.record.filter("meta__a__ne", 2)
-        self.assertEqual(self.meta.criteria["a__ne"], [2])
+        self.record.filter("meta__a__not_eq", 2)
+        self.assertEqual(self.meta.criteria["a__not_eq"], 2)
 
         self.assertRaisesRegex(relations.RecordError, "unknown criterion 'nope'", self.record.filter, "nope", 0)
 
     def test_export(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
         self.ip = relations.Field(ipaddress.IPv4Address, name="ip", attr={"compressed": "address", "__int__": "value"})
 
         self.record.append(self.things)
@@ -210,7 +210,7 @@ class TestRecord(unittest.TestCase):
     def test_create(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
 
         self.record.append(self.things)
         self.record.append(self.push)
@@ -240,13 +240,13 @@ class TestRecord(unittest.TestCase):
         self.assertTrue(self.record.like({"_id": 2, "_name": "unit"}, ["id", "name"], "unit", {'_id': [1]}))
         self.assertFalse(self.record.like({"_id": 2, "_name": "test"}, ["id", "name"], "unit", {'_id': [1]}))
 
-        self.assertTrue(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0___1"], "y", {'things': [1]}))
-        self.assertFalse(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0___1"], "n", {'things': [1]}))
+        self.assertTrue(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0____1"], "y", {'things': [1]}))
+        self.assertFalse(self.record.like({"_id": 1, "_name": "unit", "_things": {"a":{"b": [{"1": "yep"}]}}}, ["things__a__b__0____1"], "n", {'things': [1]}))
 
     def test_read(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
 
         self.record.append(self.things)
         self.record.append(self.push)
@@ -261,7 +261,7 @@ class TestRecord(unittest.TestCase):
     def test_update(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
 
         self.record.append(self.things)
         self.record.append(self.push)
@@ -280,7 +280,7 @@ class TestRecord(unittest.TestCase):
     def test_mass(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)
-        self.push = relations.Field(str, name="push", inject="things__a__b__0___1")
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
 
         self.record.append(self.things)
         self.record.append(self.push)

@@ -2,6 +2,8 @@
 Relations Module for handling labels
 """
 
+import relations
+
 class Labels:
     """
     Labels container
@@ -100,7 +102,7 @@ class Labels:
 
             else:
 
-                path = name.split('__')
+                path = relations.Field.split(name)
                 field = path.pop(0)
 
                 label.extend(model._record._names[field].labels(path))
