@@ -10,7 +10,7 @@ import json
 import relations
 
 
-class MockQuery:
+class MockQuery: # pylint: disable=too-few-public-methods
     """
     Mock Query for testing
     """
@@ -38,6 +38,11 @@ class MockSource(relations.Source):
     """
 
     KIND = "mock"
+
+    SELECT = MockQuery
+    INSERT = MockQuery
+    UPDATE = MockQuery
+    DELETE = MockQuery
 
     ids = None  # ID's keyed by model names
     data = None # Data keyed by model names
@@ -149,7 +154,7 @@ class MockSource(relations.Source):
         create query
         """
 
-        return MockQuery("CREATE")
+        return self.INSERT("CREATE")
 
     def model_create(self, model):
         """
@@ -234,7 +239,7 @@ class MockSource(relations.Source):
         count query
         """
 
-        return MockQuery("COUNT")
+        return self.SELECT("COUNT")
 
     def model_count(self, model):
         """
@@ -258,7 +263,7 @@ class MockSource(relations.Source):
         retrieve query
         """
 
-        return MockQuery("RETRIEVE")
+        return self.SELECT("RETRIEVE")
 
     def model_retrieve(self, model, verify=True):
         """
@@ -311,7 +316,7 @@ class MockSource(relations.Source):
         labels query
         """
 
-        return MockQuery("LABELS")
+        return self.SELECT("LABELS")
 
     def model_labels(self, model):
         """
@@ -333,7 +338,7 @@ class MockSource(relations.Source):
         update query
         """
 
-        return MockQuery("UPDATE")
+        return self.UPDATE("UPDATE")
 
     def model_update(self, model):
         """
@@ -376,7 +381,7 @@ class MockSource(relations.Source):
         delete query
         """
 
-        return MockQuery("DELETE")
+        return self.DELETE("DELETE")
 
     def model_delete(self, model):
         """
