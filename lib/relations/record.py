@@ -239,7 +239,7 @@ class Record:
 
     def update(self, values):
         """
-        Writes values for create
+        Writes values for update
         """
 
         inject = []
@@ -261,7 +261,7 @@ class Record:
 
     def mass(self, values):
         """
-        Writes values for create
+        Writes values for update
         """
 
         inject = []
