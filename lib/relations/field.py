@@ -480,6 +480,8 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             if index < len(path) - 1:
                 values = values[place]
+            elif values[place] != value:
+                values[place] = value
 
     def export(self):
         """
