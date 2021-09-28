@@ -103,6 +103,16 @@ class Run(ModelTest):
     name = str
     status = ["pass", "fail"]
 
+class Meta(ModelTest):
+    id = int
+    name = str
+    flag = bool
+    spend = float
+    people = set
+    stuff = list
+    things = dict, {"extract": "for__0____1"}
+    push = str, {"inject": "stuff___1__relations.io____1"}
+
 class Net(ModelTest):
 
     id = int
@@ -611,6 +621,13 @@ class TestModel(unittest.TestCase):
 
         unit.id = 2
         self.assertEqual(unit._record['id'], 2)
+
+        # json cmplex set
+
+        model = Meta(things={"a": {"b": 1}})
+
+        model.things__a__b = 2
+        self.assertEqual(model.things, {"a": {"b": 2}})
 
     def test___getattr__(self):
 
