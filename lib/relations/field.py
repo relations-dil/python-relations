@@ -441,7 +441,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values
 
-    def set(self, values, path, value):
+    def set(self, values, path, value): # pylint: disable=too-many-branches
         """
         Walk along to get a value
         """
