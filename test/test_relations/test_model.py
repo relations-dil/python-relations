@@ -92,16 +92,22 @@ class Test(ModelTest):
     unit_id = int
     name = str
 
+relations.OneToMany(Unit, Test)
+
 class Case(ModelTest):
     id = int
     test_id = int
     name = str
+
+relations.OneToOne(Test, Case)
 
 class Run(ModelTest):
     id = int
     test_id = int
     name = str
     status = ["pass", "fail"]
+
+relations.OneToOne(Test, Run)
 
 class Meta(ModelTest):
     id = int
@@ -112,6 +118,15 @@ class Meta(ModelTest):
     stuff = list
     things = dict, {"extract": "for__0____1"}
     push = str, {"inject": "stuff___1__relations.io____1"}
+
+class Component(ModelTest):
+
+    id = int
+    container_id = int
+    contained_id = int
+
+relations.OneToMany(Meta, Component, child_field="container_id", parent_child="components", child_parent="container")
+relations.OneToOne(Meta, Component, child_field="contained_id", parent_child="component", child_parent="contained")
 
 class Net(ModelTest):
 
@@ -125,10 +140,6 @@ class Net(ModelTest):
 
     LABEL = "ip__address"
     INDEX = "ip__address"
-
-relations.OneToMany(Unit, Test)
-relations.OneToOne(Test, Case)
-relations.OneToOne(Test, Run)
 
 class TestModelIdentity(unittest.TestCase):
 
@@ -1146,6 +1157,35 @@ class TestModel(unittest.TestCase):
         self.assertEqual(test.case._models[0]._action, "update")
         self.assertIsNone(test.case._models[0]._record._names["test_id"].criteria)
 
+        # components
+
+        outside = Meta("outside").create()
+        inside = Meta("inside").create()
+
+        component = Component(container_id=outside.id, contained_id=inside.id).create()
+
+        self.assertEqual(component.container_id, outside.id)
+        self.assertEqual(component.contained_id, inside.id)
+
+        self.assertEqual(outside.components[0].id, component.id)
+        self.assertEqual(outside.components[0].contained_id, inside.id)
+        self.assertEqual(outside.components[0].contained.id, inside.id)
+        self.assertEqual(outside.components[0].contained.name, "inside")
+
+        inside = Meta.one(inside.id)
+
+        self.assertEqual(inside.component.id, component.id)
+        self.assertEqual(inside.component.container_id, outside.id)
+        self.assertEqual(inside.component.container.id, outside.id)
+        self.assertEqual(inside.component.container.name, "outside")
+
+        inside = Meta.one(component__contained__name="inside").retrieve()
+
+        self.assertEqual(inside.component.id, component.id)
+        self.assertEqual(inside.component.container_id, outside.id)
+        self.assertEqual(inside.component.container.id, outside.id)
+        self.assertEqual(inside.component.container.name, "outside")
+
     def test__collate(self):
 
         unit = Unit("ya")
@@ -1153,11 +1193,15 @@ class TestModel(unittest.TestCase):
         unit.create()
 
         test = Test.one(unit__name="ya", case__name="whatever")
+        self.assertIn("unit", test._parents)
+        self.assertIn("case", test._children)
+
         test._collate()
 
         self.assertEqual(test._record._names['unit_id'].criteria["in"], [1])
         self.assertEqual(test._record._names['id'].criteria["in"], [2])
-        self.assertEqual(test.case[0].id, 1)
+        self.assertNotIn("unit", test._parents)
+        self.assertNotIn("case", test._children)
 
         test = Test.one()
 
