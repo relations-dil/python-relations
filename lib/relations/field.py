@@ -5,6 +5,7 @@ Relations Module for handling fields
 # pylint: disable=not-callable,unsupported-membership-test,not-an-iterable,misplaced-comparison-constant
 
 import re
+import copy
 import relations
 
 class FieldError(Exception):
@@ -440,7 +441,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return values
 
-    def set(self, values, path, value):
+    def set(self, values, path, value): # pylint: disable=too-many-branches
         """
         Walk along to get a value
         """
@@ -479,6 +480,8 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             if index < len(path) - 1:
                 values = values[place]
+            elif values[place] != value:
+                values[place] = value
 
     def export(self):
         """
@@ -491,7 +494,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             return sorted(self.value)
 
         if self.value is None or self.attr is None:
-            return self.value
+            return copy.deepcopy(self.value)
 
         values = {}
 

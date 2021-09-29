@@ -760,11 +760,13 @@ class Model(ModelIdentity):
             if self._parents.get(child_parent) is not None:
                 self._record.filter(f"{relation.child_field}__in", self._parents[child_parent][relation.parent_field])
                 self.overflow = self.overflow or self._parents[child_parent].overflow
+                del self._parents[child_parent]
 
         for parent_child, relation in self.CHILDREN.items():
             if self._children.get(parent_child) is not None:
                 self._record.filter(f"{relation.parent_field}__in", self._children[parent_child][relation.child_field])
                 self.overflow = self.overflow or self._children[parent_child].overflow
+                del self._children[parent_child]
 
     def _propagate(self, field, value):
         """

@@ -355,6 +355,13 @@ class TestField(unittest.TestCase):
         field.value = {"people", "stuff"}
         self.assertEqual(field.export(), ["stuff", "people"])
 
+        field = relations.Field(dict)
+        field.value = {"a": 1}
+        value = field.export()
+        self.assertEqual(value, {"a": 1})
+        value["a"] = 2
+        self.assertEqual(field.export(), {"a": 1})
+
         field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"})
         field.value = "1.2.3.4"
         self.assertEqual(field.export(), {
