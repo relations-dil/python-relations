@@ -1098,18 +1098,18 @@ class Model(ModelIdentity):
         """
 
         if self._action == "create":
-            return relations.source(self.SOURCE).query_create(self, *args, **kwargs)
+            return relations.source(self.SOURCE).create_query(self, *args, **kwargs).bind(self)
 
         if self._action == "retrieve" and action == "count":
-            return relations.source(self.SOURCE).query_count(self, *args, **kwargs)
+            return relations.source(self.SOURCE).count_query(self, *args, **kwargs).bind(self)
 
         if self._action == "retrieve" and action == "labels":
-            return relations.source(self.SOURCE).query_labels(self, *args, **kwargs)
+            return relations.source(self.SOURCE).labels_query(self, *args, **kwargs).bind(self)
 
         if action == "update" or (action is None and self._action == "update"):
-            return relations.source(self.SOURCE).query_update(self, *args, **kwargs)
+            return relations.source(self.SOURCE).update_query(self, *args, **kwargs).bind(self)
 
         if action == "delete":
-            return relations.source(self.SOURCE).query_delete(self, *args, **kwargs)
+            return relations.source(self.SOURCE).delete_query(self, *args, **kwargs).bind(self)
 
-        return relations.source(self.SOURCE).query_retrieve(self, *args, **kwargs)
+        return relations.source(self.SOURCE).retrieve_query(self, *args, **kwargs).bind(self)

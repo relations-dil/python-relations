@@ -9,6 +9,28 @@ import copy
 import json
 import relations
 
+
+class MockQuery: # pylint: disable=too-few-public-methods
+    """
+    Mock Query for testing
+    """
+
+    action = None
+    model = None
+
+    def __init__(self, action):
+
+        self.action = action
+
+    def bind(self, model):
+        """
+        Mimic bind
+        """
+
+        self.model = model
+
+        return self
+
 class MockSource(relations.Source):
 
     """
@@ -16,6 +38,11 @@ class MockSource(relations.Source):
     """
 
     KIND = "mock"
+
+    SELECT = MockQuery
+    INSERT = MockQuery
+    UPDATE = MockQuery
+    DELETE = MockQuery
 
     ids = None  # ID's keyed by model names
     data = None # Data keyed by model names
@@ -122,12 +149,12 @@ class MockSource(relations.Source):
 
         return values
 
-    def query_create(self, model):
+    def create_query(self, model):
         """
         create query
         """
 
-        return "CREATE"
+        return self.INSERT("CREATE")
 
     def model_create(self, model):
         """
@@ -207,12 +234,12 @@ class MockSource(relations.Source):
         model._models = model._models[model._offset:model._offset + model._limit]
         model.overflow = model.overflow or len(model._models) >= model._limit
 
-    def query_count(self, model):
+    def count_query(self, model):
         """
         count query
         """
 
-        return "COUNT"
+        return self.SELECT("COUNT")
 
     def model_count(self, model):
         """
@@ -231,12 +258,12 @@ class MockSource(relations.Source):
 
         return matches
 
-    def query_retrieve(self, model):
+    def retrieve_query(self, model):
         """
         retrieve query
         """
 
-        return "RETRIEVE"
+        return self.SELECT("RETRIEVE")
 
     def model_retrieve(self, model, verify=True):
         """
@@ -284,12 +311,12 @@ class MockSource(relations.Source):
 
         return model
 
-    def query_labels(self, model):
+    def labels_query(self, model):
         """
         labels query
         """
 
-        return "LABELS"
+        return self.SELECT("LABELS")
 
     def model_labels(self, model):
         """
@@ -306,12 +333,12 @@ class MockSource(relations.Source):
 
         return labels
 
-    def query_update(self, model):
+    def update_query(self, model):
         """
         update query
         """
 
-        return "UPDATE"
+        return self.UPDATE("UPDATE")
 
     def model_update(self, model):
         """
@@ -349,12 +376,12 @@ class MockSource(relations.Source):
 
         return updated
 
-    def query_delete(self, model):
+    def delete_query(self, model):
         """
         delete query
         """
 
-        return "DELETE"
+        return self.DELETE("DELETE")
 
     def model_delete(self, model):
         """

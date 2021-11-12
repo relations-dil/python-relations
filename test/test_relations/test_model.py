@@ -1588,16 +1588,43 @@ class TestModel(unittest.TestCase):
     def test_query(self):
 
         unit = Unit("yep")
-        self.assertEqual(unit.query(), "CREATE")
+
+        query = unit.query()
+        self.assertEqual(query.action, "CREATE")
+        self.assertEqual(query.model, unit)
 
         unit.create()
-        self.assertEqual(unit.query("update"), "UPDATE")
-        self.assertEqual(unit.query("delete"), "DELETE")
-        self.assertEqual(unit.query(), "UPDATE")
+
+        query = unit.query("update")
+        self.assertEqual(query.action, "UPDATE")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query("delete")
+        self.assertEqual(query.action, "DELETE")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query()
+        self.assertEqual(query.action, "UPDATE")
+        self.assertEqual(query.model, unit)
 
         unit = Unit.one()
-        self.assertEqual(unit.query("count"), "COUNT")
-        self.assertEqual(unit.query("labels"), "LABELS")
-        self.assertEqual(unit.query("update"), "UPDATE")
-        self.assertEqual(unit.query("delete"), "DELETE")
-        self.assertEqual(unit.query(), "RETRIEVE")
+
+        query = unit.query("count")
+        self.assertEqual(query.action, "COUNT")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query("labels")
+        self.assertEqual(query.action, "LABELS")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query("update")
+        self.assertEqual(query.action, "UPDATE")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query("delete")
+        self.assertEqual(query.action, "DELETE")
+        self.assertEqual(query.model, unit)
+
+        query = unit.query()
+        self.assertEqual(query.action, "RETRIEVE")
+        self.assertEqual(query.model, unit)
