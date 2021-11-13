@@ -269,7 +269,7 @@ class ModelIdentity:
         self.SOURCE = cls.SOURCE
 
         if relations.source(self.SOURCE) is not None:
-            relations.source(self.SOURCE).model_init(self)
+            relations.source(self.SOURCE).init(self)
 
         return self
 
@@ -1027,7 +1027,7 @@ class Model(ModelIdentity):
         """
         define the model
         """
-        return relations.source(cls.SOURCE).model_define(cls.thy().define(), *args, **kwargs)
+        return relations.source(cls.SOURCE).define(cls.thy().define(), *args, **kwargs)
 
     def create(self, *args, **kwargs):
         """
@@ -1037,7 +1037,7 @@ class Model(ModelIdentity):
         if self._action not in ["create", "update"]:
             raise ModelError(self, f"cannot create during {self._action}")
 
-        return relations.source(self.SOURCE).model_create(self, *args, **kwargs)
+        return relations.source(self.SOURCE).create(self, *args, **kwargs)
 
     def count(self, *args, **kwargs):
         """
@@ -1047,7 +1047,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot count during {self._action}")
 
-        return relations.source(self.SOURCE).model_count(self, *args, **kwargs)
+        return relations.source(self.SOURCE).count(self, *args, **kwargs)
 
     def retrieve(self, verify=True, *args, **kwargs):
         """
@@ -1057,7 +1057,7 @@ class Model(ModelIdentity):
         if self._action != "retrieve":
             raise ModelError(self, f"cannot retrieve during {self._action}")
 
-        return relations.source(self.SOURCE).model_retrieve(self, verify, *args, **kwargs)
+        return relations.source(self.SOURCE).retrieve(self, verify, *args, **kwargs)
 
     def labels(self, *args, **kwargs):
         """
@@ -1067,7 +1067,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot labels during {self._action}")
 
-        return relations.source(self.SOURCE).model_labels(self, *args, **kwargs)
+        return relations.source(self.SOURCE).labels(self, *args, **kwargs)
 
     def update(self, *args, **kwargs):
         """
@@ -1077,7 +1077,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot update during {self._action}")
 
-        return relations.source(self.SOURCE).model_update(self, *args, **kwargs)
+        return relations.source(self.SOURCE).update(self, *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """
@@ -1090,7 +1090,7 @@ class Model(ModelIdentity):
         if self._action == "retrieve" and self._mode == "one":
             self.retrieve()
 
-        return relations.source(self.SOURCE).model_delete(self, *args, **kwargs)
+        return relations.source(self.SOURCE).delete(self, *args, **kwargs)
 
     def query(self, action=None, *args, **kwargs):
         """

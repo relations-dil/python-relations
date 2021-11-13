@@ -51,7 +51,7 @@ class Source:
         for field in record._order:
             self.field_init(field)
 
-    def model_init(self, model):
+    def init(self, model):
         """
         init the model
         """
@@ -69,7 +69,7 @@ class Source:
         for field in record:
             self.field_define(field, *args, **kwargs)
 
-    def model_define(self, model):
+    def define(self, model):
         """
         define the model
         """
@@ -119,81 +119,81 @@ class Source:
         define the model
         """
 
-    def field_create(self, field, *args, **kwargs):
+    def create_field(self, field, *args, **kwargs):
         """
         create the field
         """
 
-    def record_create(self, record, *args, **kwargs):
+    def create_record(self, record, *args, **kwargs):
         """
         create the record
         """
         for field in record._order:
-            self.field_create(field, *args, **kwargs)
+            self.create_field(field, *args, **kwargs)
 
-    def query_create(self, model, *args, **kwargs):
+    def create_query(self, model, *args, **kwargs):
         """
         Create query
         """
 
-    def model_create(self, model, *args, **kwargs):
+    def create(self, model, *args, **kwargs):
         """
         create the model
         """
 
-    def field_retrieve(self, field, *args, **kwargs):
+    def retrieve_field(self, field, *args, **kwargs):
         """
         retrieve the field
         """
 
-    def record_retrieve(self, record, *args, **kwargs):
+    def retrieve_record(self, record, *args, **kwargs):
         """
         retrieve the record
         """
         for field in record._order:
-            self.field_retrieve(field, *args, **kwargs)
+            self.retrieve_field(field, *args, **kwargs)
 
-    def query_count(self, model, *args, **kwargs):
+    def count_query(self, model, *args, **kwargs):
         """
         Count query
         """
 
-    def model_count(self, model, *args, **kwargs):
+    def count(self, model, *args, **kwargs):
         """
         retrieve the model
         """
 
-    def query_retrieve(self, model, *args, **kwargs):
+    def retrieve_query(self, model, *args, **kwargs):
         """
         retrieve query
         """
 
-    def model_retrieve(self, model, verify=True, *args, **kwargs):
+    def retrieve(self, model, verify=True, *args, **kwargs):
         """
         retrieve the model
         """
 
-    def query_labels(self, model, *args, **kwargs):
+    def labels_query(self, model, *args, **kwargs):
         """
         labels query
         """
 
-    def model_labels(self, model, *args, **kwargs):
+    def labels(self, model, *args, **kwargs):
         """
         labels of the model
         """
 
-    def field_update(self, field, *args, **kwargs):
+    def update_field(self, field, *args, **kwargs):
         """
         update the field
         """
 
-    def record_update(self, record, *args, **kwargs):
+    def update_record(self, record, *args, **kwargs):
         """
         update the record
         """
         for field in record._order:
-            self.field_update(field, *args, **kwargs)
+            self.update_field(field, *args, **kwargs)
 
     def field_mass(self, field, *args, **kwargs):
         """
@@ -207,44 +207,44 @@ class Source:
         for field in record._order:
             self.field_mass(field, *args, **kwargs)
 
-    def query_update(self, model, *args, **kwargs):
+    def update_query(self, model, *args, **kwargs):
         """
         update query
         """
 
-    def model_update(self, model, *args, **kwargs):
+    def update(self, model, *args, **kwargs):
         """
         update the model
         """
 
-    def field_delete(self, field, *args, **kwargs):
+    def delete_field(self, field, *args, **kwargs):
         """
         delete the field
         """
 
-    def record_delete(self, record, *args, **kwargs):
+    def delete_record(self, record, *args, **kwargs):
         """
         delete the record
         """
         for field in record._order:
-            self.field_delete(field, *args, **kwargs)
+            self.delete_field(field, *args, **kwargs)
 
-    def query_delete(self, model, *args, **kwargs):
+    def delete_query(self, model, *args, **kwargs):
         """
         delete query
         """
 
-    def model_delete(self, model, *args, **kwargs):
+    def delete(self, model, *args, **kwargs):
         """
         delete the model
         """
 
-    def definition_convert(self, file_path, source_path):
+    def definition(self, file_path, source_path):
         """
         Concvert a general definition file to a source specific file
         """
 
-    def migration_convert(self, file_path, source_path):
+    def migration(self, file_path, source_path):
         """
         Concvert a general migration file to a source specific file
         """

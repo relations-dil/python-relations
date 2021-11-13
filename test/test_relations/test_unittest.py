@@ -112,7 +112,7 @@ class TestSource(unittest.TestCase):
         self.assertEqual(source.name, "unit")
         self.assertEqual(relations.SOURCES["unit"], source)
 
-    def test_model_init(self):
+    def test_init(self):
 
         class Check(relations.Model):
             id = int
@@ -120,7 +120,7 @@ class TestSource(unittest.TestCase):
 
         model = Check()
 
-        self.source.model_init(model)
+        self.source.init(model)
 
         self.assertEqual(self.source.ids, {"check": 0})
         self.assertEqual(self.source.data, {"check": {}})
@@ -138,7 +138,7 @@ class TestSource(unittest.TestCase):
             "none": True
         }])
 
-    def test_model_define(self):
+    def test_define(self):
 
         self.assertEqual(Simple.define(), [{
             "ACTION": "add",
@@ -368,7 +368,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.create_query(None).action, "CREATE")
 
-    def test_model_create(self):
+    def test_create(self):
 
         simple = Simple("sure")
         simple.plain.add("fine")
@@ -513,7 +513,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.count_query(None).action, "COUNT")
 
-    def test_model_count(self):
+    def test_count(self):
 
         Unit([["stuff"], ["people"]]).create()
 
@@ -527,7 +527,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.retrieve_query(None).action, "RETRIEVE")
 
-    def test_model_retrieve(self):
+    def test_retrieve(self):
 
         Unit([["stuff"], ["people"]]).create()
 
@@ -695,7 +695,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.labels_query(None).action, "LABELS")
 
-    def test_model_labels(self):
+    def test_labels(self):
 
         Unit("people").create().test.add("stuff").add("things").create()
 
@@ -737,7 +737,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.update_query(None).action, "UPDATE")
 
-    def test_model_update(self):
+    def test_update(self):
 
         Unit([["people"], ["stuff"]]).create()
 
@@ -774,7 +774,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.delete_query(None).action, "DELETE")
 
-    def test_model_delete(self):
+    def test_delete(self):
 
         unit = Unit("people")
         unit.test.add("stuff").add("things")
@@ -791,14 +791,14 @@ class TestSource(unittest.TestCase):
         plain = Plain().create()
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)
 
-    def test_definition_convert(self):
+    def test_definition(self):
 
         with open("ddl/general.json", 'w') as from_file:
             json.dump({"simple": Simple.thy().define()}, from_file)
 
         os.makedirs("ddl/sourced", exist_ok=True)
 
-        self.source.definition_convert("ddl/general.json", "ddl/sourced")
+        self.source.definition("ddl/general.json", "ddl/sourced")
 
         with open("ddl/sourced/general.json", 'r') as ddl_file:
             self.assertEqual(json.load(ddl_file), [{
@@ -828,7 +828,7 @@ class TestSource(unittest.TestCase):
                 "index": {}
             }])
 
-    def test_migration_convert(self):
+    def test_migration(self):
 
         migration = {
             "add": {"simple": Simple.thy().define()},
@@ -880,7 +880,7 @@ class TestSource(unittest.TestCase):
 
         os.makedirs("ddl/sourced", exist_ok=True)
 
-        self.source.migration_convert("ddl/general.json", "ddl/sourced")
+        self.source.migration("ddl/general.json", "ddl/sourced")
 
         with open("ddl/sourced/general.json", 'r') as ddl_file:
             self.assertEqual(json.load(ddl_file), [

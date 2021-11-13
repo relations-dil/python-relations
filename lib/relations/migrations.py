@@ -262,10 +262,10 @@ class Migrations:
             file_name = file_path.split("/")[-1]
 
             if file_name.startswith("definition"):
-                source.definition_convert(file_path, source_path)
+                source.definition(file_path, source_path)
 
             elif file_name.startswith("migration"):
-                source.migration_convert(file_path, source_path)
+                source.migration(file_path, source_path)
 
     def list(self, name):
         """
