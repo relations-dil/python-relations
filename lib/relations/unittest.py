@@ -54,7 +54,7 @@ class MockSource(relations.Source):
         self.data = {}
         self.migrations = None
 
-    def model_init(self, model):
+    def init(self, model):
         """
         Init the model
         """
@@ -76,7 +76,7 @@ class MockSource(relations.Source):
         """
         definitions.append(field)
 
-    def model_define(self, model):
+    def define(self, model):
         """
         define the model
         """
@@ -117,7 +117,7 @@ class MockSource(relations.Source):
         add the model
         """
 
-        return self.model_define(definition)
+        return self.define(definition)
 
     def model_remove(self, definition):
         """
@@ -156,7 +156,7 @@ class MockSource(relations.Source):
 
         return self.INSERT("CREATE")
 
-    def model_create(self, model):
+    def create(self, model):
         """
         Executes the create
         """
@@ -241,7 +241,7 @@ class MockSource(relations.Source):
 
         return self.SELECT("COUNT")
 
-    def model_count(self, model):
+    def count(self, model):
         """
         Executes the retrieve
         """
@@ -265,7 +265,7 @@ class MockSource(relations.Source):
 
         return self.SELECT("RETRIEVE")
 
-    def model_retrieve(self, model, verify=True):
+    def retrieve(self, model, verify=True):
         """
         Executes the retrieve
         """
@@ -318,13 +318,13 @@ class MockSource(relations.Source):
 
         return self.SELECT("LABELS")
 
-    def model_labels(self, model):
+    def labels(self, model):
         """
         Creates the labels structure
         """
 
         if model._action == "retrieve":
-            self.model_retrieve(model)
+            self.retrieve(model)
 
         labels = relations.Labels(model)
 
@@ -340,7 +340,7 @@ class MockSource(relations.Source):
 
         return self.UPDATE("UPDATE")
 
-    def model_update(self, model):
+    def update(self, model):
         """
         Executes the update
         """
@@ -383,7 +383,7 @@ class MockSource(relations.Source):
 
         return self.DELETE("DELETE")
 
-    def model_delete(self, model):
+    def delete(self, model):
         """
         Executes the delete
         """
@@ -413,7 +413,7 @@ class MockSource(relations.Source):
 
         return len(ids)
 
-    def definition_convert(self, file_path, source_path):
+    def definition(self, file_path, source_path):
         """"
         Converts a definition file to a source definition file
         """
@@ -424,7 +424,7 @@ class MockSource(relations.Source):
             definition = json.load(definition_file)
             for name in sorted(definition.keys()):
                 if definition[name]["source"] == self.name:
-                    definitions.extend(self.model_define(definition[name]))
+                    definitions.extend(self.define(definition[name]))
 
         if definitions:
             file_name = file_path.split("/")[-1].split('.')[0]
@@ -432,7 +432,7 @@ class MockSource(relations.Source):
                 source_file.write(json.dumps(definitions))
                 source_file.write("\n")
 
-    def migration_convert(self, file_path, source_path):
+    def migration(self, file_path, source_path):
         """"
         Converts a migration file to a source definition file
         """

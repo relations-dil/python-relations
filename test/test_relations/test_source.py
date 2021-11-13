@@ -51,13 +51,13 @@ class TestSource(unittest.TestCase):
         mock_field.assert_called_once_with(record)
 
     @unittest.mock.patch("relations.Source.field_init")
-    def test_model_init(self, mock_field):
+    def test_init(self, mock_field):
 
         record = unittest.mock.MagicMock()
         record._order = [record]
         record._fields = record
 
-        self.source.model_init(record)
+        self.source.init(record)
 
         mock_field.assert_called_once_with(record)
 
@@ -72,9 +72,9 @@ class TestSource(unittest.TestCase):
 
         mock_define.assert_called_once_with({})
 
-    def test_model_define(self):
+    def test_define(self):
 
-        self.source.model_define(None)
+        self.source.define(None)
 
     def test_field_add(self):
 
@@ -126,77 +126,77 @@ class TestSource(unittest.TestCase):
 
         self.source.model_change(None, None)
 
-    def test_field_create(self):
+    def test_create_field(self):
 
-        self.source.field_create(None)
+        self.source.create_field(None)
 
-    @unittest.mock.patch("relations.Source.field_create")
-    def test_record_create(self, mock_field):
+    @unittest.mock.patch("relations.Source.create_field")
+    def test_create_record(self, mock_field):
 
         record = unittest.mock.MagicMock()
         record._order = [record]
 
-        self.source.record_create(record)
+        self.source.create_record(record)
 
         mock_field.assert_called_once_with(record)
 
-    def test_query_create(self):
+    def test_create_query(self):
 
-        self.source.query_create(None)
+        self.source.create_query(None)
 
-    def test_model_create(self):
+    def test_create(self):
 
-        self.source.model_create(None)
+        self.source.create(None)
 
-    def test_field_retrieve(self):
+    def test_retrieve_field(self):
 
-        self.source.field_retrieve(None)
+        self.source.retrieve_field(None)
 
-    @unittest.mock.patch("relations.Source.field_retrieve")
-    def test_record_retrieve(self, mock_field):
+    @unittest.mock.patch("relations.Source.retrieve_field")
+    def test_retrieve_record(self, mock_field):
 
         record = unittest.mock.MagicMock()
         record._order = [record]
 
-        self.source.record_retrieve(record)
+        self.source.retrieve_record(record)
 
         mock_field.assert_called_once_with(record)
 
-    def test_query_count(self):
+    def test_count_query(self):
 
-        self.source.query_count(None)
+        self.source.count_query(None)
 
-    def test_model_count(self):
+    def test_count(self):
 
-        self.source.model_retrieve(None)
+        self.source.retrieve(None)
 
-    def test_query_retrieve(self):
+    def test_retrieve_query(self):
 
-        self.source.query_retrieve(None)
+        self.source.retrieve_query(None)
 
-    def test_model_retrieve(self):
+    def test_retrieve(self):
 
-        self.source.model_retrieve(None)
+        self.source.retrieve(None)
 
-    def test_query_labels(self):
+    def test_labels_query(self):
 
-        self.source.query_labels(None)
+        self.source.labels_query(None)
 
-    def test_model_labels(self):
+    def test_labels(self):
 
-        self.source.model_labels(None)
+        self.source.labels(None)
 
-    def test_field_update(self):
+    def test_update_field(self):
 
-        self.source.field_update(None)
+        self.source.update_field(None)
 
-    @unittest.mock.patch("relations.Source.field_update")
-    def test_record_update(self, mock_field):
+    @unittest.mock.patch("relations.Source.update_field")
+    def test_update_record(self, mock_field):
 
         record = unittest.mock.MagicMock()
         record._order = [record]
 
-        self.source.record_update(record)
+        self.source.update_record(record)
 
         mock_field.assert_called_once_with(record)
 
@@ -214,43 +214,43 @@ class TestSource(unittest.TestCase):
 
         mock_field.assert_called_once_with(record)
 
-    def test_query_update(self):
+    def test_update_query(self):
 
-        self.source.query_update(None)
+        self.source.update_query(None)
 
-    def test_model_update(self):
+    def test_update(self):
 
-        self.source.model_update(None)
+        self.source.update(None)
 
-    def test_field_delete(self):
+    def test_delete_field(self):
 
-        self.source.field_delete(None)
+        self.source.delete_field(None)
 
-    @unittest.mock.patch("relations.Source.field_delete")
-    def test_record_delete(self, mock_field):
+    @unittest.mock.patch("relations.Source.delete_field")
+    def test_delete_record(self, mock_field):
 
         record = unittest.mock.MagicMock()
         record._order = [record]
 
-        self.source.record_delete(record)
+        self.source.delete_record(record)
 
         mock_field.assert_called_once_with(record)
 
-    def test_query_delete(self):
+    def test_delete_query(self):
 
-        self.source.query_delete(None)
+        self.source.delete_query(None)
 
-    def test_model_delete(self):
+    def test_delete(self):
 
-        self.source.model_delete(None)
+        self.source.delete(None)
 
-    def test_definition_convert(self):
+    def test_definition(self):
 
-        self.source.definition_convert(None, None)
+        self.source.definition(None, None)
 
-    def test_migration_convert(self):
+    def test_migration(self):
 
-        self.source.migration_convert(None, None)
+        self.source.migration(None, None)
 
     def test_execute(self):
 
