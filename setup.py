@@ -2,8 +2,8 @@
 
 from setuptools import setup
 setup(
-    name="relations",
-    version="0.6.5",
+    name="python-relations",
+    version="0.6.6",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',
