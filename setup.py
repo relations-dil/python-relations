@@ -3,7 +3,7 @@
 from setuptools import setup
 setup(
     name="python-relations",
-    version="0.6.6",
+    version="0.6.7",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',

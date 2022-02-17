@@ -173,14 +173,14 @@ class Source:
         retrieve the model
         """
 
-    def labels_query(self, model, *args, **kwargs):
+    def titles_query(self, model, *args, **kwargs):
         """
-        labels query
+        titles query
         """
 
-    def labels(self, model, *args, **kwargs):
+    def titles(self, model, *args, **kwargs):
         """
-        labels of the model
+        titles of the model
         """
 
     def update_field(self, field, *args, **kwargs):

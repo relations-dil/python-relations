@@ -37,7 +37,7 @@ class ModelIdentity:
     TITLE = None    # Title of the Model
     NAME = None     # Name of the Model
     ID = 0          # Ref of id field (assumes first field)
-    LABEL = None    # Fields that make up the label of the model
+    TITLES = None   # Fields that make up the titles of the model
     LIST = None     # Default fields to list
     UNIQUE = None   # Unique indexes
     INDEX = None    # Regular indexes
@@ -52,7 +52,7 @@ class ModelIdentity:
 
     _fields = None # Base record to create other records with
     _id = None     # Name of id field
-    _label = None  # Actual fields of the label
+    _titles = None  # Actual fields of the titles
     _list = None   # Actual fields to list
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
@@ -66,7 +66,7 @@ class ModelIdentity:
 
     UNDEFINE = [
         "ID",
-        "LABEL",
+        "TITLES",
         "LIST",
         "UNIQUE",
         "INDEX",
@@ -150,37 +150,37 @@ class ModelIdentity:
         if cls.ID is not None:
             setattr(self, '_id', self._field_name(cls.ID))
 
-        # Figure out the label
+        # Figure out the titles
 
-        label = self.LABEL
+        titles = self.TITLES
 
-        if not label:
-            label = []
+        if not titles:
+            titles = []
             for field in self._fields._order:
                 if self._id == field.name:
                     continue
                 if field.kind in (int, str):
-                    label.append(field.name)
+                    titles.append(field.name)
                     if field.kind == str and field._none is None:
                         field.none = False
                 if field.kind == str:
                     break
 
-        if isinstance(label, str):
-            label = [label]
+        if isinstance(titles, str):
+            titles = [titles]
 
-        self._label = label
+        self._titles = titles
 
-        for field in self._label:
+        for field in self._titles:
             if field.split('__', 1)[0] not in self._fields:
-                raise ModelError(self, f"cannot find field {field} from label")
+                raise ModelError(self, f"cannot find field {field} from titles")
 
         # Figure out the list
 
         if self.LIST:
             self._list = self.LIST
         else:
-            self._list = list(self._label)
+            self._list = list(self._titles)
             if self._id and self._id not in self._list:
                 self._list.insert(0, self._id)
 
@@ -198,7 +198,7 @@ class ModelIdentity:
         unique = self.UNIQUE
 
         if unique is None:
-            unique = self._label
+            unique = self._titles
         elif not unique:
             unique = {}
 
@@ -1059,15 +1059,15 @@ class Model(ModelIdentity):
 
         return relations.source(self.SOURCE).retrieve(self, verify, *args, **kwargs)
 
-    def labels(self, *args, **kwargs):
+    def titles(self, *args, **kwargs):
         """
         retrieve the model
         """
 
         if self._action not in ["update", "retrieve"]:
-            raise ModelError(self, f"cannot labels during {self._action}")
+            raise ModelError(self, f"cannot titles during {self._action}")
 
-        return relations.source(self.SOURCE).labels(self, *args, **kwargs)
+        return relations.source(self.SOURCE).titles(self, *args, **kwargs)
 
     def update(self, *args, **kwargs):
         """
@@ -1103,8 +1103,8 @@ class Model(ModelIdentity):
         if self._action == "retrieve" and action == "count":
             return relations.source(self.SOURCE).count_query(self, *args, **kwargs).bind(self)
 
-        if self._action == "retrieve" and action == "labels":
-            return relations.source(self.SOURCE).labels_query(self, *args, **kwargs).bind(self)
+        if self._action == "retrieve" and action == "titles":
+            return relations.source(self.SOURCE).titles_query(self, *args, **kwargs).bind(self)
 
         if action == "update" or (action is None and self._action == "update"):
             return relations.source(self.SOURCE).update_query(self, *args, **kwargs).bind(self)

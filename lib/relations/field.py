@@ -31,7 +31,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
     attr = None       # Attributes to store in JSON
     init = None       # Attributes to create with JSON
-    label = None      # Attributes to label with JSON
+    titles = None      # Attributes to titles with JSON
 
     extract = None    # Fields to extract
     inject = None     # Field to inject
@@ -63,7 +63,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         "kind",
         "attr",
         "init",
-        "label",
+        "titles",
         "value",
         "original",
         "changed",
@@ -97,7 +97,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         'export',
         'filter',
         'insert',
-        'labels',
+        'titless',
         'like',
         'limit',
         'many',
@@ -179,10 +179,10 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.kind not in [bool, int, float, str, set, list, dict] and self.attr is None:
             raise FieldError(self, f"{self.kind.__name__} requires at least attr")
 
-       # if there's attr and no label, assume label is attr
+       # if there's attr and no titles, assume titles is attr
 
-        if self.attr is not None and self.label is None:
-            self.label = self.attr
+        if self.attr is not None and self.titles is None:
+            self.titles = self.attr
 
        # if there's attr and no init, assume init is attr
 
@@ -205,13 +205,13 @@ class Field: # pylint: disable=too-many-instance-attributes
         if isinstance(self.init, list):
             self.init = {init: init for init in self.init}
 
-        # Get label into a list
+        # Get titles into a list
 
-        if isinstance(self.label, str):
-            self.label = [self.label]
+        if isinstance(self.titles, str):
+            self.titles = [self.titles]
 
-        if self.format is None and self.label is not None:
-            self.format = [None for _ in self.label]
+        if self.format is None and self.titles is not None:
+            self.format = [None for _ in self.titles]
 
         if self.format is not None and not isinstance(self.format, list):
             self.format = [self.format]
@@ -641,10 +641,10 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         value = values.get(self.store)
 
-        if self.label is not None and path is None:
+        if self.titles is not None and path is None:
             if not value:
                 return False
-            for store in self.label:
+            for store in self.titles:
                 if str(like).lower() in str(value[store]).lower():
                     return True
             return False
@@ -671,9 +671,9 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         self.original = self.export()
 
-    def labels(self, path=None):
+    def title(self, path=None):
         """
-        Get label at path
+        Get title at path
         """
 
         if self.kind in [bool, int, float, str]:
@@ -690,7 +690,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if path:
             return [self.get(values, path)]
 
-        return [self.get(values, label) for label in self.label]
+        return [self.get(values, title) for title in self.titles]
 
     def update(self, values):
         """

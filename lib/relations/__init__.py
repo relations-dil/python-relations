@@ -7,7 +7,7 @@ import inspect
 
 from relations.source import Source
 from relations.field import Field, FieldError
-from relations.labels import Labels
+from relations.titles import Titles
 from relations.record import Record, RecordError
 from relations.model import Model, ModelIdentity, ModelError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany
