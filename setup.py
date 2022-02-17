@@ -10,7 +10,7 @@ setup(
         'relations.source',
         'relations.unittest',
         'relations.field',
-        'relations.labels',
+        'relations.titles',
         'relations.model',
         'relations.record',
         'relations.relation',
