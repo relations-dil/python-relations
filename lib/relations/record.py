@@ -214,12 +214,12 @@ class Record:
 
         return True
 
-    def like(self, values, label, like, parents):
+    def like(self, values, titles, like, parents):
         """
         Sees if a record matches a like value
         """
 
-        for field in label:
+        for field in titles:
             field = relations.Field.split(field)
             if self._names[field[0]].like(values, like, parents, field[1:]):
                 return True

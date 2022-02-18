@@ -196,7 +196,7 @@ class MockSource(relations.Source):
 
         parents = {}
 
-        for field in model._label:
+        for field in model._titles:
             relation = model._ancestor(field)
             if relation:
                 parent = relation.Parent.many(like=model._like).limit(model._chunk)
@@ -206,7 +206,7 @@ class MockSource(relations.Source):
         likes = []
 
         for record in self.data[model.NAME].values():
-            if model._record.like(record, model._label, model._like, parents):
+            if model._record.like(record, model._titles, model._like, parents):
                 likes.append(record)
 
         return likes
@@ -311,27 +311,27 @@ class MockSource(relations.Source):
 
         return model
 
-    def labels_query(self, model):
+    def titles_query(self, model):
         """
-        labels query
+        titles query
         """
 
-        return self.SELECT("LABELS")
+        return self.SELECT("TITLES")
 
-    def labels(self, model):
+    def titles(self, model):
         """
-        Creates the labels structure
+        Creates the titles structure
         """
 
         if model._action == "retrieve":
             self.retrieve(model)
 
-        labels = relations.Labels(model)
+        titles = relations.Titles(model)
 
-        for labeling in model._each():
-            labels.add(labeling)
+        for titling in model._each():
+            titles.add(titling)
 
-        return labels
+        return titles
 
     def update_query(self, model):
         """

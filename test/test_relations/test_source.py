@@ -178,13 +178,13 @@ class TestSource(unittest.TestCase):
 
         self.source.retrieve(None)
 
-    def test_labels_query(self):
+    def test_titles_query(self):
 
-        self.source.labels_query(None)
+        self.source.titles_query(None)
 
-    def test_labels(self):
+    def test_titles(self):
 
-        self.source.labels(None)
+        self.source.titles(None)
 
     def test_update_field(self):
 

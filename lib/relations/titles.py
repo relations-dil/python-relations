@@ -1,36 +1,36 @@
 """
-Relations Module for handling labels
+Relations Module for handling titles
 """
 
 import relations
 
-class Labels:
+class Titles:
     """
-    Labels container
+    Titles container
     """
 
     id = None
-    label = None
+    fields = None
 
     ids = None
-    labels = None
+    titles = None
     format = None
     parents = None
 
     def __init__(self, model):
 
         self.id = model._id
-        self.label = model._label
+        self.fields = model._titles
 
         self.ids = []
-        self.labels = {}
+        self.titles = {}
         self.format = []
         self.parents = {}
 
-        for field in self.label:
+        for field in self.fields:
             relation = model._ancestor(field)
             if relation is not None:
-                self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).labels()
+                self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).titles()
                 self.format.extend(self.parents[field].format)
             elif field in model._fields._names and model._fields._names[field].format is not None:
                 self.format.extend(model._fields._names[field].format)
@@ -39,7 +39,7 @@ class Labels:
 
     def __len__(self):
         """
-        Use for number labels
+        Use for number titles
         """
 
         return len(self.ids)
@@ -66,14 +66,14 @@ class Labels:
         if id not in self.ids:
             self.ids.append(id)
 
-        self.labels[id] = value
+        self.titles[id] = value
 
     def __getitem__(self, id):
         """
         Get by id
         """
 
-        return self.labels[id]
+        return self.titles[id]
 
     def __delitem__(self, id):
         """
@@ -82,29 +82,29 @@ class Labels:
 
         self.ids.pop(self.ids.index(id))
 
-        del self.labels[id]
+        del self.titles[id]
 
     def add(self, model): # pylint: disable=too-many-branches
         """
-        Adds a label given a model
+        Adds a title given a model
         """
 
-        label = []
+        title = []
 
-        for name in self.label: # pylint: disable=too-many-nested-blocks
+        for name in self.fields: # pylint: disable=too-many-nested-blocks
 
             if name in self.parents:
 
                 if model[name] in self.parents[name]:
-                    label.extend(self.parents[name][model[name]])
+                    title.extend(self.parents[name][model[name]])
                 else:
-                    label.extend([None for _ in self.parents[name].format])
+                    title.extend([None for _ in self.parents[name].format])
 
             else:
 
                 path = relations.Field.split(name)
                 field = path.pop(0)
 
-                label.extend(model._record._names[field].labels(path))
+                title.extend(model._record._names[field].title(path))
 
-        self[model[self.id]] = label
+        self[model[self.id]] = title

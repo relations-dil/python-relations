@@ -44,7 +44,7 @@ class TestField(unittest.TestCase):
         self.assertIsNone(field._none)
         self.assertIsNone(field.attr)
         self.assertIsNone(field.init)
-        self.assertIsNone(field.label)
+        self.assertIsNone(field.titles)
         self.assertEqual(field.format, None)
 
         field = relations.Field(int, {"unit": "test"})
@@ -84,15 +84,15 @@ class TestField(unittest.TestCase):
         self.assertTrue(field.none)
         self.assertEqual(field.attr, {"compressed": "compressed"})
         self.assertEqual(field.init, {"compressed": "compressed"})
-        self.assertEqual(field.label, ["compressed"])
+        self.assertEqual(field.titles, ["compressed"])
         self.assertEqual(field.format, [None])
 
-        field = relations.Field(ipaddress.IPv4Address, attr="compressed", init="exploded", label="packed")
+        field = relations.Field(ipaddress.IPv4Address, attr="compressed", init="exploded", titles="packed")
         self.assertEqual(field.kind, ipaddress.IPv4Address)
         self.assertTrue(field.none)
         self.assertEqual(field.attr, {"compressed": "compressed"})
         self.assertEqual(field.init, {"exploded": "exploded"})
-        self.assertEqual(field.label, ["packed"])
+        self.assertEqual(field.titles, ["packed"])
 
         field = relations.Field(str, extract="field__from")
         self.assertEqual(field.kind, str)
@@ -381,7 +381,7 @@ class TestField(unittest.TestCase):
             values["max_address"] = str(max_ip)
             values["max_value"] = int(max_ip)
 
-        field = relations.Field(ipaddress.IPv4Network, attr=hurl, init="address", label="address")
+        field = relations.Field(ipaddress.IPv4Network, attr=hurl, init="address", titles="address")
         field.value = '1.2.3.0/24'
         self.assertEqual(field.export(), {
             "address": "1.2.3.0/24",
@@ -607,7 +607,7 @@ class TestField(unittest.TestCase):
         self.assertTrue(field.like({"name": ' yES adsfadsf'}, "Yes", {}))
         self.assertFalse(field.like({"name": 'no'}, "Yes", {}))
 
-        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, label="address")
+        field = relations.Field(ipaddress.IPv4Address, store="ip", attr={"compressed": "address"}, titles="address")
         self.assertTrue(field.like({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}))
         self.assertTrue(field.like({"ip": {"address": '1.2.3.4'}}, "1.2.3.", {}, "address"))
         self.assertFalse(field.like({"ip": {"address": '1.2.3.4'}}, "1.3.2.", {}))
@@ -625,38 +625,38 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.value, "yep")
         self.assertFalse(field.delta())
 
-    def test_labels(self):
+    def test_title(self):
 
         field = relations.Field(bool)
         field.value = False
-        self.assertEqual(field.labels(), [False])
+        self.assertEqual(field.title(), [False])
 
         field = relations.Field(int)
         field.value = 1
-        self.assertEqual(field.labels(), [1])
+        self.assertEqual(field.title(), [1])
 
         field = relations.Field(float)
         field.value = 1.0
-        self.assertEqual(field.labels(), [1.0])
+        self.assertEqual(field.title(), [1.0])
 
         field = relations.Field(str)
         field.value = "yep"
-        self.assertEqual(field.labels(), ["yep"])
+        self.assertEqual(field.title(), ["yep"])
 
         field = relations.Field(list)
         field.value = [1, 2, [3, 4]]
-        self.assertEqual(field.labels(), [[1, 2, [3, 4]]])
-        self.assertEqual(field.labels("2__1"), [4])
+        self.assertEqual(field.title(), [[1, 2, [3, 4]]])
+        self.assertEqual(field.title("2__1"), [4])
 
         field = relations.Field(dict)
         field.value = {"a":{"b": [{"1": "yep"}]}}
-        self.assertEqual(field.labels(), [{"a":{"b": [{"1": "yep"}]}}])
-        self.assertEqual(field.labels("a__b__0____1"), ["yep"])
+        self.assertEqual(field.title(), [{"a":{"b": [{"1": "yep"}]}}])
+        self.assertEqual(field.title("a__b__0____1"), ["yep"])
 
-        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, label=["ip__address", "ip__value"])
+        field = relations.Field(ipaddress.IPv4Address, attr={"compressed": "ip__address", "__int__": "ip__value"}, titles=["ip__address", "ip__value"])
         field.value = "1.2.3.4"
-        self.assertEqual(field.labels("ip__value"), [16909060])
-        self.assertEqual(field.labels(), ["1.2.3.4", 16909060])
+        self.assertEqual(field.title("ip__value"), [16909060])
+        self.assertEqual(field.title(), ["1.2.3.4", 16909060])
 
     def test_update(self):
 

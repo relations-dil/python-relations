@@ -134,11 +134,11 @@ class Net(ModelTest):
     ip = ipaddress.IPv4Address, {
         "attr": {"compressed": "address", "__int__": "value"},
         "init": "address",
-        "label": "address",
+        "titles": "address",
         "extract": ["address", "value"]
     }
 
-    LABEL = "ip__address"
+    TITLES = "ip__address"
     INDEX = "ip__address"
 
 class TestModelIdentity(unittest.TestCase):
@@ -175,7 +175,7 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(people._fields._order[4].kind, set)
         self.assertEqual(people._fields._order[4].options, ["free", "male", "female"])
         self.assertEqual(people._id, "id")
-        self.assertEqual(people._label, ["name"])
+        self.assertEqual(people._titles, ["name"])
         self.assertEqual(people._list, ["id", "name"])
         self.assertEqual(people._unique, {"name": ["name"]})
         self.assertEqual(people._order, ["+name"])
@@ -214,7 +214,7 @@ class TestModelIdentity(unittest.TestCase):
         Net.thy()
 
         test = Test.many()
-        self.assertEqual(test._label, ["unit_id", "name"])
+        self.assertEqual(test._titles, ["unit_id", "name"])
 
         class SomePeople(relations.ModelIdentity):
 
@@ -226,9 +226,9 @@ class TestModelIdentity(unittest.TestCase):
             id = int
             name = str
 
-            LABEL = "nope"
+            TITLES = "nope"
 
-        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from label", Label.thy)
+        self.assertRaisesRegex(relations.ModelError, "cannot find field nope from titles", Label.thy)
 
         class Label(relations.ModelIdentity):
             id = int
@@ -1551,13 +1551,13 @@ class TestModel(unittest.TestCase):
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot retrieve during create", unit.retrieve)
 
-    def test_labels(self):
+    def test_titles(self):
 
         Unit("yep").create()
-        self.assertEqual(Unit.one(name="yep").labels().ids, [1])
+        self.assertEqual(Unit.one(name="yep").titles().ids, [1])
 
         unit = Unit("sure")
-        self.assertRaisesRegex(relations.ModelError, "unit: cannot labels during create", unit.labels)
+        self.assertRaisesRegex(relations.ModelError, "unit: cannot titles during create", unit.titles)
 
     def test_update(self):
 
@@ -1613,8 +1613,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(query.action, "COUNT")
         self.assertEqual(query.model, unit)
 
-        query = unit.query("labels")
-        self.assertEqual(query.action, "LABELS")
+        query = unit.query("titles")
+        self.assertEqual(query.action, "TITLES")
         self.assertEqual(query.model, unit)
 
         query = unit.query("update")
