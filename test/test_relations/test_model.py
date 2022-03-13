@@ -650,8 +650,8 @@ class TestModel(unittest.TestCase):
 
         test = Test.one(1)
 
-        self.assertEqual(test.unit.name, "ya")
-        self.assertEqual(test.unit.test.name, ["sure"])
+        self.assertEqual(test.unit__name, "ya")
+        self.assertEqual(test.unit__test__name, ["sure"])
         self.assertRaisesRegex(relations.ModelError, "no record")
 
         test.case.add("whatever")
@@ -1006,8 +1006,8 @@ class TestModel(unittest.TestCase):
 
         test = Test.one(1)
 
-        self.assertEqual(test['unit'].name, "ya")
-        self.assertEqual(test['unit']['test'].name, ["sure"])
+        self.assertEqual(test['unit__name'], "ya")
+        self.assertEqual(test['unit__test__name'], ["sure"])
 
     def test__parent(self):
 

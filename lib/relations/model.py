@@ -530,7 +530,16 @@ class Model(ModelIdentity):
             if self._mode == "one":
                 return self._relate(name)
 
-        raise AttributeError(f"'{self}' object has no attribute '{name}'")
+        if '__' not in name:
+            raise AttributeError(f"'{self}' object has no attribute '{name}'")
+
+        current = self
+        path = relations.Field.split(name)
+
+        for place in path:
+            current = current[place]
+
+        return current
 
     def __getattribute__(self, name):
         """
@@ -659,6 +668,9 @@ class Model(ModelIdentity):
         """
         Access numerically or by name
         """
+
+        if isinstance(key, str) and '__' in key:
+            return getattr(self, key)
 
         self._ensure()
 
