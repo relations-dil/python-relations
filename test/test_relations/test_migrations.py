@@ -379,6 +379,7 @@ class TestMigrations(unittest.TestCase):
             "name": "persons",
             "title": "Persons",
             "id": "idd",
+            "extra": "info",
             "fields": [
                 {
                     "name": "name",
@@ -413,6 +414,7 @@ class TestMigrations(unittest.TestCase):
             "name": "persons",
             "title": "Persons",
             "id": "idd",
+            "extra": "info",
             "fields": {
                 "add": [
                     {

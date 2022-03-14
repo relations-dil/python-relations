@@ -416,6 +416,7 @@ class TestModelIdentity(unittest.TestCase):
             },
             "index": {}
         }), {
+            "extra": "info",
             "fields": {
                 "change": {
                     "gender": {

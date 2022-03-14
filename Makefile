@@ -1,7 +1,7 @@
 ACCOUNT=gaf3
 IMAGE=python-relations
 INSTALL=python:3.8.5-alpine3.12
-VERSION?=0.6.8
+VERSION?=0.6.9
 DEBUG_PORT=5678
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/lib:/opt/service/lib \
