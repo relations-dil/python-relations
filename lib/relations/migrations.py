@@ -170,7 +170,7 @@ class Migrations:
 
         migration = {}
 
-        for attr in ["name", "title", "id"]:
+        for attr in set(["name", "title", "id"] + list(current.keys()) + list(define.keys())):
             if current.get(attr) != define.get(attr):
                 migration[attr] = define.get(attr)
 
