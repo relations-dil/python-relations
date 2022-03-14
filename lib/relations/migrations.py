@@ -171,8 +171,9 @@ class Migrations:
         migration = {}
 
         for attr in set(["name", "title", "id"] + list(current.keys()) + list(define.keys())):
-            if current.get(attr) != define.get(attr):
-                migration[attr] = define.get(attr)
+            if attr not in ["fields", "index", "unique"]:
+                if current.get(attr) != define.get(attr):
+                    migration[attr] = define.get(attr)
 
         if current["fields"] != define["fields"]:
             migration["fields"] = cls.fields(model, current["fields"], define["fields"])
