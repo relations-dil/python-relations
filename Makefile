@@ -16,7 +16,7 @@ PYPI=-v ${PWD}/LICENSE.txt:/opt/service/LICENSE.txt \
 	-v ${PWD}/PYPI.md:/opt/service/README.md \
 	-v ${HOME}/.pypirc:/opt/service/.pypirc
 
-.PHONY: build shell debug test lint setup tag untag
+.PHONY: build shell debug test lint setup tag untag testpypi pypi
 
 build:
 	docker build . -t $(ACCOUNT)/$(IMAGE):$(VERSION)
