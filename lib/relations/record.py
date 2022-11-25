@@ -2,6 +2,7 @@
 Model Record Module
 """
 
+import overscore
 import relations
 
 class RecordError(Exception):
@@ -57,7 +58,7 @@ class Record:
             self._names[name].value = value
             return
 
-        apply = relations.Field.split(name)
+        apply = overscore.parse(name)
 
         if apply[0] in (self._names or []):
             self._names[apply[0]].apply(apply[1:], value)
@@ -73,7 +74,7 @@ class Record:
         if name in (self._names or []):
             return self._names[name].value
 
-        access = relations.Field.split(name)
+        access = overscore.parse(name)
 
         if access[0] in (self._names or []):
             return self._names[access[0]].access(access[1:])
@@ -126,7 +127,7 @@ class Record:
             self._names[key].value = value
             return
 
-        apply = relations.Field.split(key)
+        apply = overscore.parse(key)
 
         if apply[0] in (self._names or []):
             self._names[apply[0]].apply(apply[1:], value)
@@ -146,7 +147,7 @@ class Record:
         if key in self._names:
             return self._names[key].value
 
-        access = relations.Field.split(key)
+        access = overscore.parse(key)
 
         if access[0] in (self._names or []):
             return self._names[access[0]].access(access[1:])
@@ -220,7 +221,7 @@ class Record:
         """
 
         for field in titles:
-            field = relations.Field.split(field)
+            field = overscore.parse(field)
             if self._names[field[0]].like(values, like, parents, field[1:]):
                 return True
 

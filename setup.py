@@ -7,7 +7,7 @@ with open("README.md", "r") as readme_file:
 
 setup(
     name="relations-dil",
-    version="0.6.11",
+    version="0.6.12",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',
@@ -20,7 +20,9 @@ setup(
         'relations.relation',
         'relations.migrations'
     ],
-    install_requires=[],
+    install_requires=[
+        'overscore==0.1.1'
+    ],
     url="https://github.com/relations-dil/python-relations",
     author="Gaffer Fitch",
     author_email="relations@gaf3.com",

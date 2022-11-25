@@ -6,6 +6,7 @@ Relations Module for handling fields
 
 import re
 import copy
+import overscore
 import relations
 
 class FieldError(Exception):
@@ -291,7 +292,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             if self.init is not None and callable(self.init):
                 value = self.init(value)
             elif self.init is not None and isinstance(value, dict):
-                value = self.kind(**{init: self.get(value, store) for init, store in self.init.items()})
+                value = self.kind(**{init: overscore.get(value, store) for init, store in self.init.items()})
             else:
                 value = self.kind(value)
 
@@ -313,67 +314,12 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         return value
 
-    @staticmethod
-    def split(field): # pylint: disable=too-many-branches
-        """
-        Splits field value into name and path
-        """
-
-        count = 0
-        place = []
-        places = []
-
-        state = "place"
-
-        for letter in field:
-
-            if state == "place":
-
-                place.append(letter)
-
-                if letter != '_':
-                    state = "placing"
-
-            elif state == "placing":
-
-                if letter == '_':
-                    count += 1
-                else:
-                    count = 0
-
-                if count == 2 and letter == '_':
-                    places.append(''.join(place[:-1]))
-                    place = []
-                    count = 0
-                    state = "place"
-                else:
-                    place.append(letter)
-
-        if place:
-            places.append(''.join(place))
-
-        path = []
-
-        for place in places:
-            if '0' <= place[0] and place[0] <= '9':
-                path.append(int(place))
-            elif place[:1] == '_' and '0' <= place[1] and place[1] <= '9':
-                path.append(-int(place[1:]))
-            elif place[:2] == '__' and '0' <= place[2] and place[2] <= '9':
-                path.append(place[2:])
-            elif place[:3] == '___' and '0' <= place[3] and place[3] <= '9':
-                path.append(str(-int(place[3:])))
-            else:
-                path.append(place)
-
-        return path
-
     def filter(self, value, criterion="eq"): # pylint: disable=too-many-branches
         """
         Set a criterion in criteria
         """
 
-        path = self.split(criterion)
+        path = overscore.parse(criterion)
 
         if not isinstance(path[-1], str) or path[-1].split("not_", 1)[-1] not in self.OPERATORS:
             operator = "eq"
@@ -415,74 +361,6 @@ class Field: # pylint: disable=too-many-instance-attributes
             else:
                 self.criteria[criterion] = self.valid(value)
 
-    def get(self, values, path):
-        """
-        Walk along to get a value
-        """
-
-        if isinstance(path, str):
-            path = self.split(path)
-
-        for place in path:
-            if isinstance(place, int):
-                if (
-                    (not isinstance(values, list)) or
-                    (place >= 0 and len(values) < place + 1) or
-                    (place < 0 and len(values) < abs(place))
-                ):
-                    return None
-            else:
-                if (
-                    (not isinstance(values, dict)) or
-                    (place not in values)
-                ):
-                    return None
-            values = values[place]
-
-        return values
-
-    def set(self, values, path, value): # pylint: disable=too-many-branches
-        """
-        Walk along to get a value
-        """
-
-        if isinstance(path, str):
-            path = self.split(path)
-
-        for index, place in enumerate(path):
-
-            if index < len(path) - 1:
-                default = {} if isinstance(path[index+1], str) else []
-            else:
-                default = value
-
-            if isinstance(values, dict):
-
-                if isinstance(place, int):
-                    raise relations.FieldError(self, f"index {place} invalid for dict {values}")
-
-                if place not in values:
-                    values[place] = default
-
-            else:
-
-                if isinstance(place, str):
-                    raise relations.FieldError(self, f"key {place} invalid for list {values}")
-
-                while (
-                    (place >= 0 and len(values) < place + 1) or
-                    (place < 0 and len(values) < abs(place))
-                ):
-                    values.append(None)
-
-                if values[place] is None:
-                    values[place] = default
-
-            if index < len(path) - 1:
-                values = values[place]
-            elif values[place] != value:
-                values[place] = value
-
     def export(self):
         """
         Create a dictionary of object attributes
@@ -506,7 +384,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
             for attr, store in self.attr.items():
                 attr = getattr(self.value, attr)
-                self.set(values, store, attr() if callable(attr) else attr)
+                overscore.set(values, store, attr() if callable(attr) else attr)
 
         return values
 
@@ -523,7 +401,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if values is None:
             values = [] if self.kind in [set, list] else {}
 
-        self.set(values, path, value)
+        overscore.set(values, path, value)
         self.value = values
 
     def access(self, path):
@@ -534,7 +412,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         if self.kind in [bool, int, float, str]:
             raise FieldError(self, f"no access for {self.kind.__name__}")
 
-        return self.get(self.export(), path)
+        return overscore.get(self.export(), path)
 
     def delta(self):
         """
@@ -550,7 +428,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         value = self.export()
         if self.inject:
-            self.set(values, self.inject.split('__', 1)[-1], value)
+            overscore.set(values, self.inject.split('__', 1)[-1], value)
         else:
             values[self.store] = value
 
@@ -577,12 +455,12 @@ class Field: # pylint: disable=too-many-instance-attributes
             elif not value:
                 value = value or {}
 
-            path = self.split(operator)
+            path = overscore.parse(operator)
             operator = path.pop().split('_')
             operator, invert = (operator[-1], len(operator) > 1)
             condition = False
 
-            value = self.get(value, path)
+            value = overscore.get(value, path)
 
             if operator == "null":
                 condition = (satisfy == (value is None))
@@ -650,7 +528,7 @@ class Field: # pylint: disable=too-many-instance-attributes
             return False
 
         if path:
-            value = self.get(value, path)
+            value = overscore.get(value, path)
         else:
             value = self.valid(value)
 
@@ -665,7 +543,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
 
         if self.inject:
-            self.value = self.get(values, self.inject.split('__', 1)[-1])
+            self.value = overscore.get(values, self.inject.split('__', 1)[-1])
         else:
             self.value = values.get(self.store)
 
@@ -683,14 +561,14 @@ class Field: # pylint: disable=too-many-instance-attributes
             path = []
 
         if self.kind in [set, list, dict]:
-            return [self.get(self.value, path)]
+            return [overscore.get(self.value, path)]
 
         values = self.export()
 
         if path:
-            return [self.get(values, path)]
+            return [overscore.get(values, path)]
 
-        return [self.get(values, title) for title in self.titles]
+        return [overscore.get(values, title) for title in self.titles]
 
     def update(self, values):
         """

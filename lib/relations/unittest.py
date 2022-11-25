@@ -8,6 +8,7 @@ import glob
 import copy
 import json
 import unittest
+import overscore
 import relations
 
 
@@ -146,7 +147,7 @@ class MockSource(relations.Source):
 
         for extracting in [field for field in model._fields._order if field.extract]:
             for extract in extracting.extract:
-                values[f"{extracting.store}__{extract}"] = extracting.get(values.get(extracting.store), extract)
+                values[f"{extracting.store}__{extract}"] = overscore.get(values.get(extracting.store), extract)
 
         return values
 

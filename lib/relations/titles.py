@@ -2,6 +2,7 @@
 Relations Module for handling titles
 """
 
+import overscore
 import relations
 
 class Titles:
@@ -102,7 +103,7 @@ class Titles:
 
             else:
 
-                path = relations.Field.split(name)
+                path = overscore.parse(name)
                 field = path.pop(0)
 
                 title.extend(model._record._names[field].title(path))
