@@ -7,7 +7,6 @@ Relations Module for handling fields
 import re
 import copy
 import overscore
-import relations
 
 class FieldError(Exception):
     """

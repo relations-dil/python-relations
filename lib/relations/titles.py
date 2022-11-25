@@ -3,7 +3,6 @@ Relations Module for handling titles
 """
 
 import overscore
-import relations
 
 class Titles:
     """

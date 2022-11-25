@@ -3,7 +3,6 @@ Model Record Module
 """
 
 import overscore
-import relations
 
 class RecordError(Exception):
     """
