@@ -8,6 +8,7 @@ import copy
 
 import functools
 
+import overscore
 import relations
 
 class ModelError(Exception):
@@ -534,7 +535,7 @@ class Model(ModelIdentity):
             raise AttributeError(f"'{self}' object has no attribute '{name}'")
 
         current = self
-        path = relations.Field.split(name)
+        path = overscore.parse(name)
 
         for place in path:
             current = current[place]

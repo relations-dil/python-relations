@@ -219,15 +219,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(field.valid("yepyep"), "yepyep")
         self.assertRaisesRegex(relations.FieldError, "nope invalid for name", field.valid, "nope")
 
-    def test_split(self):
-
-        self.assertEqual(relations.Field.split("1"), [1])
-        self.assertEqual(relations.Field.split("_1"), [-1])
-        self.assertEqual(relations.Field.split("__1"), ['1'])
-        self.assertEqual(relations.Field.split("___1"), ['-1'])
-        self.assertEqual(relations.Field.split("_order"), ['_order'])
-        self.assertEqual(relations.Field.split("a__0___1____2_____3"), ["a", 0, -1, "2", "-3"])
-
     def test_filter(self):
 
         field = relations.Field(int)
@@ -320,26 +311,6 @@ class TestField(unittest.TestCase):
 
         field = relations.Field(int)
         self.assertRaisesRegex(relations.FieldError, "no path \['nope'\] with kind int", field.filter, 0, "nope")
-
-    def test_get(self):
-
-        field = relations.Field(dict)
-        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b__0____1"), "yep")
-        self.assertEqual(field.get({}, "things__a__b__0____1"), None)
-        self.assertEqual(field.get({"things": {"a":{"b": [{"1": "yep"}]}}}, "things__a__b___2"), None)
-
-        self.assertIsNone(field.get({"stuff": {"a": []}}, "stuff__a__b"))
-        self.assertIsNone(field.get({"stuff": {"a": {}}}, "stuff__a__1"))
-
-    def test_set(self):
-
-        field = relations.Field(dict)
-        values = {}
-        field.set(values, "things__a__b___2____1", "yep")
-        self.assertEqual(values, {"things": {"a":{"b": [{"1": "yep"}, None]}}})
-
-        self.assertRaisesRegex(relations.FieldError, "key b invalid for list \[\]", field.set, {"stuff": {"a": []}}, "stuff__a__b", "c")
-        self.assertRaisesRegex(relations.FieldError, "index 1 invalid for dict \{\}", field.set, {"stuff": {"a": {}}}, "stuff__a__1", 2)
 
     def test_export(self):
 
