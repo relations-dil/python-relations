@@ -148,12 +148,12 @@ class TestTitles(unittest.TestCase):
 
         titles = relations.Titles(Test.many())
 
-        titles.add(Test(unit_id=1, name="stuff").create())
+        titles.add(Test(unit_id=1, name="stuffs").create())
         titles.add(Test(unit_id=2, name="things").create())
 
         self.assertEqual(titles.ids, [2, 3])
         self.assertEqual(titles.titles, {
-            2: ["people", "stuff"],
+            2: ["people", "stuffs"],
             3: [None, "things"]
         })
 

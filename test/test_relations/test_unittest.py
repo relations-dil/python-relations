@@ -124,6 +124,7 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.ids, {"check": 0})
         self.assertEqual(self.source.data, {"check": {}})
+        self.assertEqual(self.source.unique, {"check": {"name": {}}})
         self.assertTrue(model._fields._names["id"].auto)
 
     def test_field_define(self):
@@ -438,6 +439,30 @@ class TestSource(unittest.TestCase):
                 }
             }
         })
+
+        self.assertEqual(self.source.unique, {
+            "simple": {
+                "name": {
+                    1: '{"name": "sure"}',
+                    2: '{"name": "ya"}'
+                }
+            },
+            "plain": {
+                "simple_id-name": {
+                    1: '{"name": "fine", "simple_id": 1}'
+                }
+            },
+            "meta": {
+                "name": {
+                    1: '{"name": "yep"}',
+                    2: '{"name": "nope"}'
+                }
+            }
+        })
+
+        simple = Simple("sure")
+
+        self.assertRaisesRegex(relations.ModelError, 'simple: value {"name": "sure"} violates unique name', simple.create)
 
     def test_model_like(self):
 
@@ -782,6 +807,20 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(Test.one(id=2).delete(), 1)
         self.assertEqual(len(Test.many()), 1)
+
+        self.assertEqual(self.source.unique, {
+            "unit": {
+                "name": {
+                    1: '{"name": "people"}'
+                }
+            },
+            "test": {
+                "unit_id-name": {
+                    1: '{"name": "stuff", "unit_id": 1}'
+                }
+            },
+            "case": {"test_id-name": {}}
+        })
 
         self.assertEqual(Unit.one(1).test.delete(), 1)
         self.assertEqual(Unit.one(1).retrieve().delete(), 1)
