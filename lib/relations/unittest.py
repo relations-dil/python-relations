@@ -2,7 +2,7 @@
 Unittest Tools for Relations
 """
 
-# pylint: disable=unused-argument,arguments-differ,too-many-public-methods,invalid-name
+# pylint: disable=unused-argument,arguments-differ,too-many-public-methods,invalid-name,not-callable
 
 import glob
 import copy
@@ -48,12 +48,16 @@ class MockSource(relations.Source):
 
     ids = None  # ID's keyed by model names
     data = None # Data keyed by model names
+    unique = None # Unqiues keyed by model names
     migrations = None # Migrations applied so far
+
+    transaction = None # Whether there's a current transaction for rollbacks
 
     def __init__(self, name, **kwargs):
 
         self.ids = {}
         self.data = {}
+        self.unique = {}
         self.migrations = None
 
     def init(self, model):
@@ -68,6 +72,10 @@ class MockSource(relations.Source):
 
         self.ids.setdefault(model.NAME, 0)
         self.data.setdefault(model.NAME, {})
+        self.unique.setdefault(model.NAME, {})
+
+        for unique in model._unique:
+            self.unique[model.NAME].setdefault(unique, {})
 
         if model._id is not None and model._fields._names[model._id].auto is None:
             model._fields._names[model._id].auto = True
@@ -151,6 +159,54 @@ class MockSource(relations.Source):
 
         return values
 
+    class UniqueError(relations.model.ModelError):
+        """
+        Exception for vilating unique constraints
+        """
+
+    def rollback(func): # pylint: disable=no-self-argument
+        """
+        Decorator for rolling back a bad transaction
+        """
+
+        def wrapper(self, *args, **kwargs):
+            """
+            Wrapper for rolling back a bad transaction
+            """
+
+            if self.transaction is None:
+
+                self.transaction = (self.ids, self.data, self.unique)
+
+                try:
+
+                    result = func(self, *args, **kwargs)
+
+                except self.UniqueError as exception:
+
+                    (self.ids, self.data, self.unique) = self.transaction
+                    self.transaction = None
+                    raise exception
+
+                self.transaction = None
+                return result
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    def uniques(self, model, values, id):
+        """
+        Checks unique constraints
+        """
+
+        for unique, fields in model._unique.items():
+            value = json.dumps({field: overscore.get(values, field) for field in fields}, sort_keys=True)
+            for key, exists in self.unique[model.NAME][unique].items():
+                if value == exists and id != key:
+                    raise self.UniqueError(model, f"value {value} violates unique {unique}")
+            self.unique[model.NAME][unique][id] = value
+
     def create_query(self, model):
         """
         create query
@@ -158,6 +214,7 @@ class MockSource(relations.Source):
 
         return self.INSERT("CREATE")
 
+    @rollback
     def create(self, model):
         """
         Executes the create
@@ -168,6 +225,8 @@ class MockSource(relations.Source):
             values = creating._record.create({})
 
             self.ids[model.NAME] += 1
+
+            self.uniques(model, values, self.ids[model.NAME])
 
             if model._id is not None and values.get(model._id) is None:
                 values[model._fields._names[model._id].store] = self.ids[model.NAME]
@@ -342,6 +401,7 @@ class MockSource(relations.Source):
 
         return self.UPDATE("UPDATE")
 
+    @rollback
     def update(self, model):
         """
         Executes the update
@@ -355,16 +415,18 @@ class MockSource(relations.Source):
 
             values = model._record.mass({})
 
-            for data in self.data[model.NAME].values():
+            for id, data in self.data[model.NAME].items():
                 if model._record.retrieve(data):
                     updated += 1
+                    self.uniques(model, {**data, **values}, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
 
         elif model._id:
 
             for updating in model._each("update"):
-
-                self.data[model.NAME][updating[model._id]].update(self.extract(updating, updating._record.update({})))
+                data = self.extract(updating, updating._record.update({}))
+                self.uniques(model, data, updating[model._id])
+                self.data[model.NAME][updating[model._id]].update(data)
 
                 updated += 1
 
@@ -411,7 +473,11 @@ class MockSource(relations.Source):
             raise relations.model.ModelError(model, "nothing to delete from")
 
         for id in ids:
+
             del self.data[model.NAME][id]
+
+            for unique in model._unique:
+                del self.unique[model.NAME][unique][id]
 
         return len(ids)
 
