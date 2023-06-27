@@ -2,7 +2,7 @@
 Unittest Tools for Relations
 """
 
-# pylint: disable=unused-argument,arguments-differ,too-many-public-methods,invalid-name
+# pylint: disable=unused-argument,arguments-differ,too-many-public-methods,invalid-name,not-callable
 
 import glob
 import copy
@@ -51,7 +51,7 @@ class MockSource(relations.Source):
     unique = None # Unqiues keyed by model names
     migrations = None # Migrations applied so far
 
-    transaction = None
+    transaction = None # Whether there's a current transaction for rollbacks
 
     def __init__(self, name, **kwargs):
 
@@ -160,9 +160,11 @@ class MockSource(relations.Source):
         return values
 
     class UniqueError(relations.model.ModelError):
-        pass
+        """
+        Exception for vilating unique constraints
+        """
 
-    def rollback(func):
+    def rollback(func): # pylint: disable=no-self-argument
         """
         Decorator for rolling back a bad transaction
         """
@@ -178,20 +180,18 @@ class MockSource(relations.Source):
 
                 try:
 
-                    return func(self, *args, **kwargs)
+                    result = func(self, *args, **kwargs)
 
                 except self.UniqueError as exception:
 
-                     (self.ids, self.data, self.unique) = self.transaction
-                     raise exception
+                    (self.ids, self.data, self.unique) = self.transaction
+                    self.transaction = None
+                    raise exception
 
-                finally:
+                self.transaction = None
+                return result
 
-                     self.transaction = None
-
-            else:
-
-                return func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
 
         return wrapper
 
@@ -204,7 +204,7 @@ class MockSource(relations.Source):
             value = json.dumps({field: overscore.get(values, field) for field in fields}, sort_keys=True)
             for key, exists in self.unique[model.NAME][unique].items():
                 if value == exists and id != key:
-                    raise relations.model.ModelError(model, f"value {value} violates unique {unique}")
+                    raise self.UniqueError(model, f"value {value} violates unique {unique}")
             self.unique[model.NAME][unique][id] = value
 
     def create_query(self, model):
@@ -401,6 +401,7 @@ class MockSource(relations.Source):
 
         return self.UPDATE("UPDATE")
 
+    @rollback
     def update(self, model):
         """
         Executes the update
@@ -417,7 +418,7 @@ class MockSource(relations.Source):
             for id, data in self.data[model.NAME].items():
                 if model._record.retrieve(data):
                     updated += 1
-                    self.uniques(model, data, id)
+                    self.uniques(model, {**data, **values}, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
 
         elif model._id:

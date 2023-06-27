@@ -365,6 +365,57 @@ class TestSource(unittest.TestCase):
         self.assertEqual(self.source.extract(Meta(), {"things": {"for": [{"1": "yep"}]}})["things__for__0____1"], "yep")
         self.assertIsNone(self.source.extract(Meta(), {})["things__for__0____1"])
 
+    def test_rollback(self):
+
+        model = unittest.mock.MagicMock()
+        model.NAME = "unittest"
+
+        source = unittest.mock.MagicMock()
+        source.UniqueError = relations.unittest.MockSource.UniqueError
+        (source.ids, source.data, source.unique, source.transaction) = ("people", "stuff", "things", None)
+
+        @relations.unittest.MockSource.rollback
+        def rolling(self, action):
+
+            (self.ids, self.data, self.unique) = ("persons", "stuffins", "thingies")
+
+            if action == "fail":
+
+                raise relations.unittest.MockSource.UniqueError(model, "nope")
+
+        # fail
+
+        self.assertRaisesRegex(relations.unittest.MockSource.UniqueError, "unittest: nope", rolling, source, "fail")
+
+        self.assertEqual(source.ids, "people")
+        self.assertEqual(source.data, "stuff")
+        self.assertEqual(source.unique, "things")
+
+        # pass
+
+        rolling(source, "pass")
+
+        self.assertEqual(source.ids, "persons")
+        self.assertEqual(source.data, "stuffins")
+        self.assertEqual(source.unique, "thingies")
+
+    def test_uniques(self):
+
+        Simple("ya").create()
+
+        sure = Simple("sure")
+
+        self.source.uniques(sure, sure.export(), 2)
+
+        self.assertEqual(self.source.unique['simple']['name'], {
+            1: '{"name": "ya"}',
+            2: '{"name": "sure"}'
+        })
+
+        self.source.uniques(sure, sure.export(), 2)
+
+        self.assertRaisesRegex(relations.unittest.MockSource.UniqueError, 'simple: value {"name": "sure"} violates unique name', self.source.uniques, sure, sure.export(), 3)
+
     def test_create_query(self):
 
         self.assertEqual(self.source.create_query(None).action, "CREATE")
@@ -770,6 +821,10 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(unit.update(), 1)
 
+        unit = Unit.many(id=2).set(name="people")
+
+        self.assertRaisesRegex(relations.ModelError, 'unit: value {"name": "people"} violates unique name', unit.update)
+
         unit = Unit.one(2)
 
         unit.name = "thing"
@@ -782,6 +837,11 @@ class TestSource(unittest.TestCase):
 
         plain = Plain.one()
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to update from", plain.update)
+
+        unit = Unit.one(2)
+        unit.name = "people"
+
+        self.assertRaisesRegex(relations.ModelError, 'unit: value {"name": "people"} violates unique name', unit.update)
 
         ping = Net(ip="1.2.3.4", subnet="1.2.3.0/24").create()
         pong = Net(ip="5.6.7.8", subnet="5.6.7.0/24").create()
