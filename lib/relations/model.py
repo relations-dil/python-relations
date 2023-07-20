@@ -11,6 +11,7 @@ import functools
 import overscore
 import relations
 
+
 class ModelError(Exception):
     """
     Generic model Error for easier tracing
@@ -27,6 +28,7 @@ class ModelError(Exception):
         Might want to mention the model and info about it
         """
         return f"{self.model.NAME}: {self.message}"
+
 
 class ModelIdentity:
     """
@@ -48,12 +50,13 @@ class ModelIdentity:
 
     PARENTS = None  # Parent relationships (many/one to one)
     CHILDREN = None # Child relationships (one to many/one)
+    TIE = None      # Whether this model is many to many
     SISTERS = None  # Sister relationships (many to many)
     BROTHERS = None # Brother relationships (many to many)
 
     _fields = None # Base record to create other records with
     _id = None     # Name of id field
-    _titles = None  # Actual fields of the titles
+    _titles = None # Actual fields of the titles
     _list = None   # Actual fields to list
     _unique = None # Actual unique indexes
     _index = None  # Actual indexes
@@ -264,6 +267,14 @@ class ModelIdentity:
         self.CHILDREN = cls.CHILDREN or {}
         self.SISTERS = cls.SISTERS or {}
         self.BROTHERS = cls.BROTHERS or {}
+
+        for relation in self.SISTERS.values():
+            self._fields._names[relation.brother_sister].store = False
+            self._fields._names[relation.brother_sister].tied = True
+
+        for relation in self.BROTHERS.values():
+            self._fields._names[relation.sister_brother].store = False
+            self._fields._names[relation.sister_brother].tied = True
 
         # Have the the source do whatever it needs to
 

@@ -12,6 +12,9 @@ import relations.unittest
 class SourceModel(relations.Model):
     SOURCE = "UnittestSource"
 
+class SourceTie(relations.Model):
+    SOURCE = "UnittestSource"
+
 class Simple(SourceModel):
     id = int
     name = str
@@ -78,6 +81,22 @@ class Case(SourceModel):
 relations.OneToMany(Unit, Test)
 relations.OneToOne(Test, Case)
 
+class Sis(SourceModel):
+    id = int
+    name = str
+    bro_id = set
+
+class Bro(SourceModel):
+    id = int
+    name = str
+    sis_id = set
+
+class SisBro(SourceModel):
+    ID = None
+    bro_id = int
+    sis_id = int
+
+relations.ManyToMany(Sis, Bro, SisBro)
 
 class TestQuery(unittest.TestCase):
 
@@ -420,6 +439,61 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(self.source.create_query(None).action, "CREATE")
 
+    def test_create_tie(self):
+
+        sis = Sis("Sally").create()
+        self.source.create_tie(sis, {})
+        sis.bro_id = [2, 3, 4]
+        self.source.create_tie(sis)
+
+        bro = Bro("Tom").create()
+        self.source.create_tie(bro, {})
+        bro.sis_id = [5, 6, 7]
+        self.source.create_tie(bro)
+
+        self.assertEqual(self.source.data, {
+            "sis": {
+                1: {
+                    "id": 1,
+                    "name": "Sally"
+                }
+            },
+            "bro": {
+                1: {
+                    "id": 1,
+                    "name": "Tom"
+                }
+            },
+            "sis_bro": {
+                1: {
+                    "bro_id": 2,
+                    "sis_id": 1
+                },
+                2: {
+                    "bro_id": 3,
+                    "sis_id": 1
+                },
+                3: {
+                    "bro_id": 4,
+                    "sis_id": 1
+                },
+                4: {
+                    "bro_id": 1,
+                    "sis_id": 5
+                },
+                5: {
+                    "bro_id": 1,
+                    "sis_id": 6
+                },
+                6: {
+                    "bro_id": 1,
+                    "sis_id": 7
+                }
+            }
+        })
+
+
+
     def test_create(self):
 
         simple = Simple("sure")
@@ -602,6 +676,24 @@ class TestSource(unittest.TestCase):
     def test_retrieve_query(self):
 
         self.assertEqual(self.source.retrieve_query(None).action, "RETRIEVE")
+
+    def test_retrieve_tie(self):
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        Sis("Sally", bro_id=[tom.id, dick.id]).create()
+
+        mary = Sis("Mary").create()
+        sue = Sis("Sure").create()
+
+        Bro("Harry", sis_id=[mary.id, sue.id]).create()
+
+        sally = Sis.one(name="Sally")
+        harry = Bro.one(name="Harry")
+
+        self.assertEqual(sally.bro_id, set([tom.id, dick.id]))
+        self.assertEqual(harry.sis_id, set([mary.id, sue.id]))
 
     def test_retrieve(self):
 
@@ -855,9 +947,74 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.one(ping.id).ip.compressed, "13.14.15.16")
         self.assertEqual(Net.one(pong.id).ip.compressed, "5.6.7.8")
 
+        Sis("Sally", bro_id=[2, 3, 4]).create()
+        Bro("Tom", sis_id=[5, 6, 7]).create()
+
+        sally = Sis.many(name="Sally").set(bro_id=[3, 4])
+        sally.update()
+        Bro.many(name="Tom").set(sis_id=[6, 7]).update()
+
+        self.assertCountEqual(self.source.data['sis_bro'].values(), [
+            {
+                "bro_id": 3,
+                "sis_id": 1
+            },
+            {
+                "bro_id": 4,
+                "sis_id": 1
+            },
+            {
+                "bro_id": 1,
+                "sis_id": 6
+            },
+            {
+                "bro_id": 1,
+                "sis_id": 7
+            }
+        ])
+
     def test_delete_query(self):
 
         self.assertEqual(self.source.delete_query(None).action, "DELETE")
+
+    def test_delete_tie(self):
+
+        Sis("Sally", bro_id=[2, 3, 4]).create()
+        Bro("Tom", sis_id=[5, 6, 7]).create()
+
+        Sis.many().delete()
+
+        self.assertEqual(self.source.data, {
+            "sis": {},
+            "bro": {
+                1: {
+                    "id": 1,
+                    "name": "Tom"
+                }
+            },
+            "sis_bro": {
+                4: {
+                    "bro_id": 1,
+                    "sis_id": 5
+                },
+                5: {
+                    "bro_id": 1,
+                    "sis_id": 6
+                },
+                6: {
+                    "bro_id": 1,
+                    "sis_id": 7
+                }
+            }
+        })
+
+        Bro.many().delete()
+
+        self.assertEqual(self.source.data, {
+            "sis": {},
+            "bro": {},
+            "sis_bro": {}
+        })
 
     def test_delete(self):
 

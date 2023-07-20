@@ -6,6 +6,7 @@ Module for Model Relations
 
 import relations
 
+
 class Relation:
     """
     Base Relation class
@@ -42,6 +43,7 @@ class Relation:
 
         raise relations.ModelError(model, f"cannot determine field for {model.NAME} in {relative.NAME}")
 
+
 class OneTo(Relation):
     """
     Class that specific one to * relationships
@@ -70,6 +72,7 @@ class OneTo(Relation):
         self.Parent._child(self)
         self.Child._parent(self)
 
+
 class OneToMany(OneTo):
     """
     Class that specific one to many relationships
@@ -78,6 +81,7 @@ class OneToMany(OneTo):
     MODE = "many"
     SAME = False
 
+
 class OneToOne(OneTo):
     """
     Class that specific one to one relationships
@@ -85,3 +89,53 @@ class OneToOne(OneTo):
 
     MODE = "one"
     SAME = True
+
+
+class ManyToMany(Relation):
+    """
+    Class that specific many to many relationships
+    """
+
+    Sister = None         # Model having fewer records
+    sister_field = None   # The field of the sister to connect to the brother
+    sister_brother = None # The name of the attribute on the sister model to reference brotherren
+    Brother = None        # Model having more reocrds
+    brother_field = None  # The id field in the brother to connect to the sister
+    brother_sister = None # The name of the attribute on the brother to reference the sister
+    Tie = None            # Model of the Tie table
+    tie_sister = None     # The id field of the sister in the tie table
+    tie_brother = None    # The id field of the brother in the tie table
+
+    def __init__(
+            self,
+            Sister,
+            Brother,
+            Tie,
+            sister_brother=None,
+            brother_sister=None,
+            sister_field=None,
+            brother_field=None,
+            tie_sister=None,
+            tie_brother=None
+        ):
+
+        self.Sister = Sister
+        self.Brother = Brother
+        self.Tie = Tie
+
+        if self.Tie.TIE is None:
+            self.Tie.TIE = True
+
+        sister = self.Sister.thy()
+        brother = self.Brother.thy()
+        tie = self.Tie.thy()
+
+        self.sister_brother = sister._field_name(sister_brother if sister_brother is not None else self.relative_field(brother, sister))
+        self.brother_sister = brother._field_name(brother_sister) if brother_sister is not None else self.relative_field(sister, brother)
+        self.sister_field = sister._field_name(sister_field if sister_field is not None else sister._id)
+        self.brother_field = brother._field_name(brother_field if brother_field is not None else brother._id)
+        self.tie_sister = tie._field_name(tie_sister if tie_sister is not None else self.relative_field(sister, tie))
+        self.tie_brother = tie._field_name(tie_brother if tie_brother is not None else self.relative_field(brother, tie))
+
+        self.Sister._brother(self)
+        self.Brother._sister(self)

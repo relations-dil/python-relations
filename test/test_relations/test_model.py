@@ -141,6 +141,22 @@ class Net(ModelTest):
     TITLES = "ip__address"
     INDEX = "ip__address"
 
+class Sis(ModelTest):
+    id = int
+    name = str
+    bro_id = set
+
+class Bro(ModelTest):
+    id = int
+    name = str
+    sis_id = set
+
+class SisBro(relations.Model):
+    bro_id = int
+    sis_id = int
+
+relations.ManyToMany(Sis, Bro, SisBro)
+
 class TestModelIdentity(unittest.TestCase):
 
     maxDiff = None
@@ -264,6 +280,13 @@ class TestModelIdentity(unittest.TestCase):
         Inject.push = str,{"inject": "name__value"}
 
         self.assertRaisesRegex(relations.FieldError, "field name not list or dict from inject name__value", Inject.thy)
+
+        relations.unittest.MockSource("TestModel")
+
+        self.assertFalse(Sis.thy()._fields._names["bro_id"].store)
+        self.assertTrue(Sis.thy()._fields._names["bro_id"].tied)
+        self.assertFalse(Bro.thy()._fields._names["sis_id"].store)
+        self.assertTrue(Bro.thy()._fields._names["sis_id"].tied)
 
     def test__field_name(self):
 

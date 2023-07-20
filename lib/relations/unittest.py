@@ -176,7 +176,7 @@ class MockSource(relations.Source):
 
             if self.transaction is None:
 
-                self.transaction = (self.ids, self.data, self.unique)
+                self.transaction = copy.deepcopy((self.ids, self.data, self.unique))
 
                 try:
 
@@ -214,6 +214,43 @@ class MockSource(relations.Source):
 
         return self.INSERT("CREATE")
 
+    @staticmethod
+    def create_tie(model, data=None):
+        """
+        Creates records for tie tables
+        """
+
+        if data is None:
+            data = model
+
+        for sister_field, relation in model.SISTERS.items():
+
+            if sister_field not in data:
+                continue
+
+            values = []
+            for value in data[relation.brother_sister]:
+                values.append({
+                    relation.tie_brother: data[relation.brother_field],
+                    relation.tie_sister: value
+                })
+            if values:
+                relation.Tie(values).create()
+
+        for brother_field, relation in model.BROTHERS.items():
+
+            if brother_field not in data:
+                continue
+
+            values = []
+            for value in data[relation.sister_brother]:
+                values.append({
+                    relation.tie_sister: data[relation.sister_field],
+                    relation.tie_brother: value
+                })
+            if values:
+                relation.Tie(values).create()
+
     @rollback
     def create(self, model):
         """
@@ -233,6 +270,8 @@ class MockSource(relations.Source):
                 creating[model._id] = self.ids[model.NAME]
 
             self.data[model.NAME][self.ids[model.NAME]] = self.extract(creating, values)
+
+            self.create_tie(model)
 
             if not model._bulk:
 
@@ -326,6 +365,22 @@ class MockSource(relations.Source):
 
         return self.SELECT("RETRIEVE")
 
+    @staticmethod
+    def retrieve_tie(model):
+        """
+        Retrieves the tie records
+        """
+
+        for retrieve in model._each():
+
+            for relation in model.SISTERS.values():
+                query = {relation.tie_brother: retrieve[relation.brother_field]}
+                retrieve[relation.brother_sister] = relation.Tie.many(**query)[relation.tie_sister]
+
+            for relation in model.BROTHERS.values():
+                query = {relation.tie_sister: retrieve[relation.brother_field]}
+                retrieve[relation.sister_brother] = relation.Tie.many(**query)[relation.tie_brother]
+
     def retrieve(self, model, verify=True):
         """
         Executes the retrieve
@@ -369,6 +424,8 @@ class MockSource(relations.Source):
         if model._mode == "many":
             self.model_sort(model)
             self.model_limit(model)
+
+        self.retrieve_tie(model)
 
         return model
 
@@ -414,12 +471,19 @@ class MockSource(relations.Source):
         if model._action == "retrieve" and model._record._action == "update":
 
             values = model._record.mass({})
+            tie = model._record.tie({})
 
             for id, data in self.data[model.NAME].items():
+
                 if model._record.retrieve(data):
                     updated += 1
-                    self.uniques(model, {**data, **values}, id)
+                    updating = {**data, **values}
+                    self.uniques(model, updating, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
+
+                    if tie:
+                        self.delete_tie(model, id)
+                        self.create_tie(model, {model._id: id, **updating, **tie})
 
         elif model._id:
 
@@ -427,6 +491,9 @@ class MockSource(relations.Source):
                 data = self.extract(updating, updating._record.update({}))
                 self.uniques(model, data, updating[model._id])
                 self.data[model.NAME][updating[model._id]].update(data)
+
+                self.delete_tie(updating)
+                self.create_tie(updating)
 
                 updated += 1
 
@@ -447,6 +514,22 @@ class MockSource(relations.Source):
 
         return self.DELETE("DELETE")
 
+    @staticmethod
+    def delete_tie(model, id=None):
+        """
+        Creates records for tie tables
+        """
+
+        if id is None:
+            id = model[model._id]
+
+        for relation in model.SISTERS.values():
+            relation.Tie.many(**{relation.tie_brother: id}).delete()
+
+        for relation in model.BROTHERS.values():
+            relation.Tie.many(**{relation.tie_sister: id}).delete()
+
+    @rollback
     def delete(self, model):
         """
         Executes the delete
@@ -478,6 +561,8 @@ class MockSource(relations.Source):
 
             for unique in model._unique:
                 del self.unique[model.NAME][unique][id]
+
+            self.delete_tie(model, id)
 
         return len(ids)
 

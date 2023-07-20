@@ -261,7 +261,7 @@ class Record:
 
     def mass(self, values):
         """
-        Writes values for update
+        Writes values for mass update
         """
 
         inject = []
@@ -278,5 +278,15 @@ class Record:
                 if self._names[store].store not in values:
                     self._names[store].write(values)
                 field.mass(values[self._names[field.inject.split('__')[0]].store])
+
+        return values
+
+    def tie(self, values):
+        """
+        Writes values for tie update
+        """
+
+        for field in self._order:
+            field.tie(values)
 
         return values
