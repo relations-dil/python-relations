@@ -136,6 +136,43 @@ class Source:
         Create query
         """
 
+    @staticmethod
+    def create_tie(model, data=None):
+        """
+        Creates records for tie tables
+        """
+
+        if data is None:
+            data = model
+
+        for sister_field, relation in model.SISTERS.items():
+
+            if sister_field not in data:
+                continue
+
+            values = []
+            for value in data[relation.brother_sister]:
+                values.append({
+                    relation.tie_brother: data[relation.brother_field],
+                    relation.tie_sister: value
+                })
+            if values:
+                relation.Tie(values).create()
+
+        for brother_field, relation in model.BROTHERS.items():
+
+            if brother_field not in data:
+                continue
+
+            values = []
+            for value in data[relation.sister_brother]:
+                values.append({
+                    relation.tie_sister: data[relation.sister_field],
+                    relation.tie_brother: value
+                })
+            if values:
+                relation.Tie(values).create()
+
     def create(self, model, *args, **kwargs):
         """
         create the model
@@ -152,6 +189,22 @@ class Source:
         """
         for field in record._order:
             self.retrieve_field(field, *args, **kwargs)
+
+    @staticmethod
+    def retrieve_tie(model):
+        """
+        Retrieves the tie records
+        """
+
+        for retrieve in model._each():
+
+            for relation in model.SISTERS.values():
+                query = {relation.tie_brother: retrieve[relation.brother_field]}
+                retrieve[relation.brother_sister] = relation.Tie.many(**query)[relation.tie_sister]
+
+            for relation in model.BROTHERS.values():
+                query = {relation.tie_sister: retrieve[relation.brother_field]}
+                retrieve[relation.sister_brother] = relation.Tie.many(**query)[relation.tie_brother]
 
     def count_query(self, model, *args, **kwargs):
         """
@@ -233,6 +286,21 @@ class Source:
         """
         delete query
         """
+
+    @staticmethod
+    def delete_tie(model, id=None):
+        """
+        Creates records for tie tables
+        """
+
+        if id is None:
+            id = model[model._id]
+
+        for relation in model.SISTERS.values():
+            relation.Tie.many(**{relation.tie_brother: id}).delete()
+
+        for relation in model.BROTHERS.values():
+            relation.Tie.many(**{relation.tie_sister: id}).delete()
 
     def delete(self, model, *args, **kwargs):
         """
