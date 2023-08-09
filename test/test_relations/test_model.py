@@ -687,11 +687,19 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(net.ip__address, "1.2.3.4")
 
-        def get():
+        unit = Unit.many()
+
+        def relative():
+
+            unit.test
+
+        self.assertRaisesRegex(AttributeError, "cannot access 'test' in many mode", relative)
+
+        def nada():
 
             test.fail
 
-        self.assertRaisesRegex(AttributeError, "has no attribute 'fail'", get)
+        self.assertRaisesRegex(AttributeError, "has no attribute 'fail'", nada)
 
     def test___getattribute__(self):
 

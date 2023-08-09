@@ -220,6 +220,8 @@ class MockSource(relations.Source):
         Executes the create
         """
 
+        super().create(model)
+
         for creating in model._each("create"):
 
             values = creating._record.create({})
@@ -234,9 +236,9 @@ class MockSource(relations.Source):
 
             self.data[model.NAME][self.ids[model.NAME]] = self.extract(creating, values)
 
-            self.create_tie(model)
-
             if not model._bulk:
+
+                self.create_ties(model)
 
                 for parent_child in creating.CHILDREN:
                     if creating._children.get(parent_child):
@@ -333,6 +335,8 @@ class MockSource(relations.Source):
         Executes the retrieve
         """
 
+        super().retrieve(model)
+
         model._collate()
 
         values = self.model_like(model) if model._like is not None else self.data[model.NAME].values()
@@ -372,7 +376,7 @@ class MockSource(relations.Source):
             self.model_sort(model)
             self.model_limit(model)
 
-        self.retrieve_tie(model)
+        self.retrieve_ties(model)
 
         return model
 
@@ -411,6 +415,8 @@ class MockSource(relations.Source):
         Executes the update
         """
 
+        super().update(model)
+
         updated = 0
 
         # If the overall model is retrieving and the record has values set
@@ -418,7 +424,6 @@ class MockSource(relations.Source):
         if model._action == "retrieve" and model._record._action == "update":
 
             values = model._record.mass({})
-            tie = model._record.tie({})
 
             for id, data in self.data[model.NAME].items():
 
@@ -428,10 +433,6 @@ class MockSource(relations.Source):
                     self.uniques(model, updating, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
 
-                    if tie:
-                        self.delete_tie(model, id)
-                        self.create_tie(model, {model._id: id, **updating, **tie})
-
         elif model._id:
 
             for updating in model._each("update"):
@@ -439,8 +440,8 @@ class MockSource(relations.Source):
                 self.uniques(model, data, updating[model._id])
                 self.data[model.NAME][updating[model._id]].update(data)
 
-                self.delete_tie(updating)
-                self.create_tie(updating)
+                self.delete_ties(updating)
+                self.create_ties(updating)
 
                 updated += 1
 
@@ -466,6 +467,8 @@ class MockSource(relations.Source):
         """
         Executes the delete
         """
+
+        super().delete(model)
 
         ids = []
 
@@ -494,7 +497,7 @@ class MockSource(relations.Source):
             for unique in model._unique:
                 del self.unique[model.NAME][unique][id]
 
-            self.delete_tie(model, id)
+            self.delete_ties(model, id)
 
         return len(ids)
 

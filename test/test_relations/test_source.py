@@ -167,17 +167,31 @@ class TestSource(unittest.TestCase):
 
         self.source.create_query(None)
 
-    def test_create_tie(self):
+    def test_has_ties(self):
 
         sis = Sis("Sally").create()
-        self.source.create_tie(sis, {})
+        self.assertFalse(self.source.has_ties(sis))
         sis.bro_id = [2, 3, 4]
-        self.source.create_tie(sis)
+        self.assertTrue(self.source.has_ties(sis))
+        self.assertFalse(self.source.has_ties(sis, {}))
 
         bro = Bro("Tom").create()
-        self.source.create_tie(bro, {})
+        self.assertFalse(self.source.has_ties(bro))
         bro.sis_id = [5, 6, 7]
-        self.source.create_tie(bro)
+        self.assertTrue(self.source.has_ties(bro))
+        self.assertFalse(self.source.has_ties(bro, {}))
+
+    def test_create_ties(self):
+
+        sis = Sis("Sally").create()
+        self.source.create_ties(sis, {})
+        sis.bro_id = [2, 3, 4]
+        self.source.create_ties(sis)
+
+        bro = Bro("Tom").create()
+        self.source.create_ties(bro, {})
+        bro.sis_id = [5, 6, 7]
+        self.source.create_ties(bro)
 
         self.assertEqual(self.mock_source.data, {
             "sis": {
@@ -222,7 +236,12 @@ class TestSource(unittest.TestCase):
 
     def test_create(self):
 
-        self.source.create(None)
+        sis = Sis("Sally")
+        sis.bro_id = [2, 3, 4]
+        self.source.create(sis)
+
+        sis._bulk = True
+        self.assertRaisesRegex(relations.ModelError, "cannot create ties in bulk", self.source.create, sis)
 
     def test_retrieve_field(self):
 
@@ -244,13 +263,25 @@ class TestSource(unittest.TestCase):
 
     def test_count(self):
 
-        self.source.retrieve(None)
+        self.source.retrieve(Sis.many())
 
     def test_retrieve_query(self):
 
         self.source.retrieve_query(None)
 
-    def test_retrieve_tie(self):
+    def test_filter_ties(self):
+
+        sis = Sis.many()
+        self.assertFalse(self.source.filter_ties(sis))
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertTrue(self.source.filter_ties(sis))
+
+        bro = Bro.many()
+        self.assertFalse(self.source.filter_ties(bro))
+        bro = Bro.many(sis_id=[5, 6, 7])
+        self.assertTrue(self.source.filter_ties(bro))
+
+    def test_retrieve_ties(self):
 
         tom = Bro("Tom").create()
         dick = Bro("Dick").create()
@@ -270,7 +301,11 @@ class TestSource(unittest.TestCase):
 
     def test_retrieve(self):
 
-        self.source.retrieve(None)
+        sis = Sis.many()
+        self.source.retrieve(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.retrieve, sis)
 
     def test_titles_query(self):
 
@@ -314,7 +349,10 @@ class TestSource(unittest.TestCase):
 
     def test_update(self):
 
-        self.source.update(None)
+        Sis.many(name="Sally").set(name="Harry").update()
+
+        sis = Sis.many(name="Sally").set(bro_id=[1, 2, 3])
+        self.assertRaisesRegex(relations.ModelError, "cannot update ties in retrieve mode", self.source.update, sis)
 
     def test_delete_field(self):
 
@@ -334,12 +372,12 @@ class TestSource(unittest.TestCase):
 
         self.source.delete_query(None)
 
-    def test_delete_tie(self):
+    def test_delete_ties(self):
 
         Sis("Sally", bro_id=[2, 3, 4]).create()
         Bro("Tom", sis_id=[5, 6, 7]).create()
 
-        Sis.many().delete()
+        Sis.many().retrieve().delete()
 
         self.assertEqual(self.mock_source.data, {
             "sis": {},
@@ -365,7 +403,7 @@ class TestSource(unittest.TestCase):
             }
         })
 
-        Bro.many().delete()
+        Bro.many().retrieve().delete()
 
         self.assertEqual(self.mock_source.data, {
             "sis": {},
@@ -375,7 +413,9 @@ class TestSource(unittest.TestCase):
 
     def test_delete(self):
 
-        self.source.delete(None)
+        self.source.delete(SisBro.many())
+
+        self.assertRaisesRegex(relations.ModelError, "cannot delete ties in retrieve mode", self.source.delete, Sis.many())
 
     def test_definition(self):
 

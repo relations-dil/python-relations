@@ -137,7 +137,26 @@ class Source:
         """
 
     @staticmethod
-    def create_tie(model, data=None):
+    def has_ties(model, data=None):
+        """
+        Checks for need to create records for tie tables
+        """
+
+        if data is None:
+            data = model
+
+        for sister_field, relation in model.SISTERS.items():
+            if sister_field in data and data[relation.brother_sister]:
+                return True
+
+        for brother_field, relation in model.BROTHERS.items():
+            if brother_field in data and data[relation.sister_brother]:
+                return True
+
+        return False
+
+    @staticmethod
+    def create_ties(model, data=None):
         """
         Creates records for tie tables
         """
@@ -178,6 +197,9 @@ class Source:
         create the model
         """
 
+        if model._bulk and self.has_ties(model):
+            raise relations.model.ModelError(model, "cannot create ties in bulk mode")
+
     def retrieve_field(self, field, *args, **kwargs):
         """
         retrieve the field
@@ -191,7 +213,23 @@ class Source:
             self.retrieve_field(field, *args, **kwargs)
 
     @staticmethod
-    def retrieve_tie(model):
+    def filter_ties(model):
+        """
+        Checks for need to filter by tie tables
+        """
+
+        for sister_field, relation in model.SISTERS.items():
+            if model._record._names[relation.brother_sister].criteria:
+                return True
+
+        for brother_field, relation in model.BROTHERS.items():
+            if model._record._names[relation.sister_brother].criteria:
+                return True
+
+        return False
+
+    @staticmethod
+    def retrieve_ties(model):
         """
         Retrieves the tie records
         """
@@ -225,6 +263,9 @@ class Source:
         """
         retrieve the model
         """
+
+        if self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
 
     def titles_query(self, model, *args, **kwargs):
         """
@@ -270,6 +311,9 @@ class Source:
         update the model
         """
 
+        if model._action == "retrieve" and model._record._action == "update" and model._record.tie({}):
+            raise relations.model.ModelError(model, "cannot update ties in retrieve mode")
+
     def delete_field(self, field, *args, **kwargs):
         """
         delete the field
@@ -288,7 +332,7 @@ class Source:
         """
 
     @staticmethod
-    def delete_tie(model, id=None):
+    def delete_ties(model, id=None):
         """
         Creates records for tie tables
         """
@@ -306,6 +350,9 @@ class Source:
         """
         delete the model
         """
+
+        if model._action == "retrieve" and (model.SISTERS or model.BROTHERS):
+            raise relations.model.ModelError(model, "cannot delete ties in retrieve mode")
 
     def definition(self, file_path, source_path):
         """

@@ -531,6 +531,9 @@ class TestSource(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, 'simple: value {"name": "sure"} violates unique name', simple.create)
 
+        sis = Sis("Sally", bro_id=[2, 3, 4], _bulk=True)
+        self.assertRaisesRegex(relations.ModelError, "cannot create ties in bulk", sis.create)
+
     def test_model_like(self):
 
         Unit([["stuff"], ["people"]]).create()
@@ -783,6 +786,9 @@ class TestSource(unittest.TestCase):
         model = Net.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.retrieve)
+
     def test_titles_query(self):
 
         self.assertEqual(self.source.titles_query(None).action, "TITLES")
@@ -871,31 +877,8 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.one(ping.id).ip.compressed, "13.14.15.16")
         self.assertEqual(Net.one(pong.id).ip.compressed, "5.6.7.8")
 
-        Sis("Sally", bro_id=[2, 3, 4]).create()
-        Bro("Tom", sis_id=[5, 6, 7]).create()
-
-        sally = Sis.many(name="Sally").set(bro_id=[3, 4])
-        sally.update()
-        Bro.many(name="Tom").set(sis_id=[6, 7]).update()
-
-        self.assertCountEqual(self.source.data['sis_bro'].values(), [
-            {
-                "bro_id": 3,
-                "sis_id": 1
-            },
-            {
-                "bro_id": 4,
-                "sis_id": 1
-            },
-            {
-                "bro_id": 1,
-                "sis_id": 6
-            },
-            {
-                "bro_id": 1,
-                "sis_id": 7
-            }
-        ])
+        sis = Sis.many(name="Sally").set(bro_id=[1, 2, 3])
+        self.assertRaisesRegex(relations.ModelError, "cannot update ties in retrieve mode", sis.update)
 
     def test_delete_query(self):
 
@@ -931,6 +914,8 @@ class TestSource(unittest.TestCase):
 
         plain = Plain().create()
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)
+
+        self.assertRaisesRegex(relations.ModelError, "cannot delete ties in retrieve mode", Sis.many().delete)
 
     def test_definition(self):
 

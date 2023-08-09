@@ -542,6 +542,8 @@ class Model(ModelIdentity):
             if self._mode == "one":
                 return self._relate(name)
 
+            raise AttributeError(f"'{self}' cannot access '{name}' in many mode")
+
         if '__' not in name:
             raise AttributeError(f"'{self}' object has no attribute '{name}'")
 
