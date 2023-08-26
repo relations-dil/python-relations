@@ -254,6 +254,9 @@ class Source:
         retrieve the model
         """
 
+        if self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
+
     def retrieve_query(self, model, *args, **kwargs):
         """
         retrieve query
@@ -276,6 +279,9 @@ class Source:
         """
         titles of the model
         """
+
+        if model._action == "retrieve" and self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
 
     def update_field(self, field, *args, **kwargs):
         """

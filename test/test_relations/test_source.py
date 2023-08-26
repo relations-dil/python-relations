@@ -263,7 +263,11 @@ class TestSource(unittest.TestCase):
 
     def test_count(self):
 
-        self.source.retrieve(Sis.many())
+        sis = Sis.many()
+        self.source.count(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.count, sis)
 
     def test_retrieve_query(self):
 
@@ -313,7 +317,11 @@ class TestSource(unittest.TestCase):
 
     def test_titles(self):
 
-        self.source.titles(None)
+        sis = Sis.many()
+        self.source.titles(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.titles, sis)
 
     def test_update_field(self):
 

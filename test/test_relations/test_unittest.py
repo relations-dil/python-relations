@@ -618,6 +618,9 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(Unit.many(like="p").count(), 1)
 
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.count)
+
     def test_retrieve_query(self):
 
         self.assertEqual(self.source.retrieve_query(None).action, "RETRIEVE")
@@ -830,6 +833,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.many().titles().titles, {
             1: ["1.2.3.4"]
         })
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.titles)
 
     def test_update_query(self):
 

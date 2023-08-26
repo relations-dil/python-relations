@@ -311,6 +311,8 @@ class MockSource(relations.Source):
         Executes the retrieve
         """
 
+        super().count(model)
+
         model._collate()
 
         values = self.model_like(model) if model._like is not None else self.data[model.NAME].values()
@@ -391,6 +393,8 @@ class MockSource(relations.Source):
         """
         Creates the titles structure
         """
+
+        super().titles(model)
 
         if model._action == "retrieve":
             self.retrieve(model)
