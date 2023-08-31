@@ -79,17 +79,17 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)
 
-        self.assertEqual(relation.parent_child, "son")
-        self.assertEqual(relation.child_parent, "mom")
-        self.assertEqual(relation.parent_field, "id")
-        self.assertEqual(relation.child_field, "mom_id")
+        self.assertEqual(relation.parent_child_attr, "son")
+        self.assertEqual(relation.child_parent_attr, "mom")
+        self.assertEqual(relation.parent_id, "id")
+        self.assertEqual(relation.child_parent_ref, "mom_id")
 
         relation = relations.OneTo(Mom, Son, "sons", "mommy", "ident", "mom_ident")
 
-        self.assertEqual(relation.parent_child, "sons")
-        self.assertEqual(relation.child_parent, "mommy")
-        self.assertEqual(relation.parent_field, "ident")
-        self.assertEqual(relation.child_field, "mom_ident")
+        self.assertEqual(relation.parent_child_attr, "sons")
+        self.assertEqual(relation.child_parent_attr, "mommy")
+        self.assertEqual(relation.parent_id, "ident")
+        self.assertEqual(relation.child_parent_ref, "mom_ident")
 
 class TestOneToMany(unittest.TestCase):
 
@@ -111,10 +111,10 @@ class TestOneToMany(unittest.TestCase):
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)
 
-        self.assertEqual(relation.parent_child, "son")
-        self.assertEqual(relation.child_parent, "mom")
-        self.assertEqual(relation.parent_field, "id")
-        self.assertEqual(relation.child_field, "mom_id")
+        self.assertEqual(relation.parent_child_attr, "son")
+        self.assertEqual(relation.child_parent_attr, "mom")
+        self.assertEqual(relation.parent_id, "id")
+        self.assertEqual(relation.child_parent_ref, "mom_id")
 
 class TestOneToOne(unittest.TestCase):
 
@@ -135,10 +135,10 @@ class TestOneToOne(unittest.TestCase):
         self.assertEqual(relation.Parent, Mom)
         self.assertEqual(relation.Child, Son)
 
-        self.assertEqual(relation.parent_child, "son")
-        self.assertEqual(relation.child_parent, "mom")
-        self.assertEqual(relation.parent_field, "id")
-        self.assertEqual(relation.child_field, "id")
+        self.assertEqual(relation.parent_child_attr, "son")
+        self.assertEqual(relation.child_parent_attr, "mom")
+        self.assertEqual(relation.parent_id, "id")
+        self.assertEqual(relation.child_parent_ref, "id")
 
 class TestManyToMany(unittest.TestCase):
 
@@ -167,12 +167,14 @@ class TestManyToMany(unittest.TestCase):
         self.assertEqual(relation.Tie, SisBro)
         self.assertTrue(relation.Tie.TIE)
 
-        self.assertEqual(relation.sister_brother, "bro_id")
-        self.assertEqual(relation.brother_sister, "sis_id")
-        self.assertEqual(relation.sister_field, "id")
-        self.assertEqual(relation.brother_field, "id")
-        self.assertEqual(relation.tie_sister, "sis_id")
-        self.assertEqual(relation.tie_brother, "bro_id")
+        self.assertEqual(relation.sister_brother_ref, "bro_id")
+        self.assertEqual(relation.brother_sister_ref, "sis_id")
+        self.assertEqual(relation.sister_brother_attr, "bro")
+        self.assertEqual(relation.brother_sister_attr, "sis")
+        self.assertEqual(relation.sister_id, "id")
+        self.assertEqual(relation.brother_id, "id")
+        self.assertEqual(relation.tie_sister_ref, "sis_id")
+        self.assertEqual(relation.tie_brother_ref, "bro_id")
 
         class SisTie(relations.Model):
             sis_id = int
@@ -189,16 +191,18 @@ class TestManyToMany(unittest.TestCase):
             sist = int
             brot = int
 
-        relation = relations.ManyToMany(SisTie, BroTie, SisBroTie, "bro_ident", "sis_ident", "sis_id", "bro_id", "sist", "brot")
+        relation = relations.ManyToMany(SisTie, BroTie, SisBroTie, "bros", "siss", "bro_ident", "sis_ident", "sis_id", "bro_id", "sist", "brot")
 
         self.assertEqual(relation.Sister, SisTie)
         self.assertEqual(relation.Brother, BroTie)
         self.assertEqual(relation.Tie, SisBroTie)
         self.assertFalse(relation.Tie.TIE)
 
-        self.assertEqual(relation.sister_brother, "bro_ident")
-        self.assertEqual(relation.brother_sister, "sis_ident")
-        self.assertEqual(relation.sister_field, "sis_id")
-        self.assertEqual(relation.brother_field, "bro_id")
-        self.assertEqual(relation.tie_sister, "sist")
-        self.assertEqual(relation.tie_brother, "brot")
+        self.assertEqual(relation.sister_brother_ref, "bro_ident")
+        self.assertEqual(relation.brother_sister_ref, "sis_ident")
+        self.assertEqual(relation.sister_brother_attr, "bros")
+        self.assertEqual(relation.brother_sister_attr, "siss")
+        self.assertEqual(relation.sister_id, "sis_id")
+        self.assertEqual(relation.brother_id, "bro_id")
+        self.assertEqual(relation.tie_sister_ref, "sist")
+        self.assertEqual(relation.tie_brother_ref, "brot")

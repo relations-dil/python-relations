@@ -269,12 +269,12 @@ class ModelIdentity:
         self.BROTHERS = cls.BROTHERS or {}
 
         for relation in self.SISTERS.values():
-            self._fields._names[relation.brother_sister].store = False
-            self._fields._names[relation.brother_sister].tied = True
+            self._fields._names[relation.brother_sister_ref].store = False
+            self._fields._names[relation.brother_sister_ref].tied = True
 
         for relation in self.BROTHERS.values():
-            self._fields._names[relation.sister_brother].store = False
-            self._fields._names[relation.sister_brother].tied = True
+            self._fields._names[relation.sister_brother_ref].store = False
+            self._fields._names[relation.sister_brother_ref].tied = True
 
         # Have the the source do whatever it needs to
 
@@ -325,7 +325,7 @@ class ModelIdentity:
         """
 
         for relation in self.PARENTS.values():
-            if field == relation.child_field:
+            if field == relation.child_parent_ref:
                 return relation
 
         return None
@@ -425,6 +425,7 @@ class Model(ModelIdentity):
         _read = self._extract(kwargs, '_read')
         _child = self._extract(kwargs, '_child')
         _parent = self._extract(kwargs, '_parent')
+        _sibling = self._extract(kwargs, '_sibling')
 
         # Now just assume things were sent explicitly and we might override them
         # later because the logic here is pretty hairy
@@ -454,7 +455,7 @@ class Model(ModelIdentity):
             self._record = self._build(self._action, _defaults=False)
             self.filter(*args, **kwargs)
 
-        # If we being created as a child
+        # If we're being created as a child
 
         elif _parent is not None:
 
@@ -466,6 +467,16 @@ class Model(ModelIdentity):
             if self._action == "retrieve":
                 self._record = self._build(self._action, _defaults=False)
                 self.filter(*args, **kwargs)
+
+        # If we're being created as a sibling
+
+        elif _sibling is not None:
+
+            self._mode = "many"
+            self._action = "retrieve"
+
+            self._record = self._build(self._action, _defaults=False)
+            self.filter(*args, **{**_sibling, **kwargs})
 
         # If we're being created as a search
 
@@ -535,7 +546,7 @@ class Model(ModelIdentity):
         Used to get relation models directly
         """
 
-        if name in self.PARENTS or name in self.CHILDREN:
+        if name in self.PARENTS or name in self.CHILDREN or name in self.SISTERS or name in self.BROTHERS:
 
             self._ensure()
 
@@ -713,7 +724,7 @@ class Model(ModelIdentity):
         """
 
         cls.PARENTS = cls.PARENTS or {}
-        cls.PARENTS[relation.child_parent] = relation
+        cls.PARENTS[relation.child_parent_attr] = relation
 
     @classmethod
     def _child(cls, relation):
@@ -722,7 +733,7 @@ class Model(ModelIdentity):
         """
 
         cls.CHILDREN = cls.CHILDREN or {}
-        cls.CHILDREN[relation.parent_child] = relation
+        cls.CHILDREN[relation.parent_child_attr] = relation
 
     # These aren't used yet and might need to go
 
@@ -733,7 +744,7 @@ class Model(ModelIdentity):
         """
 
         cls.SISTERS = cls.SISTERS or {}
-        cls.SISTERS[relation.brother_sister] = relation
+        cls.SISTERS[relation.brother_sister_attr] = relation
 
     @classmethod
     def _brother(cls, relation):
@@ -742,7 +753,7 @@ class Model(ModelIdentity):
         """
 
         cls.BROTHERS = cls.BROTHERS or {}
-        cls.BROTHERS[relation.sister_brother] = relation
+        cls.BROTHERS[relation.sister_brother_attr] = relation
 
     def _relate(self, name):
         """
@@ -757,7 +768,7 @@ class Model(ModelIdentity):
                 if self._action == "retrieve":
                     self._parents[name] = relation.Parent.many().limit(self._chunk)
                 else:
-                    self._parents[name] = relation.Parent(_child={relation.parent_field: self[relation.child_field]})
+                    self._parents[name] = relation.Parent(_child={relation.parent_id: self[relation.child_parent_ref]})
 
             return self._parents[name]
 
@@ -770,10 +781,32 @@ class Model(ModelIdentity):
                     self._children[name] = relation.Child.many().limit(self._chunk)
                 else:
                     self._children[name] = relation.Child(
-                        _parent={relation.child_field: self._record[relation.parent_field]}, _mode=relation.MODE
+                        _parent={relation.child_parent_ref: self._record[relation.parent_id]}, _mode=relation.MODE
                     )
 
             return self._children[name]
+
+        elif name in self.SISTERS:
+
+            relation = self.SISTERS[name]
+
+            if self._sisters.get(name) is None:
+                self._sisters[name] = relation.Sister(
+                    _sibling={f"{relation.sister_id}__in": self._record[relation.brother_sister_ref]}
+                )
+
+            return self._sisters[name]
+
+        elif name in self.BROTHERS:
+
+            relation = self.BROTHERS[name]
+
+            if self._brothers.get(name) is None:
+                self._brothers[name] = relation.Brother(
+                    _sibling={f"{relation.brother_id}__in": self._record[relation.sister_brother_ref]}
+                )
+
+            return self._brothers[name]
 
         return None
 
@@ -782,17 +815,17 @@ class Model(ModelIdentity):
         Executes relatives criteria and adds to our own
         """
 
-        for child_parent, relation in self.PARENTS.items():
-            if self._parents.get(child_parent) is not None:
-                self._record.filter(f"{relation.child_field}__in", self._parents[child_parent][relation.parent_field])
-                self.overflow = self.overflow or self._parents[child_parent].overflow
-                del self._parents[child_parent]
+        for child_parent_attr, relation in self.PARENTS.items():
+            if self._parents.get(child_parent_attr) is not None:
+                self._record.filter(f"{relation.child_parent_ref}__in", self._parents[child_parent_attr][relation.parent_id])
+                self.overflow = self.overflow or self._parents[child_parent_attr].overflow
+                del self._parents[child_parent_attr]
 
-        for parent_child, relation in self.CHILDREN.items():
-            if self._children.get(parent_child) is not None:
-                self._record.filter(f"{relation.parent_field}__in", self._children[parent_child][relation.child_field])
-                self.overflow = self.overflow or self._children[parent_child].overflow
-                del self._children[parent_child]
+        for parent_child_attr, relation in self.CHILDREN.items():
+            if self._children.get(parent_child_attr) is not None:
+                self._record.filter(f"{relation.parent_id}__in", self._children[parent_child_attr][relation.child_parent_ref])
+                self.overflow = self.overflow or self._children[parent_child_attr].overflow
+                del self._children[parent_child_attr]
 
     def _propagate(self, field, value):
         """
@@ -804,13 +837,21 @@ class Model(ModelIdentity):
         if field_name in self._related:
             self._related[field_name] = value
 
-        for child_parent, relation in self.PARENTS.items():
-            if field_name == relation.child_field:
-                self._parents[child_parent] = None
+        for child_parent_attr, relation in self.PARENTS.items():
+            if field_name == relation.child_parent_ref:
+                self._parents[child_parent_attr] = None
 
-        for parent_child, relation in self.CHILDREN.items():
-            if field_name == relation.parent_field and self._relate(parent_child):
-                self._relate(parent_child)[relation.child_field] = value
+        for parent_child_attr, relation in self.CHILDREN.items():
+            if field_name == relation.parent_id and self._relate(parent_child_attr):
+                self._relate(parent_child_attr)[relation.child_parent_ref] = value
+
+        for brother_sister_attr, relation in self.SISTERS.items():
+            if field_name == relation.brother_sister_ref:
+                self._parents[brother_sister_attr] = None
+
+        for sister_brother_attr, relation in self.BROTHERS.items():
+            if field_name == relation.sister_brother_ref:
+                self._parents[sister_brother_attr] = None
 
     def _input(self, record, *args, **kwargs):
         """

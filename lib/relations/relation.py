@@ -2,7 +2,7 @@
 Module for Model Relations
 """
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,too-many-instance-attributes,too-many-arguments
 
 import relations
 
@@ -49,14 +49,23 @@ class OneTo(Relation):
     Class that specific one to * relationships
     """
 
-    Parent = None       # Model having one record
-    parent_field = None # The id field of the parent to connect to the child
-    parent_child = None # The name of the attribute on the parent model to reference children
-    Child = None        # Model having many reocrds
-    child_field = None  # The if field in the child to connect to the parent field
-    child_parent = None # The name of the attribute on the child to reference the parent
+    Parent = None            # Model having one record
+    parent_id = None         # The id field of the parent to connect to the child
+    parent_child_attr = None # The name of the attribute on the parent model to access children
 
-    def __init__(self, Parent, Child, parent_child=None, child_parent=None, parent_field=None, child_field=None):
+    Child = None             # Model having many reocrds
+    child_parent_ref = None  # The id field in the child to connect to the parent field
+    child_parent_attr = None # The name of the attribute on the child to access the parent
+
+    def __init__(
+            self,
+            Parent,
+            Child,
+            parent_child_attr=None,
+            child_parent_attr=None,
+            parent_id=None,
+            child_parent_ref=None
+        ):
 
         self.Parent = Parent
         self.Child = Child
@@ -64,10 +73,11 @@ class OneTo(Relation):
         parent = self.Parent.thy()
         child = self.Child.thy()
 
-        self.parent_child = parent_child if parent_child is not None else child.NAME
-        self.child_parent = child_parent if child_parent is not None else parent.NAME
-        self.parent_field = parent._field_name(parent_field if parent_field is not None else parent._id)
-        self.child_field = child._field_name(child_field) if child_field is not None else self.relative_field(parent, child)
+        self.parent_id = parent._field_name(parent_id if parent_id is not None else parent._id)
+        self.parent_child_attr = parent_child_attr if parent_child_attr is not None else child.NAME
+
+        self.child_parent_attr = child_parent_attr if child_parent_attr is not None else parent.NAME
+        self.child_parent_ref = child._field_name(child_parent_ref) if child_parent_ref is not None else self.relative_field(parent, child)
 
         self.Parent._child(self)
         self.Child._parent(self)
@@ -96,27 +106,33 @@ class ManyToMany(Relation):
     Class that specific many to many relationships
     """
 
-    Sister = None         # Model having fewer records
-    sister_field = None   # The field of the sister to connect to the brother
-    sister_brother = None # The name of the attribute on the sister model to reference brotherren
-    Brother = None        # Model having more reocrds
-    brother_field = None  # The id field in the brother to connect to the sister
-    brother_sister = None # The name of the attribute on the brother to reference the sister
-    Tie = None            # Model of the Tie table
-    tie_sister = None     # The id field of the sister in the tie table
-    tie_brother = None    # The id field of the brother in the tie table
+    Sister = None               # Model having fewer records
+    sister_id = None            # The field of the sister to connect to the brother
+    sister_brother_ref = None   # The name of the field on the sister model to reference brothers
+    sister_brother_attr = None  # The name of the attribute on the sister model to access brothers
+
+    Brother = None              # Model having more reocrds
+    brother_id = None           # The id field in the brother to connect to the sister
+    brother_sister_ref = None   # The name of the field on the brother to reference the sister
+    brother_sister_attr = None  # The name of the attribute on the brother model to access sisters
+
+    Tie = None                  # Model of the Tie table
+    tie_sister_ref = None       # The id field of the sister in the tie table
+    tie_brother_ref = None      # The id field of the brother in the tie table
 
     def __init__(
             self,
             Sister,
             Brother,
             Tie,
-            sister_brother=None,
-            brother_sister=None,
-            sister_field=None,
-            brother_field=None,
-            tie_sister=None,
-            tie_brother=None
+            sister_brother_attr=None,
+            brother_sister_attr=None,
+            sister_brother_ref=None,
+            brother_sister_ref=None,
+            sister_id=None,
+            brother_id=None,
+            tie_sister_ref=None,
+            tie_brother_ref=None
         ):
 
         self.Sister = Sister
@@ -130,12 +146,18 @@ class ManyToMany(Relation):
         brother = self.Brother.thy()
         tie = self.Tie.thy()
 
-        self.sister_brother = sister._field_name(sister_brother if sister_brother is not None else self.relative_field(brother, sister))
-        self.brother_sister = brother._field_name(brother_sister) if brother_sister is not None else self.relative_field(sister, brother)
-        self.sister_field = sister._field_name(sister_field if sister_field is not None else sister._id)
-        self.brother_field = brother._field_name(brother_field if brother_field is not None else brother._id)
-        self.tie_sister = tie._field_name(tie_sister if tie_sister is not None else self.relative_field(sister, tie))
-        self.tie_brother = tie._field_name(tie_brother if tie_brother is not None else self.relative_field(brother, tie))
+        self.sister_id = sister._field_name(sister_id if sister_id is not None else sister._id)
+        self.sister_brother_ref = sister._field_name(sister_brother_ref) if sister_brother_ref is not None else \
+                                  self.relative_field(brother, sister)
+        self.sister_brother_attr = sister_brother_attr if sister_brother_attr is not None else brother.NAME
+
+        self.brother_id = brother._field_name(brother_id if brother_id is not None else brother._id)
+        self.brother_sister_ref = brother._field_name(brother_sister_ref) if brother_sister_ref is not None else \
+                                  self.relative_field(sister, brother)
+        self.brother_sister_attr = brother_sister_attr if brother_sister_attr is not None else sister.NAME
+
+        self.tie_sister_ref = tie._field_name(tie_sister_ref if tie_sister_ref is not None else self.relative_field(sister, tie))
+        self.tie_brother_ref = tie._field_name(tie_brother_ref if tie_brother_ref is not None else self.relative_field(brother, tie))
 
         self.Sister._brother(self)
         self.Brother._sister(self)

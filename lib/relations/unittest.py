@@ -240,9 +240,9 @@ class MockSource(relations.Source):
 
                 self.create_ties(model)
 
-                for parent_child in creating.CHILDREN:
-                    if creating._children.get(parent_child):
-                        creating._children[parent_child].create()
+                for parent_child_attr in creating.CHILDREN:
+                    if creating._children.get(parent_child_attr):
+                        creating._children[parent_child_attr].create()
 
                 creating._action = "update"
                 creating._record._action = "update"
@@ -265,7 +265,7 @@ class MockSource(relations.Source):
             relation = model._ancestor(field)
             if relation:
                 parent = relation.Parent.many(like=model._like).limit(model._chunk)
-                parents[model._fields._names[field].store] = parent[relation.parent_field]
+                parents[model._fields._names[field].store] = parent[relation.parent_id]
                 model.overflow = model.overflow or parent.overflow
 
         likes = []
@@ -449,9 +449,9 @@ class MockSource(relations.Source):
 
                 updated += 1
 
-                for parent_child in updating.CHILDREN:
-                    if updating._children.get(parent_child):
-                        updating._children[parent_child].create().update()
+                for parent_child_attr in updating.CHILDREN:
+                    if updating._children.get(parent_child_attr):
+                        updating._children[parent_child_attr].create().update()
 
         else:
 
