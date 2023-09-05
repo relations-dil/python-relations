@@ -792,6 +792,18 @@ class TestSource(unittest.TestCase):
         sis = Sis.many(bro_id=[2, 3, 4])
         self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.retrieve)
 
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        mary = Sis("Mary", bro_id=[tom.id, dick.id]).create()
+        harry = Bro("Harry", sis_id=[dot.id, nikki.id]).create()
+
+        self.assertEqual(mary.bro.id, [dick.id, tom.id])
+        self.assertEqual(harry.sis.id, [dot.id, nikki.id])
+
     def test_titles_query(self):
 
         self.assertEqual(self.source.titles_query(None).action, "TITLES")
@@ -886,6 +898,23 @@ class TestSource(unittest.TestCase):
         sis = Sis.many(name="Sally").set(bro_id=[1, 2, 3])
         self.assertRaisesRegex(relations.ModelError, "cannot update ties in retrieve mode", sis.update)
 
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        tom.sis_id = [nikki.id, dot.id]
+        dot.bro_id = [tom.id, dick.id]
+
+        tom.update()
+        dot.update()
+
+        self.assertEqual(Bro.one(name="Tom").sis.id, [dot.id, nikki.id])
+        self.assertEqual(Sis.one(name="Dot").bro.id, [dick.id, tom.id])
+        self.assertEqual(Bro.one(name="Dick").sis.id, [dot.id])
+        self.assertEqual(Sis.one(name="Nikki").bro.id, [tom.id])
+
     def test_delete_query(self):
 
         self.assertEqual(self.source.delete_query(None).action, "DELETE")
@@ -922,6 +951,24 @@ class TestSource(unittest.TestCase):
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)
 
         self.assertRaisesRegex(relations.ModelError, "cannot delete ties in retrieve mode", Sis.many().delete)
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        tom.sis_id = [nikki.id, dot.id]
+        dot.bro_id = [tom.id, dick.id]
+
+        tom.update()
+        dot.update()
+
+        dick.delete()
+        nikki.delete()
+
+        self.assertEqual(Bro.one(name="Tom").sis.id, [dot.id])
+        self.assertEqual(Sis.one(name="Dot").bro.id, [tom.id])
 
     def test_definition(self):
 

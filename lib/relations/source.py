@@ -149,7 +149,7 @@ class Source:
             if relation.brother_sister_ref in data and data[relation.brother_sister_ref]:
                 return True
 
-        for brother_sister_attr, relation in model.BROTHERS.items():
+        for relation in model.BROTHERS.values():
             if relation.sister_brother_ref in data and data[relation.sister_brother_ref]:
                 return True
 
