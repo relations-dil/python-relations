@@ -760,6 +760,9 @@ class Model(ModelIdentity):
         Looks up a relation by attribute name
         """
 
+        if self._bulk:
+            raise ModelError(self, "cannot access relatives in bulk mode")
+
         if name in self.PARENTS: # pylint: disable=no-else-return
 
             relation = self.PARENTS[name]

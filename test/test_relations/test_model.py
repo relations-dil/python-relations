@@ -1108,6 +1108,14 @@ class TestModel(unittest.TestCase):
 
         test = Test()
 
+        # bulk
+
+        test._bulk = True
+
+        self.assertRaisesRegex(relations.ModelError, "test: cannot access relatives in bulk mode", test._relate, None)
+
+        test._bulk = False
+
         # parents
 
         self.assertEqual(test.unit._related, {"id": None})

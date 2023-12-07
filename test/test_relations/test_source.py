@@ -355,13 +355,6 @@ class TestSource(unittest.TestCase):
 
         self.source.update_query(None)
 
-    def test_update(self):
-
-        Sis.many(name="Sally").set(name="Harry").update()
-
-        sis = Sis.many(name="Sally").set(bro_id=[1, 2, 3])
-        self.assertRaisesRegex(relations.ModelError, "cannot update ties in retrieve mode", self.source.update, sis)
-
     def test_delete_field(self):
 
         self.source.delete_field(None)
@@ -418,12 +411,6 @@ class TestSource(unittest.TestCase):
             "bro": {},
             "sis_bro": {}
         })
-
-    def test_delete(self):
-
-        self.source.delete(SisBro.many())
-
-        self.assertRaisesRegex(relations.ModelError, "cannot delete ties in retrieve mode", self.source.delete, Sis.many())
 
     def test_definition(self):
 

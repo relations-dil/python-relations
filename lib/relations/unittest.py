@@ -428,6 +428,7 @@ class MockSource(relations.Source):
         if model._action == "retrieve" and model._record._action == "update":
 
             values = model._record.mass({})
+            ties = model._record.tie({})
 
             for id, data in self.data[model.NAME].items():
 
@@ -436,6 +437,8 @@ class MockSource(relations.Source):
                     updating = {**data, **values}
                     self.uniques(model, updating, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
+                    self.delete_ties(model, id)
+                    self.create_ties(model, {**updating, **ties})
 
         elif model._id:
 

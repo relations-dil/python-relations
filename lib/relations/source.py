@@ -317,9 +317,6 @@ class Source:
         update the model
         """
 
-        if model._action == "retrieve" and model._record._action == "update" and model._record.tie({}):
-            raise relations.model.ModelError(model, "cannot update ties in retrieve mode")
-
     def delete_field(self, field, *args, **kwargs):
         """
         delete the field
@@ -346,19 +343,19 @@ class Source:
         if id is None:
             id = model[model._id]
 
+        if not isinstance(id, list):
+            id = [id]
+
         for relation in model.SISTERS.values():
-            relation.Tie.many(**{relation.tie_brother_ref: id}).delete()
+            relation.Tie.many(**{f"{relation.tie_brother_ref}__in": id}).delete()
 
         for relation in model.BROTHERS.values():
-            relation.Tie.many(**{relation.tie_sister_ref: id}).delete()
+            relation.Tie.many(**{f"{relation.tie_sister_ref}__in": id}).delete()
 
     def delete(self, model, *args, **kwargs):
         """
         delete the model
         """
-
-        if model._action == "retrieve" and (model.SISTERS or model.BROTHERS):
-            raise relations.model.ModelError(model, "cannot delete ties in retrieve mode")
 
     def definition(self, file_path, source_path):
         """
