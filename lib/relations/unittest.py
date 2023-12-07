@@ -238,7 +238,8 @@ class MockSource(relations.Source):
 
             if not model._bulk:
 
-                self.create_ties(model)
+                if model._id:
+                    self.create_ties(creating)
 
                 for parent_child_attr in creating.CHILDREN:
                     if creating._children.get(parent_child_attr):
@@ -419,8 +420,6 @@ class MockSource(relations.Source):
         Executes the update
         """
 
-        super().update(model)
-
         updated = 0
 
         # If the overall model is retrieving and the record has values set
@@ -474,8 +473,6 @@ class MockSource(relations.Source):
         """
         Executes the delete
         """
-
-        super().delete(model)
 
         ids = []
 

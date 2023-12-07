@@ -2,7 +2,7 @@ import unittest
 import unittest.mock
 
 import relations
-
+import relations.unittest
 
 class SourceModel(relations.Model):
     SOURCE = "UnittestSource"
@@ -184,12 +184,12 @@ class TestSource(unittest.TestCase):
     def test_create_ties(self):
 
         sis = Sis("Sally").create()
-        self.source.create_ties(sis, {})
+        self.source.create_ties(sis, {"id": 0})
         sis.bro_id = [2, 3, 4]
         self.source.create_ties(sis)
 
         bro = Bro("Tom").create()
-        self.source.create_ties(bro, {})
+        self.source.create_ties(bro, {"id": 0})
         bro.sis_id = [5, 6, 7]
         self.source.create_ties(bro)
 

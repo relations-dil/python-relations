@@ -156,7 +156,7 @@ class Source:
         return False
 
     @staticmethod
-    def create_ties(model, data=None):
+    def create_ties(model, data=None, ids=None):
         """
         Creates records for tie tables
         """
@@ -164,17 +164,24 @@ class Source:
         if data is None:
             data = model
 
+        if ids is None:
+            ids = data[model._id]
+
+        if not isinstance(ids, list):
+            ids = [ids]
+
         for relation in model.SISTERS.values():
 
             if relation.brother_sister_ref not in data:
                 continue
 
             values = []
-            for value in data[relation.brother_sister_ref]:
-                values.append({
-                    relation.tie_brother_ref: data[relation.brother_id],
-                    relation.tie_sister_ref: value
-                })
+            for id in ids:
+                for value in data[relation.brother_sister_ref]:
+                    values.append({
+                        relation.tie_brother_ref: id,
+                        relation.tie_sister_ref: value
+                    })
             if values:
                 relation.Tie(values).create()
 
@@ -184,11 +191,12 @@ class Source:
                 continue
 
             values = []
-            for value in data[relation.sister_brother_ref]:
-                values.append({
-                    relation.tie_sister_ref: data[relation.sister_id],
-                    relation.tie_brother_ref: value
-                })
+            for id in ids:
+                for value in data[relation.sister_brother_ref]:
+                    values.append({
+                        relation.tie_sister_ref: id,
+                        relation.tie_brother_ref: value
+                    })
             if values:
                 relation.Tie(values).create()
 
@@ -335,22 +343,22 @@ class Source:
         """
 
     @staticmethod
-    def delete_ties(model, id=None):
+    def delete_ties(model, ids=None):
         """
         Creates records for tie tables
         """
 
-        if id is None:
-            id = model[model._id]
+        if ids is None:
+            ids = model[model._id]
 
-        if not isinstance(id, list):
-            id = [id]
+        if not isinstance(ids, list):
+            ids = [ids]
 
         for relation in model.SISTERS.values():
-            relation.Tie.many(**{f"{relation.tie_brother_ref}__in": id}).delete()
+            relation.Tie.many(**{f"{relation.tie_brother_ref}__in": ids}).delete()
 
         for relation in model.BROTHERS.values():
-            relation.Tie.many(**{f"{relation.tie_sister_ref}__in": id}).delete()
+            relation.Tie.many(**{f"{relation.tie_sister_ref}__in": ids}).delete()
 
     def delete(self, model, *args, **kwargs):
         """
