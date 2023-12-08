@@ -959,9 +959,10 @@ class TestSource(unittest.TestCase):
         bro = Bro("Harry").create()
         Sis.many(name="Sally").set(bro_id=[bro.id]).update()
 
-        Sis.one(name="Sally").delete()
+        Sis.many(name="Sally").delete()
 
         self.assertEqual(Bro.one(name="Harry").sis.id, [])
+        self.assertEqual(SisBro.many().count(), 0)
 
         tom = Bro("Tom").create()
         dick = Bro("Dick").create()
@@ -975,11 +976,12 @@ class TestSource(unittest.TestCase):
         tom.update()
         dot.update()
 
-        dick.delete()
-        nikki.delete()
+        dick.one(name="Dick").retrieve().delete()
+        nikki.one(name="Nikki").retrieve().delete()
 
         self.assertEqual(Bro.one(name="Tom").sis.id, [dot.id])
         self.assertEqual(Sis.one(name="Dot").bro.id, [tom.id])
+        self.assertEqual(SisBro.many().count(), 1)
 
     def test_definition(self):
 
