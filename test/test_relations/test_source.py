@@ -2,6 +2,28 @@ import unittest
 import unittest.mock
 
 import relations
+import relations.unittest
+
+class SourceModel(relations.Model):
+    SOURCE = "UnittestSource"
+
+class Sis(SourceModel):
+    id = int
+    name = str
+    bro_id = set
+
+class Bro(SourceModel):
+    id = int
+    name = str
+    sis_id = set
+
+class SisBro(SourceModel):
+    ID = None
+    bro_id = int
+    sis_id = int
+
+relations.ManyToMany(Sis, Bro, SisBro)
+
 
 class TestSource(unittest.TestCase):
 
@@ -10,6 +32,7 @@ class TestSource(unittest.TestCase):
     def setUp(self):
 
         self.source = relations.Source("unittest")
+        self.mock_source = relations.unittest.MockSource("UnittestSource")
 
     def test___new__(self):
 
@@ -144,9 +167,81 @@ class TestSource(unittest.TestCase):
 
         self.source.create_query(None)
 
+    def test_has_ties(self):
+
+        sis = Sis("Sally").create()
+        self.assertFalse(self.source.has_ties(sis))
+        sis.bro_id = [2, 3, 4]
+        self.assertTrue(self.source.has_ties(sis))
+        self.assertFalse(self.source.has_ties(sis, {}))
+
+        bro = Bro("Tom").create()
+        self.assertFalse(self.source.has_ties(bro))
+        bro.sis_id = [5, 6, 7]
+        self.assertTrue(self.source.has_ties(bro))
+        self.assertFalse(self.source.has_ties(bro, {}))
+
+    def test_create_ties(self):
+
+        sis = Sis("Sally").create()
+        self.source.create_ties(sis, {"id": 0})
+        sis.bro_id = [2, 3, 4]
+        self.source.create_ties(sis)
+
+        bro = Bro("Tom").create()
+        self.source.create_ties(bro, {"id": 0})
+        bro.sis_id = [5, 6, 7]
+        self.source.create_ties(bro)
+
+        self.assertEqual(self.mock_source.data, {
+            "sis": {
+                1: {
+                    "id": 1,
+                    "name": "Sally"
+                }
+            },
+            "bro": {
+                1: {
+                    "id": 1,
+                    "name": "Tom"
+                }
+            },
+            "sis_bro": {
+                1: {
+                    "bro_id": 2,
+                    "sis_id": 1
+                },
+                2: {
+                    "bro_id": 3,
+                    "sis_id": 1
+                },
+                3: {
+                    "bro_id": 4,
+                    "sis_id": 1
+                },
+                4: {
+                    "bro_id": 1,
+                    "sis_id": 5
+                },
+                5: {
+                    "bro_id": 1,
+                    "sis_id": 6
+                },
+                6: {
+                    "bro_id": 1,
+                    "sis_id": 7
+                }
+            }
+        })
+
     def test_create(self):
 
-        self.source.create(None)
+        sis = Sis("Sally")
+        sis.bro_id = [2, 3, 4]
+        self.source.create(sis)
+
+        sis._bulk = True
+        self.assertRaisesRegex(relations.ModelError, "cannot create ties in bulk", self.source.create, sis)
 
     def test_retrieve_field(self):
 
@@ -168,15 +263,53 @@ class TestSource(unittest.TestCase):
 
     def test_count(self):
 
-        self.source.retrieve(None)
+        sis = Sis.many()
+        self.source.count(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.count, sis)
 
     def test_retrieve_query(self):
 
         self.source.retrieve_query(None)
 
+    def test_filter_ties(self):
+
+        sis = Sis.many()
+        self.assertFalse(self.source.filter_ties(sis))
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertTrue(self.source.filter_ties(sis))
+
+        bro = Bro.many()
+        self.assertFalse(self.source.filter_ties(bro))
+        bro = Bro.many(sis_id=[5, 6, 7])
+        self.assertTrue(self.source.filter_ties(bro))
+
+    def test_retrieve_ties(self):
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        Sis("Sally", bro_id=[tom.id, dick.id]).create()
+
+        mary = Sis("Mary").create()
+        sue = Sis("Sure").create()
+
+        Bro("Harry", sis_id=[mary.id, sue.id]).create()
+
+        sally = Sis.one(name="Sally")
+        harry = Bro.one(name="Harry")
+
+        self.assertEqual(sally.bro_id, set([tom.id, dick.id]))
+        self.assertEqual(harry.sis_id, set([mary.id, sue.id]))
+
     def test_retrieve(self):
 
-        self.source.retrieve(None)
+        sis = Sis.many()
+        self.source.retrieve(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.retrieve, sis)
 
     def test_titles_query(self):
 
@@ -184,7 +317,11 @@ class TestSource(unittest.TestCase):
 
     def test_titles(self):
 
-        self.source.titles(None)
+        sis = Sis.many()
+        self.source.titles(sis)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.titles, sis)
 
     def test_update_field(self):
 
@@ -218,10 +355,6 @@ class TestSource(unittest.TestCase):
 
         self.source.update_query(None)
 
-    def test_update(self):
-
-        self.source.update(None)
-
     def test_delete_field(self):
 
         self.source.delete_field(None)
@@ -240,9 +373,44 @@ class TestSource(unittest.TestCase):
 
         self.source.delete_query(None)
 
-    def test_delete(self):
+    def test_delete_ties(self):
 
-        self.source.delete(None)
+        Sis("Sally", bro_id=[2, 3, 4]).create()
+        Bro("Tom", sis_id=[5, 6, 7]).create()
+
+        Sis.many().retrieve().delete()
+
+        self.assertEqual(self.mock_source.data, {
+            "sis": {},
+            "bro": {
+                1: {
+                    "id": 1,
+                    "name": "Tom"
+                }
+            },
+            "sis_bro": {
+                4: {
+                    "bro_id": 1,
+                    "sis_id": 5
+                },
+                5: {
+                    "bro_id": 1,
+                    "sis_id": 6
+                },
+                6: {
+                    "bro_id": 1,
+                    "sis_id": 7
+                }
+            }
+        })
+
+        Bro.many().retrieve().delete()
+
+        self.assertEqual(self.mock_source.data, {
+            "sis": {},
+            "bro": {},
+            "sis_bro": {}
+        })
 
     def test_definition(self):
 

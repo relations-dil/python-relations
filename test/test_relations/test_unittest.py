@@ -78,6 +78,22 @@ class Case(SourceModel):
 relations.OneToMany(Unit, Test)
 relations.OneToOne(Test, Case)
 
+class Sis(SourceModel):
+    id = int
+    name = str
+    bro_id = set
+
+class Bro(SourceModel):
+    id = int
+    name = str
+    sis_id = set
+
+class SisBro(SourceModel):
+    ID = None
+    bro_id = int
+    sis_id = int
+
+relations.ManyToMany(Sis, Bro, SisBro)
 
 class TestQuery(unittest.TestCase):
 
@@ -515,6 +531,9 @@ class TestSource(unittest.TestCase):
 
         self.assertRaisesRegex(relations.ModelError, 'simple: value {"name": "sure"} violates unique name', simple.create)
 
+        sis = Sis("Sally", bro_id=[2, 3, 4], _bulk=True)
+        self.assertRaisesRegex(relations.ModelError, "cannot create ties in bulk", sis.create)
+
     def test_model_like(self):
 
         Unit([["stuff"], ["people"]]).create()
@@ -598,6 +617,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Unit.many(name="people").count(), 1)
 
         self.assertEqual(Unit.many(like="p").count(), 1)
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.count)
 
     def test_retrieve_query(self):
 
@@ -767,6 +789,21 @@ class TestSource(unittest.TestCase):
         model = Net.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.retrieve)
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        mary = Sis("Mary", bro_id=[tom.id, dick.id]).create()
+        harry = Bro("Harry", sis_id=[dot.id, nikki.id]).create()
+
+        self.assertEqual(mary.bro.id, [dick.id, tom.id])
+        self.assertEqual(harry.sis.id, [dot.id, nikki.id])
+
     def test_titles_query(self):
 
         self.assertEqual(self.source.titles_query(None).action, "TITLES")
@@ -808,6 +845,9 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.many().titles().titles, {
             1: ["1.2.3.4"]
         })
+
+        sis = Sis.many(bro_id=[2, 3, 4])
+        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.titles)
 
     def test_update_query(self):
 
@@ -855,6 +895,31 @@ class TestSource(unittest.TestCase):
         self.assertEqual(Net.one(ping.id).ip.compressed, "13.14.15.16")
         self.assertEqual(Net.one(pong.id).ip.compressed, "5.6.7.8")
 
+        Sis("Sally").create()
+        bro = Bro("Harry").create()
+        Sis.many(name="Sally").set(bro_id=[bro.id]).update()
+
+        sis = Sis.one(name="Sally")
+
+        self.assertEqual(Bro.one(name="Harry").sis.id, [sis.id])
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        tom.sis_id = [nikki.id, dot.id]
+        dot.bro_id = [tom.id, dick.id]
+
+        tom.update()
+        dot.update()
+
+        self.assertEqual(Bro.one(name="Tom").sis.id, [dot.id, nikki.id])
+        self.assertEqual(Sis.one(name="Dot").bro.id, [dick.id, tom.id])
+        self.assertEqual(Bro.one(name="Dick").sis.id, [dot.id])
+        self.assertEqual(Sis.one(name="Nikki").bro.id, [tom.id])
+
     def test_delete_query(self):
 
         self.assertEqual(self.source.delete_query(None).action, "DELETE")
@@ -889,6 +954,32 @@ class TestSource(unittest.TestCase):
 
         plain = Plain().create()
         self.assertRaisesRegex(relations.ModelError, "plain: nothing to delete from", plain.delete)
+
+        Sis("Sally").create()
+        bro = Bro("Harry").create()
+        Sis.many(name="Sally").set(bro_id=[bro.id]).update()
+
+        Sis.one(name="Sally").delete()
+
+        self.assertEqual(Bro.one(name="Harry").sis.id, [])
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        tom.sis_id = [nikki.id, dot.id]
+        dot.bro_id = [tom.id, dick.id]
+
+        tom.update()
+        dot.update()
+
+        dick.delete()
+        nikki.delete()
+
+        self.assertEqual(Bro.one(name="Tom").sis.id, [dot.id])
+        self.assertEqual(Sis.one(name="Dot").bro.id, [tom.id])
 
     def test_definition(self):
 

@@ -421,6 +421,12 @@ class TestField(unittest.TestCase):
         field.write(values)
         self.assertEqual(values, {"a":{"b": [{"1": "yep"}]}})
 
+        field = relations.Field(str, store=False)
+        field.value = "yep"
+        values = {}
+        field.write(values)
+        self.assertEqual(values, {})
+
     def test_create(self):
 
         field = relations.Field(int, store="_id")
@@ -703,3 +709,27 @@ class TestField(unittest.TestCase):
 
         field.inject = True
         self.assertRaisesRegex(relations.FieldError, "no mass update with inject", field.mass, {})
+
+    def test_tie(self):
+
+        field = relations.Field(int, name="tie", tied=True)
+        values = {}
+        field.tie(values)
+        self.assertEqual(values, {})
+
+        field.value = 1
+        field.changed = True
+        values = {}
+        field.tie(values)
+        self.assertEqual(values, {'tie': 1})
+
+        values = {}
+        field.changed = False
+        field.tie(values)
+        self.assertEqual(values, {})
+
+        field.changed = True
+        field.tied = False
+        values = {}
+        field.tie(values)
+        self.assertEqual(values, {})

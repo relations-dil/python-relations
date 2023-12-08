@@ -2,7 +2,7 @@
 relations module for storing sources
 """
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,unused-argument,no-self-use,unused-variable
 
 import relations
 
@@ -136,10 +136,77 @@ class Source:
         Create query
         """
 
+    @staticmethod
+    def has_ties(model, data=None):
+        """
+        Checks for need to create records for tie tables
+        """
+
+        if data is None:
+            data = model
+
+        for relation in model.SISTERS.values():
+            if relation.brother_sister_ref in data and data[relation.brother_sister_ref]:
+                return True
+
+        for relation in model.BROTHERS.values():
+            if relation.sister_brother_ref in data and data[relation.sister_brother_ref]:
+                return True
+
+        return False
+
+    @staticmethod
+    def create_ties(model, data=None, ids=None): # pylint: disable=too-many-branches
+        """
+        Creates records for tie tables
+        """
+
+        if data is None:
+            data = model
+
+        if ids is None:
+            ids = data[model._id]
+
+        if not isinstance(ids, list):
+            ids = [ids]
+
+        for relation in model.SISTERS.values():
+
+            if relation.brother_sister_ref not in data:
+                continue
+
+            values = []
+            for id in ids:
+                for value in data[relation.brother_sister_ref]:
+                    values.append({
+                        relation.tie_brother_ref: id,
+                        relation.tie_sister_ref: value
+                    })
+            if values:
+                relation.Tie(values).create()
+
+        for relation in model.BROTHERS.values():
+
+            if relation.sister_brother_ref not in data:
+                continue
+
+            values = []
+            for id in ids:
+                for value in data[relation.sister_brother_ref]:
+                    values.append({
+                        relation.tie_sister_ref: id,
+                        relation.tie_brother_ref: value
+                    })
+            if values:
+                relation.Tie(values).create()
+
     def create(self, model, *args, **kwargs):
         """
         create the model
         """
+
+        if model._bulk and self.has_ties(model):
+            raise relations.model.ModelError(model, "cannot create ties in bulk mode")
 
     def retrieve_field(self, field, *args, **kwargs):
         """
@@ -153,6 +220,38 @@ class Source:
         for field in record._order:
             self.retrieve_field(field, *args, **kwargs)
 
+    @staticmethod
+    def filter_ties(model):
+        """
+        Checks for need to filter by tie tables
+        """
+
+        for sister_id, relation in model.SISTERS.items():
+            if model._record._names[relation.brother_sister_ref].criteria:
+                return True
+
+        for brother_id, relation in model.BROTHERS.items():
+            if model._record._names[relation.sister_brother_ref].criteria:
+                return True
+
+        return False
+
+    @staticmethod
+    def retrieve_ties(model):
+        """
+        Retrieves the tie records
+        """
+
+        for retrieve in model._each():
+
+            for relation in model.SISTERS.values():
+                query = {relation.tie_brother_ref: retrieve[relation.brother_id]}
+                retrieve[relation.brother_sister_ref] = relation.Tie.many(**query)[relation.tie_sister_ref]
+
+            for relation in model.BROTHERS.values():
+                query = {relation.tie_sister_ref: retrieve[relation.brother_id]}
+                retrieve[relation.sister_brother_ref] = relation.Tie.many(**query)[relation.tie_brother_ref]
+
     def count_query(self, model, *args, **kwargs):
         """
         Count query
@@ -162,6 +261,9 @@ class Source:
         """
         retrieve the model
         """
+
+        if self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
 
     def retrieve_query(self, model, *args, **kwargs):
         """
@@ -173,6 +275,9 @@ class Source:
         retrieve the model
         """
 
+        if self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
+
     def titles_query(self, model, *args, **kwargs):
         """
         titles query
@@ -182,6 +287,9 @@ class Source:
         """
         titles of the model
         """
+
+        if model._action == "retrieve" and self.filter_ties(model):
+            raise relations.model.ModelError(model, "cannot filter ties")
 
     def update_field(self, field, *args, **kwargs):
         """
@@ -233,6 +341,24 @@ class Source:
         """
         delete query
         """
+
+    @staticmethod
+    def delete_ties(model, ids=None):
+        """
+        Creates records for tie tables
+        """
+
+        if ids is None:
+            ids = model[model._id]
+
+        if not isinstance(ids, list):
+            ids = [ids]
+
+        for relation in model.SISTERS.values():
+            relation.Tie.many(**{f"{relation.tie_brother_ref}__in": ids}).delete()
+
+        for relation in model.BROTHERS.values():
+            relation.Tie.many(**{f"{relation.tie_sister_ref}__in": ids}).delete()
 
     def delete(self, model, *args, **kwargs):
         """
