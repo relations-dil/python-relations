@@ -156,7 +156,7 @@ class Source:
         return False
 
     @staticmethod
-    def create_ties(model, data=None, ids=None):
+    def create_ties(model, data=None, ids=None): # pylint: disable=too-many-branches
         """
         Creates records for tie tables
         """
