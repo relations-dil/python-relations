@@ -267,23 +267,34 @@ class TestSource(unittest.TestCase):
         self.source.count(sis)
 
         sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.count, sis)
+        self.source.count(sis)
 
     def test_retrieve_query(self):
 
         self.source.retrieve_query(None)
 
-    def test_filter_ties(self):
+    def test_collate_ties(self):
 
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        Sis("Sally", bro_id=[tom.id, dick.id]).create()
+
+        # criteria cleared after collation
+        sis = Sis.many(bro_id=[tom.id])
+        self.assertTrue(sis._record._names["bro_id"].criteria)
+        self.source.collate_ties(sis)
+        self.assertFalse(sis._record._names["bro_id"].criteria)
+
+        bro = Bro.many(sis_id=[1])
+        self.assertTrue(bro._record._names["sis_id"].criteria)
+        self.source.collate_ties(bro)
+        self.assertFalse(bro._record._names["sis_id"].criteria)
+
+        # no criteria - nothing changes
         sis = Sis.many()
-        self.assertFalse(self.source.filter_ties(sis))
-        sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertTrue(self.source.filter_ties(sis))
-
-        bro = Bro.many()
-        self.assertFalse(self.source.filter_ties(bro))
-        bro = Bro.many(sis_id=[5, 6, 7])
-        self.assertTrue(self.source.filter_ties(bro))
+        self.source.collate_ties(sis)
+        self.assertFalse(sis._record._names["id"].criteria)
 
     def test_retrieve_ties(self):
 
@@ -309,7 +320,7 @@ class TestSource(unittest.TestCase):
         self.source.retrieve(sis)
 
         sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.retrieve, sis)
+        self.source.retrieve(sis)
 
     def test_titles_query(self):
 
@@ -321,7 +332,7 @@ class TestSource(unittest.TestCase):
         self.source.titles(sis)
 
         sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", self.source.titles, sis)
+        self.source.titles(sis)
 
     def test_update_field(self):
 
@@ -354,6 +365,12 @@ class TestSource(unittest.TestCase):
     def test_update_query(self):
 
         self.source.update_query(None)
+
+    def test_update(self):
+
+        sis = Sis("Sally").create()
+        sis.name = "Sue"
+        self.source.update(sis)
 
     def test_delete_field(self):
 

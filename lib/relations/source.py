@@ -221,20 +221,83 @@ class Source:
             self.retrieve_field(field, *args, **kwargs)
 
     @staticmethod
-    def filter_ties(model):
+    def tie_ids(Tie, query_ref, result_ref, operator, values):
         """
-        Checks for need to filter by tie tables
+        The set of model ids matching a single tie-field set operator (has/any/all),
+        resolved through the tie table.
         """
 
-        for sister_id, relation in model.SISTERS.items():
-            if model._record._names[relation.brother_sister_ref].criteria:
-                return True
+        values = set(values if isinstance(values, (list, set, tuple)) else [values])
 
-        for brother_id, relation in model.BROTHERS.items():
-            if model._record._names[relation.sister_brother_ref].criteria:
-                return True
+        ties = Tie.many(**{f"{query_ref}__in": list(values)}).retrieve()
 
-        return False
+        # "all" needs every requested value present, so group by the model side and
+        # require the distinct match count to equal the (de-duped) request size
+        if operator == "all":
+            matched = {}
+            for result, query in zip(ties[result_ref], ties[query_ref]):
+                matched.setdefault(result, set()).add(query)
+            return {result for result, queries in matched.items() if len(queries) == len(values)}
+
+        # has/any/eq: tied to at least one of the requested values
+        return set(ties[result_ref])
+
+    @staticmethod
+    def collate_ties(model):
+        """
+        Resolves tie-field set criteria (has/any/all and their not_ variants) into
+        id__in / id__not_in filters on the model, by walking the tie table.
+        """
+
+        # No ties here, nothing to collate
+        if not model.SISTERS and not model.BROTHERS:
+            return
+
+        include = None
+        exclude = set()
+        has_criteria = False
+
+        # Each side: the tie field on the model, the tie ref to query by (the sibling),
+        # and the tie ref to collect (the model itself)
+        sides = [
+            (relation, relation.brother_sister_ref, relation.tie_sister_ref, relation.tie_brother_ref)
+            for relation in model.SISTERS.values()
+        ] + [
+            (relation, relation.sister_brother_ref, relation.tie_brother_ref, relation.tie_sister_ref)
+            for relation in model.BROTHERS.values()
+        ]
+
+        for relation, field_ref, query_ref, result_ref in sides:
+
+            field = model._record._names[field_ref]
+
+            if not field.criteria:
+                continue
+
+            has_criteria = True
+
+            for criterion, values in field.criteria.items():
+
+                negate = criterion.startswith("not_")
+                operator = criterion.split("not_", 1)[-1] if negate else criterion
+
+                matched = Source.tie_ids(relation.Tie, query_ref, result_ref, operator, values)
+
+                if negate:
+                    exclude |= matched
+                else:
+                    include = matched if include is None else (include & matched)
+
+            field.criteria = {}
+
+        if not has_criteria:
+            return
+
+        if include is not None:
+            model._record.filter(f"{model._id}__in", list(include))
+
+        if exclude:
+            model._record.filter(f"{model._id}__not_in", list(exclude))
 
     @staticmethod
     def retrieve_ties(model):
@@ -249,7 +312,7 @@ class Source:
                 retrieve[relation.brother_sister_ref] = relation.Tie.many(**query)[relation.tie_sister_ref]
 
             for relation in model.BROTHERS.values():
-                query = {relation.tie_sister_ref: retrieve[relation.brother_id]}
+                query = {relation.tie_sister_ref: retrieve[relation.sister_id]}
                 retrieve[relation.sister_brother_ref] = relation.Tie.many(**query)[relation.tie_brother_ref]
 
     def count_query(self, model, *args, **kwargs):
@@ -262,8 +325,7 @@ class Source:
         retrieve the model
         """
 
-        if self.filter_ties(model):
-            raise relations.model.ModelError(model, "cannot filter ties")
+        self.collate_ties(model)
 
     def retrieve_query(self, model, *args, **kwargs):
         """
@@ -275,8 +337,7 @@ class Source:
         retrieve the model
         """
 
-        if self.filter_ties(model):
-            raise relations.model.ModelError(model, "cannot filter ties")
+        self.collate_ties(model)
 
     def titles_query(self, model, *args, **kwargs):
         """
@@ -288,8 +349,8 @@ class Source:
         titles of the model
         """
 
-        if model._action == "retrieve" and self.filter_ties(model):
-            raise relations.model.ModelError(model, "cannot filter ties")
+        if model._action == "retrieve":
+            self.collate_ties(model)
 
     def update_field(self, field, *args, **kwargs):
         """

@@ -618,8 +618,12 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(Unit.many(like="p").count(), 1)
 
-        sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.count)
+        tom = Bro("Tom").create()
+        Sis("Sally", bro_id=[tom.id]).create()
+        Sis("Mary").create()
+
+        self.assertEqual(Sis.many(bro_id=[tom.id]).count(), 1)
+        self.assertEqual(Sis.many(bro_id=[999]).count(), 0)
 
     def test_retrieve_query(self):
 
@@ -789,9 +793,6 @@ class TestSource(unittest.TestCase):
         model = Net.many(subnet__max_value=int(ipaddress.IPv4Address('1.2.3.0')))
         self.assertEqual(len(model), 0)
 
-        sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.retrieve)
-
         tom = Bro("Tom").create()
         dick = Bro("Dick").create()
 
@@ -803,6 +804,60 @@ class TestSource(unittest.TestCase):
 
         self.assertEqual(mary.bro.id, [dick.id, tom.id])
         self.assertEqual(harry.sis.id, [dot.id, nikki.id])
+
+        self.assertEqual(len(Sis.many(bro_id=[tom.id])), 1)
+        self.assertEqual(Sis.many(bro_id=[tom.id])[0].name, "Mary")
+
+        self.assertEqual(len(Bro.many(sis_id=[dot.id])), 1)
+        self.assertEqual(Bro.many(sis_id=[dot.id])[0].name, "Harry")
+
+        self.assertEqual(len(Sis.many(bro_id=[999])), 0)
+
+    def test_retrieve_ties_query(self):
+
+        # The tie field is a set, so it's queried with set operators (has/any/all),
+        # resolved through the tie table. A sister has many brothers, so "any of" and
+        # "all of" are genuinely different queries.
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+        harry = Bro("Harry").create()
+
+        Sis("Mary", bro_id=[tom.id, dick.id]).create()   # tied to Tom, Dick
+        Sis("Sue", bro_id=[tom.id]).create()             # tied to Tom
+        Sis("Ann", bro_id=[dick.id, harry.id]).create()  # tied to Dick, Harry
+
+        # has: tied to that one brother
+        self.assertEqual(sorted(Sis.many(bro_id__has=tom.id).name), ["Mary", "Sue"])
+        self.assertEqual(Sis.many(bro_id__has=harry.id).name, ["Ann"])
+        self.assertEqual(len(Sis.many(bro_id__has=999)), 0)
+
+        # any: tied to at least one of them
+        self.assertEqual(sorted(Sis.many(bro_id__any=[tom.id, harry.id]).name), ["Ann", "Mary", "Sue"])
+        self.assertEqual(Sis.many(bro_id__any=[harry.id]).name, ["Ann"])
+        self.assertEqual(len(Sis.many(bro_id__any=[999])), 0)
+
+        # all: tied to every one of them
+        self.assertEqual(Sis.many(bro_id__all=[tom.id, dick.id]).name, ["Mary"])
+        self.assertEqual(sorted(Sis.many(bro_id__all=[dick.id]).name), ["Ann", "Mary"])
+        self.assertEqual(len(Sis.many(bro_id__all=[tom.id, harry.id])), 0)
+
+        # all must de-dupe the requested list (a repeated value can't change the result)
+        self.assertEqual(sorted(Sis.many(bro_id__all=[dick.id, dick.id]).name), ["Ann", "Mary"])
+
+        # negation
+        self.assertEqual(Sis.many(bro_id__not_has=tom.id).name, ["Ann"])
+        self.assertEqual(sorted(Sis.many(bro_id__not_any=[harry.id]).name), ["Mary", "Sue"])
+
+        # symmetric: brothers queried by their tied sisters
+        jane = Sis("Jane").create()
+        joan = Sis("Joan").create()
+        Bro("Bob", sis_id=[jane.id, joan.id]).create()   # tied to Jane, Joan
+        Bro("Bill", sis_id=[jane.id]).create()           # tied to Jane
+
+        self.assertEqual(sorted(Bro.many(sis_id__has=jane.id).name), ["Bill", "Bob"])
+        self.assertEqual(Bro.many(sis_id__all=[jane.id, joan.id]).name, ["Bob"])
+        self.assertEqual(Bro.many(sis_id__any=[joan.id]).name, ["Bob"])
 
     def test_titles_query(self):
 
@@ -846,8 +901,10 @@ class TestSource(unittest.TestCase):
             1: ["1.2.3.4"]
         })
 
-        sis = Sis.many(bro_id=[2, 3, 4])
-        self.assertRaisesRegex(relations.ModelError, "cannot filter ties", sis.titles)
+        tom = Bro("Tom").create()
+        Sis("Sally", bro_id=[tom.id]).create()
+
+        self.assertEqual(len(Sis.many(bro_id=[tom.id]).titles().ids), 1)
 
     def test_update_query(self):
 
