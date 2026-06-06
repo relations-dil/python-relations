@@ -2,7 +2,7 @@
 relations module for storing sources
 """
 
-# pylint: disable=too-many-public-methods,unused-argument,no-self-use,unused-variable
+# pylint: disable=too-many-public-methods,unused-argument,no-self-use,unused-variable,too-many-branches
 
 import relations
 
@@ -156,7 +156,7 @@ class Source:
         return False
 
     @staticmethod
-    def create_ties(model, data=None, ids=None): # pylint: disable=too-many-branches
+    def create_ties(model, data=None, ids=None):
         """
         Creates records for tie tables
         """
