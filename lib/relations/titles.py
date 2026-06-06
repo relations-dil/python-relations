@@ -30,7 +30,7 @@ class Titles:
         for field in self.fields:
             relation = model._ancestor(field)
             if relation is not None:
-                self.parents[field] = relation.Parent.many(**{f"{relation.parent_field}__in": model[field]}).titles()
+                self.parents[field] = relation.Parent.many(**{f"{relation.parent_id}__in": model[field]}).titles()
                 self.format.extend(self.parents[field].format)
             elif field in model._fields._names and model._fields._names[field].format is not None:
                 self.format.extend(model._fields._names[field].format)

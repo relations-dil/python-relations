@@ -28,6 +28,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
     name = None       # Name used in models
     store = None      # Name to use when reading and writing
+    tied = False       # Whether this is used for tie
 
     attr = None       # Attributes to store in JSON
     init = None       # Attributes to create with JSON
@@ -428,7 +429,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         value = self.export()
         if self.inject:
             overscore.set(values, self.inject.split('__', 1)[-1], value)
-        else:
+        elif self.store:
             values[self.store] = value
 
     def create(self, values):
@@ -543,7 +544,7 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         if self.inject:
             self.value = overscore.get(values, self.inject.split('__', 1)[-1])
-        else:
+        elif self.store:
             self.value = values.get(self.store)
 
         self.original = self.export()
@@ -595,3 +596,14 @@ class Field: # pylint: disable=too-many-instance-attributes
                 raise FieldError(self, "no mass update with inject")
 
             self.write(values)
+
+    def tie(self, values):
+        """
+        Writes values to dict for a mass update for tie, whether any field has been set
+        """
+
+        if not self.tied:
+            return
+
+        if self.changed:
+            values[self.name] = self.export()

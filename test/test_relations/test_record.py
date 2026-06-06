@@ -298,3 +298,13 @@ class TestRecord(unittest.TestCase):
         self.things.changed = False
 
         self.assertRaisesRegex(relations.FieldError, "no mass update with inject", self.record.mass, {})
+
+    def test_tie(self):
+
+        self.tie = relations.Field(int, name="tie", tied=True, changed=True, value=1)
+        self.untie = relations.Field(int, name="untie", tied=False, changed=True)
+
+        self.record.append(self.tie)
+        self.record.append(self.untie)
+
+        self.assertEqual(self.record.tie({}), {'tie': 1})

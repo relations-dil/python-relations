@@ -5,15 +5,28 @@ import sys
 
 import relations
 
-class PeanutButter(relations.Model):
+class Base(relations.Model):
     pass
 
-class Jelly(relations.Model):
-    pass
+class PeanutButter(Base):
+    id = int
+    jelly_id = set
 
-class Time(Jelly):
-    pass
+class Jelly(Base):
+    id = int
+    peanut_butter_id = set
 
+class PeanutButterJelly(Base):
+    peanut_butter_id = int
+    jelly_id = set
+
+relations.ManyToMany(PeanutButter, Jelly, PeanutButterJelly)
+
+class Special(Base):
+    id = int
+
+class Time(Special):
+    id = int
 
 class TestRelations(unittest.TestCase):
 
@@ -49,15 +62,16 @@ class TestRelations(unittest.TestCase):
         # returns with class
 
         module = sys.modules[__name__]
-        models = relations.models(module)
-        self.assertEqual(len(models), 3)
+        models = relations.models(module, from_base=Base)
+        self.assertEqual(len(models), 5)
         self.assertIn(PeanutButter, models)
         self.assertIn(Jelly, models)
-        self.assertIn(Time, models)
+        self.assertIn(PeanutButterJelly, models)
+        self.assertIn(Special, models)
 
         # from base
 
-        models = relations.models(module, from_base=Jelly)
+        models = relations.models(module, from_base=Special)
         self.assertEqual(len(models), 1)
         self.assertNotIn(PeanutButter, models)
         self.assertNotIn(Jelly, models)

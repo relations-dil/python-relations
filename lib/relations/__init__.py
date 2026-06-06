@@ -10,7 +10,7 @@ from relations.field import Field, FieldError
 from relations.titles import Titles
 from relations.record import Record, RecordError
 from relations.model import Model, ModelIdentity, ModelError
-from relations.relation import Relation, OneTo, OneToOne, OneToMany
+from relations.relation import Relation, OneTo, OneToOne, OneToMany, ManyToMany
 from relations.migrations import Migrations, MigrationsError
 
 INDEX = re.compile(r'^-?\d+$')
@@ -33,20 +33,18 @@ def source(name):
     return SOURCES.get(name)
 
 
-def models(module, from_base=None):
+def models(module, from_base=Model):
     """
-    Returns all models
-    Args:
-        module (str): Python module in which to search.
-        from_base (type, optional): Base class from which to filter children of
+    Returns all models, based on mode
     """
-    from_base = from_base or Model
-    return [
-        m[1]
-        for m in inspect.getmembers(
-            module,
-            lambda model: inspect.isclass(model)
-            and issubclass(model, from_base)
-            and model is not from_base,
-        )
-    ]
+
+    found = []
+
+    for _, model in inspect.getmembers(module):
+
+        if not inspect.isclass(model) or not issubclass(model, from_base) or model is from_base:
+            continue
+
+        found.append(model)
+
+    return found

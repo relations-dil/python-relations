@@ -176,7 +176,7 @@ class MockSource(relations.Source):
 
             if self.transaction is None:
 
-                self.transaction = (self.ids, self.data, self.unique)
+                self.transaction = copy.deepcopy((self.ids, self.data, self.unique))
 
                 try:
 
@@ -220,6 +220,8 @@ class MockSource(relations.Source):
         Executes the create
         """
 
+        super().create(model)
+
         for creating in model._each("create"):
 
             values = creating._record.create({})
@@ -236,9 +238,12 @@ class MockSource(relations.Source):
 
             if not model._bulk:
 
-                for parent_child in creating.CHILDREN:
-                    if creating._children.get(parent_child):
-                        creating._children[parent_child].create()
+                if model._id:
+                    self.create_ties(creating)
+
+                for parent_child_attr in creating.CHILDREN:
+                    if creating._children.get(parent_child_attr):
+                        creating._children[parent_child_attr].create()
 
                 creating._action = "update"
                 creating._record._action = "update"
@@ -261,7 +266,7 @@ class MockSource(relations.Source):
             relation = model._ancestor(field)
             if relation:
                 parent = relation.Parent.many(like=model._like).limit(model._chunk)
-                parents[model._fields._names[field].store] = parent[relation.parent_field]
+                parents[model._fields._names[field].store] = parent[relation.parent_id]
                 model.overflow = model.overflow or parent.overflow
 
         likes = []
@@ -307,6 +312,8 @@ class MockSource(relations.Source):
         Executes the retrieve
         """
 
+        super().count(model)
+
         model._collate()
 
         values = self.model_like(model) if model._like is not None else self.data[model.NAME].values()
@@ -330,6 +337,8 @@ class MockSource(relations.Source):
         """
         Executes the retrieve
         """
+
+        super().retrieve(model)
 
         model._collate()
 
@@ -370,6 +379,8 @@ class MockSource(relations.Source):
             self.model_sort(model)
             self.model_limit(model)
 
+        self.retrieve_ties(model)
+
         return model
 
     def titles_query(self, model):
@@ -383,6 +394,8 @@ class MockSource(relations.Source):
         """
         Creates the titles structure
         """
+
+        super().titles(model)
 
         if model._action == "retrieve":
             self.retrieve(model)
@@ -414,12 +427,17 @@ class MockSource(relations.Source):
         if model._action == "retrieve" and model._record._action == "update":
 
             values = model._record.mass({})
+            ties = model._record.tie({})
 
             for id, data in self.data[model.NAME].items():
+
                 if model._record.retrieve(data):
                     updated += 1
-                    self.uniques(model, {**data, **values}, id)
+                    updating = {**data, **values}
+                    self.uniques(model, updating, id)
                     data.update(self.extract(model, copy.deepcopy(values)))
+                    self.delete_ties(model, id)
+                    self.create_ties(model, {**updating, **ties})
 
         elif model._id:
 
@@ -428,11 +446,14 @@ class MockSource(relations.Source):
                 self.uniques(model, data, updating[model._id])
                 self.data[model.NAME][updating[model._id]].update(data)
 
+                self.delete_ties(updating)
+                self.create_ties(updating)
+
                 updated += 1
 
-                for parent_child in updating.CHILDREN:
-                    if updating._children.get(parent_child):
-                        updating._children[parent_child].create().update()
+                for parent_child_attr in updating.CHILDREN:
+                    if updating._children.get(parent_child_attr):
+                        updating._children[parent_child_attr].create().update()
 
         else:
 
@@ -447,6 +468,7 @@ class MockSource(relations.Source):
 
         return self.DELETE("DELETE")
 
+    @rollback
     def delete(self, model):
         """
         Executes the delete
@@ -478,6 +500,8 @@ class MockSource(relations.Source):
 
             for unique in model._unique:
                 del self.unique[model.NAME][unique][id]
+
+            self.delete_ties(model, id)
 
         return len(ids)
 

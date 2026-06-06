@@ -125,8 +125,8 @@ class Component(ModelTest):
     container_id = int
     contained_id = int
 
-relations.OneToMany(Meta, Component, child_field="container_id", parent_child="components", child_parent="container")
-relations.OneToOne(Meta, Component, child_field="contained_id", parent_child="component", child_parent="contained")
+relations.OneToMany(Meta, Component, child_parent_ref="container_id", parent_child_attr="components", child_parent_attr="container")
+relations.OneToOne(Meta, Component, child_parent_ref="contained_id", parent_child_attr="component", child_parent_attr="contained")
 
 class Net(ModelTest):
 
@@ -140,6 +140,25 @@ class Net(ModelTest):
 
     TITLES = "ip__address"
     INDEX = "ip__address"
+
+class Sis(ModelTest):
+    id = int
+    name = str
+    bro_id = set
+
+class Bro(ModelTest):
+    id = int
+    name = str
+    sis_id = set
+
+class SisBro(ModelTest):
+    bro_id = int
+    sis_id = int
+
+    ID = None
+    UNIQUE = ['bro_id', 'sis_id']
+
+relations.ManyToMany(Sis, Bro, SisBro)
 
 class TestModelIdentity(unittest.TestCase):
 
@@ -264,6 +283,13 @@ class TestModelIdentity(unittest.TestCase):
         Inject.push = str,{"inject": "name__value"}
 
         self.assertRaisesRegex(relations.FieldError, "field name not list or dict from inject name__value", Inject.thy)
+
+        relations.unittest.MockSource("TestModel")
+
+        self.assertFalse(Sis.thy()._fields._names["bro_id"].store)
+        self.assertTrue(Sis.thy()._fields._names["bro_id"].tied)
+        self.assertFalse(Bro.thy()._fields._names["sis_id"].store)
+        self.assertTrue(Bro.thy()._fields._names["sis_id"].tied)
 
     def test__field_name(self):
 
@@ -521,6 +547,16 @@ class TestModel(unittest.TestCase):
         self.assertEqual(models._action, "retrieve")
         self.assertEqual(models._related, {"unit_id": 1})
 
+        # sibling
+
+        models = Test(_sibling={"id__in": [1]})
+
+        self.assertEqual(models._record._names["id"].criteria["in"], [1])
+        self.assertEqual(models._record._action, "retrieve")
+
+        self.assertEqual(models._mode, "many")
+        self.assertEqual(models._action, "retrieve")
+
         # retrieve
 
         model = Test(1, _action="retrieve", _mode="one")
@@ -664,11 +700,19 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(net.ip__address, "1.2.3.4")
 
-        def get():
+        unit = Unit.many()
+
+        def relative():
+
+            unit.test
+
+        self.assertRaisesRegex(AttributeError, "cannot access 'test' in many mode", relative)
+
+        def nada():
 
             test.fail
 
-        self.assertRaisesRegex(AttributeError, "has no attribute 'fail'", get)
+        self.assertRaisesRegex(AttributeError, "has no attribute 'fail'", nada)
 
     def test___getattribute__(self):
 
@@ -1016,7 +1060,7 @@ class TestModel(unittest.TestCase):
             pass
 
         relation = unittest.mock.MagicMock()
-        relation.child_parent = "unittest"
+        relation.child_parent_attr = "unittest"
 
         TestUnit._parent(relation)
 
@@ -1028,7 +1072,7 @@ class TestModel(unittest.TestCase):
             pass
 
         relation = unittest.mock.MagicMock()
-        relation.parent_child = "unittest"
+        relation.parent_child_attr = "unittest"
 
         TestUnit._child(relation)
 
@@ -1040,7 +1084,7 @@ class TestModel(unittest.TestCase):
             pass
 
         relation = unittest.mock.MagicMock()
-        relation.brother_sister = "unittest"
+        relation.brother_sister_attr = "unittest"
 
         TestUnit._sister(relation)
 
@@ -1052,7 +1096,7 @@ class TestModel(unittest.TestCase):
             pass
 
         relation = unittest.mock.MagicMock()
-        relation.sister_brother = "unittest"
+        relation.sister_brother_attr = "unittest"
 
         TestUnit._brother(relation)
 
@@ -1063,6 +1107,14 @@ class TestModel(unittest.TestCase):
         Unit("ya").create()
 
         test = Test()
+
+        # bulk
+
+        test._bulk = True
+
+        self.assertRaisesRegex(relations.ModelError, "test: cannot access relatives in bulk mode", test._relate, None)
+
+        test._bulk = False
 
         # parents
 
@@ -1186,6 +1238,18 @@ class TestModel(unittest.TestCase):
         self.assertEqual(inside.component.container_id, outside.id)
         self.assertEqual(inside.component.container.id, outside.id)
         self.assertEqual(inside.component.container.name, "outside")
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        dot = Sis("Dot").create()
+        nikki = Sis("Nikki").create()
+
+        mary = Sis("Mary", bro_id=[tom.id, dick.id]).create()
+        harry = Bro("Harry", sis_id=[dot.id, nikki.id]).create()
+
+        self.assertEqual(mary.bro.id, [dick.id, tom.id])
+        self.assertEqual(harry.sis.id, [dot.id, nikki.id])
 
     def test__collate(self):
 
