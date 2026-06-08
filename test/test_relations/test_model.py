@@ -1423,6 +1423,13 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(test._like, "fuzzy")
 
+    def test__tie(self):
+
+        # sibling-attribute criteria are grouped per relation accessor
+        sis = Sis.many(bro__name="Tom", bro__id__gt=5)
+
+        self.assertEqual(sis._ties, {"bro": {"name": "Tom", "id__gt": 5}})
+
     def test_bulk(self):
 
         models = UnitTest.bulk(4)

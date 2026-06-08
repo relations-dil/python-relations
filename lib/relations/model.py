@@ -415,6 +415,7 @@ class Model(ModelIdentity):
         self._children = {}
         self._sisters = {}
         self._brothers = {}
+        self._ties = {}
         self._related = {}
 
         # Making things and explicit, we're going to derive a lot defaults from
@@ -813,6 +814,15 @@ class Model(ModelIdentity):
 
         return None
 
+    def _tie(self, name, remainder, value):
+        """
+        Captures a many-to-many sibling-attribute filter (e.g. bro__name="Tom"). The sibling
+        criteria are grouped per relation (so bro__name="Tom", bro__id__gt=5 filter the same
+        tied brother) and resolved against the tie table by the source's collate_ties.
+        """
+
+        self._ties.setdefault(name, {})[remainder] = value
+
     def _collate(self):
         """
         Executes relatives criteria and adds to our own
@@ -942,12 +952,18 @@ class Model(ModelIdentity):
 
                 pieces = name.split('__', 1)
 
-                relation = self._relate(pieces[0])
+                if len(pieces) == 2 and (pieces[0] in self.SISTERS or pieces[0] in self.BROTHERS):
 
-                if relation is not None:
-                    relation.filter(**{pieces[1]: value})
+                    self._tie(pieces[0], pieces[1], value)
+
                 else:
-                    self._record.filter(name, value)
+
+                    relation = self._relate(pieces[0])
+
+                    if relation is not None:
+                        relation.filter(**{pieces[1]: value})
+                    else:
+                        self._record.filter(name, value)
 
         return self
 

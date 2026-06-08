@@ -243,10 +243,35 @@ class Source:
         return set(ties[result_ref])
 
     @staticmethod
-    def collate_ties(model):
+    def attr_ids(relation, side, criteria):
+        """
+        The set of model ids tied to a sibling matching the given field criteria
+        (M2M attribute filtering, e.g. bro__name="Tom"). Resolves the sibling criteria to
+        sibling ids, then walks the tie table to collect the tied model ids. Existence
+        semantics: a model matches if it is tied to any sibling satisfying the criteria.
+        """
+
+        if side == "sister":
+            Sibling, sibling_id = relation.Sister, relation.sister_id
+            query_ref, result_ref = relation.tie_sister_ref, relation.tie_brother_ref
+        else:
+            Sibling, sibling_id = relation.Brother, relation.brother_id
+            query_ref, result_ref = relation.tie_brother_ref, relation.tie_sister_ref
+
+        sibling_ids = Sibling.many(**criteria).retrieve()[sibling_id]
+
+        if not sibling_ids:
+            return set()
+
+        return Source.tie_ids(relation.Tie, query_ref, result_ref, "any", sibling_ids)
+
+    @staticmethod
+    def collate_ties(model): # pylint: disable=too-many-locals
         """
         Resolves tie-field set criteria (has/any/all and their not_ variants) into
-        id__in / id__not_in filters on the model, by walking the tie table.
+        id__in / id__not_in filters on the model, by walking the tie table. Handles both
+        tie-id criteria (bro_id__has=...) and sibling-attribute criteria (bro__name=...,
+        captured on model._ties).
         """
 
         # No ties here, nothing to collate
@@ -289,6 +314,21 @@ class Source:
                     include = matched if include is None else (include & matched)
 
             field.criteria = {}
+
+        # Sibling-attribute criteria (bro__name=...): resolve each relation's grouped sibling
+        # criteria to sibling ids, then collect the tied model ids through the tie table.
+        for name, criteria in model._ties.items():
+
+            has_criteria = True
+
+            relation = model.SISTERS[name] if name in model.SISTERS else model.BROTHERS[name]
+            side = "sister" if name in model.SISTERS else "brother"
+
+            matched = Source.attr_ids(relation, side, criteria)
+
+            include = matched if include is None else (include & matched)
+
+        model._ties = {}
 
         if not has_criteria:
             return

@@ -296,6 +296,32 @@ class TestSource(unittest.TestCase):
         self.source.collate_ties(sis)
         self.assertFalse(sis._record._names["id"].criteria)
 
+        # sibling-attribute criteria captured per relation on _ties, consumed into an id filter
+        sis = Sis.many(bro__name="Tom")
+        self.assertEqual(sis._ties, {"bro": {"name": "Tom"}})
+        self.source.collate_ties(sis)
+        self.assertEqual(sis._ties, {})
+        self.assertEqual(sis._record._names["id"].criteria["in"], [1])
+
+    def test_attr_ids(self):
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        Sis("Mary", bro_id=[tom.id, dick.id]).create()  # id 1, tied to Tom, Dick
+        Sis("Sue", bro_id=[tom.id]).create()            # id 2, tied to Tom
+
+        relation = Sis.BROTHERS["bro"]
+
+        # tied to a brother named Tom
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Tom"}), {1, 2})
+        # tied to a brother whose name is any of these (field in)
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name__in": ["Dick"]}), {1})
+        # multiple criteria filter the same sibling (a brother named Tom with Dick's id: none)
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Tom", "id": dick.id}), set())
+        # no such sibling
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Ghost"}), set())
+
     def test_retrieve_ties(self):
 
         tom = Bro("Tom").create()
