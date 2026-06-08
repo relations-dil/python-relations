@@ -296,6 +296,34 @@ class TestSource(unittest.TestCase):
         self.source.collate_ties(sis)
         self.assertFalse(sis._record._names["id"].criteria)
 
+        # sibling-attribute criteria captured on _ties, consumed into an id filter
+        sis = Sis.many(bro__name="Tom")
+        self.assertTrue(sis._ties)
+        self.source.collate_ties(sis)
+        self.assertFalse(sis._ties)
+        self.assertEqual(sis._record._names["id"].criteria["in"], [1])
+
+    def test_attr_ids(self):
+
+        tom = Bro("Tom").create()
+        dick = Bro("Dick").create()
+
+        Sis("Mary", bro_id=[tom.id, dick.id]).create()  # id 1, tied to Tom, Dick
+        Sis("Sue", bro_id=[tom.id]).create()            # id 2, tied to Tom
+
+        relation = Sis.BROTHERS["bro"]
+
+        # has: tied to a brother named Tom
+        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", "Tom"), {1, 2})
+        # any: tied to a brother whose name is any of these
+        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "any", ["Dick"]), {1})
+        # all: tied to a brother named Tom AND a brother named Dick
+        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "all", ["Tom", "Dick"]), {1})
+        # has with a list OR's the values (tied to a brother named Tom or Dick)
+        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", ["Tom", "Dick"]), {1, 2})
+        # no such sibling
+        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", "Ghost"), set())
+
     def test_retrieve_ties(self):
 
         tom = Bro("Tom").create()

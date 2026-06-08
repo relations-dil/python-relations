@@ -415,6 +415,7 @@ class Model(ModelIdentity):
         self._children = {}
         self._sisters = {}
         self._brothers = {}
+        self._ties = []
         self._related = {}
 
         # Making things and explicit, we're going to derive a lot defaults from
@@ -813,6 +814,41 @@ class Model(ModelIdentity):
 
         return None
 
+    def _tie(self, name, remainder, value):
+        """
+        Captures a many-to-many sibling-attribute filter (e.g. bro__name="Tom") to be
+        resolved against the tie table by the source's collate_ties.
+        """
+
+        relation = self.SISTERS[name] if name in self.SISTERS else self.BROTHERS[name]
+        side = "sister" if name in self.SISTERS else "brother"
+
+        field, operator, negate = self._tie_operator(remainder)
+
+        self._ties.append((relation, side, field, operator, negate, value))
+
+    @staticmethod
+    def _tie_operator(remainder):
+        """
+        Splits a sibling-attribute path into (field path, tie set-operator, negate).
+        A trailing has/any/all (or not_ variant) is the tie operator, but only when a field
+        path precedes it; anything else (including a bare operator with no field) is part of
+        the sibling field predicate and defaults the tie operator to "has".
+
+        The tie set-operator always claims a trailing has/any/all, so a sibling's OWN set or
+        JSON field cannot take a field-level has/any/all directly (bro__tags__has="x" reads
+        as the tie's has over field "tags"). To reach the sibling's field operator, double
+        the suffix: bro__tags__has__has="x" -> field "tags__has", tie operator "has".
+        """
+
+        pieces = remainder.split("__")
+        bare = pieces[-1].split("not_", 1)[-1]
+
+        if len(pieces) > 1 and bare in ("has", "any", "all"):
+            return "__".join(pieces[:-1]), bare, pieces[-1].startswith("not_")
+
+        return remainder, "has", False
+
     def _collate(self):
         """
         Executes relatives criteria and adds to our own
@@ -942,12 +978,18 @@ class Model(ModelIdentity):
 
                 pieces = name.split('__', 1)
 
-                relation = self._relate(pieces[0])
+                if len(pieces) == 2 and (pieces[0] in self.SISTERS or pieces[0] in self.BROTHERS):
 
-                if relation is not None:
-                    relation.filter(**{pieces[1]: value})
+                    self._tie(pieces[0], pieces[1], value)
+
                 else:
-                    self._record.filter(name, value)
+
+                    relation = self._relate(pieces[0])
+
+                    if relation is not None:
+                        relation.filter(**{pieces[1]: value})
+                    else:
+                        self._record.filter(name, value)
 
         return self
 
