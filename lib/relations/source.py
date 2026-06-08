@@ -243,11 +243,12 @@ class Source:
         return set(ties[result_ref])
 
     @staticmethod
-    def attr_ids(relation, side, field, operator, value):
+    def attr_ids(relation, side, criteria):
         """
-        The set of model ids tied to a sibling whose field matches a predicate
-        (M2M attribute filtering, e.g. bro__name="Tom"). Resolves the sibling field
-        predicate to sibling ids, then walks the tie table to collect the tied model ids.
+        The set of model ids tied to a sibling matching the given field criteria
+        (M2M attribute filtering, e.g. bro__name="Tom"). Resolves the sibling criteria to
+        sibling ids, then walks the tie table to collect the tied model ids. Existence
+        semantics: a model matches if it is tied to any sibling satisfying the criteria.
         """
 
         if side == "sister":
@@ -257,33 +258,12 @@ class Source:
             Sibling, sibling_id = relation.Brother, relation.brother_id
             query_ref, result_ref = relation.tie_brother_ref, relation.tie_sister_ref
 
-        def model_ids(predicate):
-            sibling_ids = Sibling.many(**predicate).retrieve()[sibling_id]
-            if not sibling_ids:
-                return set()
-            return Source.tie_ids(relation.Tie, query_ref, result_ref, "any", sibling_ids)
+        sibling_ids = Sibling.many(**criteria).retrieve()[sibling_id]
 
-        # "all": tied to a sibling matching every requested value, each value resolved
-        # independently and intersected (distinct attribute values, not distinct ids)
-        if operator == "all":
-            items = value if isinstance(value, (list, set, tuple)) else [value]
-            matched = None
-            for item in items:
-                ids = model_ids({field: item})
-                matched = ids if matched is None else (matched & ids)
-            return matched if matched is not None else set()
+        if not sibling_ids:
+            return set()
 
-        # has/any: tied to at least one sibling matching the predicate. A list of values
-        # is OR'd — tied to a sibling matching any one of them — by resolving each value as
-        # its own predicate and unioning, so it works for field operators (name__like) and
-        # nested paths (meta__role) too, mirroring tie-id has/any.
-        if isinstance(value, (list, set, tuple)):
-            matched = set()
-            for item in value:
-                matched |= model_ids({field: item})
-            return matched
-
-        return model_ids({field: value})
+        return Source.tie_ids(relation.Tie, query_ref, result_ref, "any", sibling_ids)
 
     @staticmethod
     def collate_ties(model): # pylint: disable=too-many-locals
@@ -335,20 +315,20 @@ class Source:
 
             field.criteria = {}
 
-        # Sibling-attribute criteria (bro__name=...): resolve the sibling field predicate
-        # to sibling ids, then collect the tied model ids through the tie table.
-        for relation, side, field, operator, negate, value in model._ties:
+        # Sibling-attribute criteria (bro__name=...): resolve each relation's grouped sibling
+        # criteria to sibling ids, then collect the tied model ids through the tie table.
+        for name, criteria in model._ties.items():
 
             has_criteria = True
 
-            matched = Source.attr_ids(relation, side, field, operator, value)
+            relation = model.SISTERS[name] if name in model.SISTERS else model.BROTHERS[name]
+            side = "sister" if name in model.SISTERS else "brother"
 
-            if negate:
-                exclude |= matched
-            else:
-                include = matched if include is None else (include & matched)
+            matched = Source.attr_ids(relation, side, criteria)
 
-        model._ties = []
+            include = matched if include is None else (include & matched)
+
+        model._ties = {}
 
         if not has_criteria:
             return

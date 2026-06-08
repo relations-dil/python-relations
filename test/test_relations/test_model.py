@@ -1423,30 +1423,12 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(test._like, "fuzzy")
 
-    def test__tie_operator(self):
-
-        # a trailing has/any/all (or not_ variant) is the tie set-operator
-        self.assertEqual(Sis._tie_operator("name"), ("name", "has", False))
-        self.assertEqual(Sis._tie_operator("name__has"), ("name", "has", False))
-        self.assertEqual(Sis._tie_operator("name__any"), ("name", "any", False))
-        self.assertEqual(Sis._tie_operator("name__all"), ("name", "all", False))
-        self.assertEqual(Sis._tie_operator("name__not_all"), ("name", "all", True))
-        # anything else stays part of the sibling field predicate, defaulting to has
-        self.assertEqual(Sis._tie_operator("name__like"), ("name__like", "has", False))
-        # a bare operator with no preceding field stays a field path (defaults to has)
-        self.assertEqual(Sis._tie_operator("has"), ("has", "has", False))
-
     def test__tie(self):
 
-        sis = Sis.many(bro__name__all=["Tom", "Dick"])
+        # sibling-attribute criteria are grouped per relation accessor
+        sis = Sis.many(bro__name="Tom", bro__id__gt=5)
 
-        relation, side, field, operator, negate, value = sis._ties[0]
-
-        self.assertEqual(side, "brother")
-        self.assertEqual(field, "name")
-        self.assertEqual(operator, "all")
-        self.assertFalse(negate)
-        self.assertEqual(value, ["Tom", "Dick"])
+        self.assertEqual(sis._ties, {"bro": {"name": "Tom", "id__gt": 5}})
 
     def test_bulk(self):
 

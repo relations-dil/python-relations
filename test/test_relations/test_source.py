@@ -296,11 +296,11 @@ class TestSource(unittest.TestCase):
         self.source.collate_ties(sis)
         self.assertFalse(sis._record._names["id"].criteria)
 
-        # sibling-attribute criteria captured on _ties, consumed into an id filter
+        # sibling-attribute criteria captured per relation on _ties, consumed into an id filter
         sis = Sis.many(bro__name="Tom")
-        self.assertTrue(sis._ties)
+        self.assertEqual(sis._ties, {"bro": {"name": "Tom"}})
         self.source.collate_ties(sis)
-        self.assertFalse(sis._ties)
+        self.assertEqual(sis._ties, {})
         self.assertEqual(sis._record._names["id"].criteria["in"], [1])
 
     def test_attr_ids(self):
@@ -313,16 +313,14 @@ class TestSource(unittest.TestCase):
 
         relation = Sis.BROTHERS["bro"]
 
-        # has: tied to a brother named Tom
-        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", "Tom"), {1, 2})
-        # any: tied to a brother whose name is any of these
-        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "any", ["Dick"]), {1})
-        # all: tied to a brother named Tom AND a brother named Dick
-        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "all", ["Tom", "Dick"]), {1})
-        # has with a list OR's the values (tied to a brother named Tom or Dick)
-        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", ["Tom", "Dick"]), {1, 2})
+        # tied to a brother named Tom
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Tom"}), {1, 2})
+        # tied to a brother whose name is any of these (field in)
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name__in": ["Dick"]}), {1})
+        # multiple criteria filter the same sibling (a brother named Tom with Dick's id: none)
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Tom", "id": dick.id}), set())
         # no such sibling
-        self.assertEqual(self.source.attr_ids(relation, "brother", "name", "has", "Ghost"), set())
+        self.assertEqual(self.source.attr_ids(relation, "brother", {"name": "Ghost"}), set())
 
     def test_retrieve_ties(self):
 

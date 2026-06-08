@@ -861,9 +861,9 @@ class TestSource(unittest.TestCase):
 
     def test_retrieve_ties_attr(self):
 
-        # M2M attribute filtering: filter by a tied sibling's field (bro__name) rather
-        # than its id. has/any/all carry over from tie-id Select, now over the sibling's
-        # attribute values, resolved through the tie table.
+        # M2M attribute filtering: filter by a tied sibling's field (bro__name) via the tie
+        # table. Existence semantics — a model matches if it's tied to a sibling matching the
+        # criteria; the sibling's normal field operators (in/like/not_in) all apply.
 
         tom = Bro("Tom").create()
         dick = Bro("Dick").create()
@@ -873,36 +873,22 @@ class TestSource(unittest.TestCase):
         Sis("Sue", bro_id=[tom.id]).create()             # tied to Tom
         Sis("Ann", bro_id=[dick.id, harry.id]).create()  # tied to Dick, Harry
 
-        # has (the default): tied to a brother with that name
+        # tied to a brother with that name
         self.assertEqual(sorted(Sis.many(bro__name="Tom").name), ["Mary", "Sue"])
         self.assertEqual(Sis.many(bro__name="Harry").name, ["Ann"])
         self.assertEqual(len(Sis.many(bro__name="Ghost")), 0)
-        self.assertEqual(sorted(Sis.many(bro__name__has="Tom").name), ["Mary", "Sue"])
 
-        # any: tied to a brother whose name is any of these
-        self.assertEqual(sorted(Sis.many(bro__name__any=["Tom", "Harry"]).name), ["Ann", "Mary", "Sue"])
-        self.assertEqual(Sis.many(bro__name__any=["Harry"]).name, ["Ann"])
-        self.assertEqual(len(Sis.many(bro__name__any=["Ghost"])), 0)
-
-        # all: tied to a brother named X AND a brother named Y (distinct names)
-        self.assertEqual(Sis.many(bro__name__all=["Tom", "Dick"]).name, ["Mary"])
-        self.assertEqual(sorted(Sis.many(bro__name__all=["Dick"]).name), ["Ann", "Mary"])
-        self.assertEqual(len(Sis.many(bro__name__all=["Tom", "Harry"])), 0)
-
-        # sibling field operators carry through (case-insensitive substring like)
+        # field operators land on the sibling: in (any of), like (substring)
+        self.assertEqual(sorted(Sis.many(bro__name__in=["Tom", "Harry"]).name), ["Ann", "Mary", "Sue"])
         self.assertEqual(Sis.many(bro__name__like="arr").name, ["Ann"])
 
-        # a list under the default/has operator OR's the values (tied to any of these names)
-        self.assertEqual(sorted(Sis.many(bro__name=["Tom", "Dick"]).name), ["Ann", "Mary", "Sue"])
-        self.assertEqual(sorted(Sis.many(bro__name__has=["Tom", "Dick"]).name), ["Ann", "Mary", "Sue"])
+        # negation is field-level: tied to a brother NOT named Tom (a non-Tom exists), NOT
+        # "not tied to any Tom" -- Mary (Tom, Dick) still matches via Dick
+        self.assertEqual(sorted(Sis.many(bro__name__not_in=["Tom"]).name), ["Ann", "Mary"])
 
-        # a field operator combined with any/all resolves per value (name LIKE om OR LIKE arr)
-        self.assertEqual(sorted(Sis.many(bro__name__like__any=["om", "arr"]).name), ["Ann", "Mary", "Sue"])
-        self.assertEqual(Sis.many(bro__name__like__all=["om", "ick"]).name, ["Mary"])
-
-        # negation
-        self.assertEqual(Sis.many(bro__name__not_has="Tom").name, ["Ann"])
-        self.assertEqual(sorted(Sis.many(bro__name__not_any=["Harry"]).name), ["Mary", "Sue"])
+        # criteria on the same relation filter the SAME tied sibling
+        self.assertEqual(Sis.many(bro__name="Dick", bro__id=harry.id).name, [])
+        self.assertEqual(sorted(Sis.many(bro__name="Dick", bro__id=dick.id).name), ["Ann", "Mary"])
 
         # symmetric: brothers filtered by a tied sister's name
         jane = Sis("Jane").create()
@@ -911,8 +897,7 @@ class TestSource(unittest.TestCase):
         Bro("Bill", sis_id=[jane.id]).create()           # tied to Jane
 
         self.assertEqual(sorted(Bro.many(sis__name="Jane").name), ["Bill", "Bob"])
-        self.assertEqual(Bro.many(sis__name__all=["Jane", "Joan"]).name, ["Bob"])
-        self.assertEqual(Bro.many(sis__name__any=["Joan"]).name, ["Bob"])
+        self.assertEqual(Bro.many(sis__name__in=["Joan"]).name, ["Bob"])
 
     def test_titles_query(self):
 
