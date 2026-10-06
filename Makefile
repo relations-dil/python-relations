@@ -17,7 +17,7 @@ PYPI=-v ${PWD}/LICENSE.txt:/opt/service/LICENSE.txt \
 	-v ${PWD}/PYPI.md:/opt/service/README.md \
 	-v ${HOME}/.pypirc:/opt/service/.pypirc
 
-.PHONY: build shell debug test lint setup tag untag testpypi pypi
+.PHONY: build shell debug test lint setup tag untag testpypi pypi new version release-check release dist-check testpypi-verify
 
 build:
 	docker build . -t $(ACCOUNT)/$(IMAGE):$(VERSION)
@@ -52,14 +52,39 @@ tag:
 
 untag:
 	-git tag -d $(VERSION)
-	git push origin ":refs/tags/$(VERSION)
+	git push origin ":refs/tags/$(VERSION)"
 
 testpypi:
-	docker run $(TTY) $(VOLUMES) $(PYPI) gaf3/pypi sh -c "cd /opt/service && \
+	docker run $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
 	BUILD_VERSION='$(VERSION)' python -m build && \
 	python -m twine upload -r testpypi --config-file=.pypirc dist/*"
 
 pypi:
-	docker run $(TTY) $(VOLUMES) $(PYPI) gaf3/pypi sh -c "cd /opt/service && \
+	docker run $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
 	BUILD_VERSION='$(VERSION)' python -m build && \
 	python -m twine upload --config-file=.pypirc dist/*"
+
+# Releases: make new starts one, make release-check says where it's up to and what would stop it, make release finishes it.
+# V is +0.0.1 (the default), +0.1, +1 or a version outright, and B names the branch. The work is in scripts/.
+V?=+0.0.1
+B?=
+
+new:
+	@sh scripts/new.sh "$(V)" "$(B)"
+
+version:
+	@sh scripts/version.sh write "$(V)"
+
+release-check:
+	@sh scripts/release.sh check
+
+release:
+	@sh scripts/release.sh release
+
+dist-check:
+	docker run --rm $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
+	BUILD_VERSION='$(VERSION)' python -m build && \
+	python -m twine check dist/*"
+
+testpypi-verify:
+	@sh scripts/verify.sh
