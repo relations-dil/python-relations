@@ -1703,6 +1703,7 @@ class TestModel(unittest.TestCase):
         self.assertEqual(Pet.one(name="rex").owner_id, 1)
         self.assertEqual(Pet.one(name="rex").what, {"relations": {"owner": {"id": 1}}})
         self.assertIsNone(Pet.one(name="stray").owner_id)
+        self.assertEqual(Pet.one(name="stray").what, {})
 
         owner = Owner("sam")
         owner.pet.add("fido").add("spot")
