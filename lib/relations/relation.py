@@ -56,6 +56,7 @@ class OneTo(Relation):
     Child = None             # Model having many reocrds
     child_parent_ref = None  # The id field in the child to connect to the parent field
     child_parent_attr = None # The name of the attribute on the child to access the parent
+    child_inject = None      # The dict field in the child the parent id is stored in, if it's not a field of its own
 
     def __init__(
             self,
@@ -64,16 +65,50 @@ class OneTo(Relation):
             parent_child_attr=None,
             child_parent_attr=None,
             parent_id=None,
-            child_parent_ref=None
+            child_parent_ref=None,
+            child_inject=None
         ):
 
         self.Parent = Parent
         self.Child = Child
+        self.child_inject = child_inject
 
         parent = self.Parent.thy()
         child = self.Child.thy()
 
         self.parent_id = parent._field_name(parent_id if parent_id is not None else parent._id)
+
+        # If asked, add the child field for the parent id, stored in a dict field of the child
+
+        if child_inject is not None:
+
+            if child_inject not in child._fields:
+                raise relations.ModelError(child, f"cannot find field {child_inject} in {child.NAME}")
+
+            if child._fields._names[child_inject].kind != dict:
+                raise relations.ModelError(child, f"field {child_inject} not a dict in {child.NAME}")
+
+            # Same source is just the model name, else prefix the source of the parent (which has to be a dns label)
+
+            named = parent.NAME
+
+            if parent.SOURCE != child.SOURCE:
+                if not isinstance(parent.SOURCE, str) or not relations.DNS.match(parent.SOURCE):
+                    raise relations.ModelError(parent, f"source {parent.SOURCE} is not dns compliant")
+                named = f"{parent.SOURCE.lower().replace('-', '_')}_{parent.NAME}"
+
+            child_parent_ref = child_parent_ref if child_parent_ref is not None else f"{named}_{self.parent_id}"
+
+            if child_parent_ref in child._fields:
+                raise relations.ModelError(child, f"field {child_parent_ref} already exists in {child.NAME}")
+
+            kind = parent._fields._names[self.parent_id].kind
+
+            setattr(self.Child, child_parent_ref, relations.Field(
+                kind, inject=f"{child_inject}__relations__{named}__{self.parent_id}", none=True
+            ))
+
+            child = self.Child.thy()
         self.parent_child_attr = parent_child_attr if parent_child_attr is not None else child.NAME
 
         self.child_parent_attr = child_parent_attr if child_parent_attr is not None else parent.NAME

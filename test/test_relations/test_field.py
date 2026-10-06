@@ -427,6 +427,31 @@ class TestField(unittest.TestCase):
         field.write(values)
         self.assertEqual(values, {})
 
+        # an injected None isn't stored, a missing key reads back as None and storage has no nulls to trip over
+
+        field = relations.Field(int, inject="things__relations__owner__id")
+        field.value = None
+
+        values = {}
+        field.write(values)
+        self.assertEqual(values, {})
+
+        values = {"relations": {"owner": {"id": 5, "other": 1}}}
+        field.write(values)
+        self.assertEqual(values, {"relations": {"owner": {"other": 1}}})
+
+        values = {"relations": {"owner": {"id": 5}}}
+        field.write(values)
+        self.assertEqual(values, {"relations": {"owner": {}}})
+
+        # but through a list there's no removing, so None is set as before
+
+        field = relations.Field(str, inject="things__a__b__0____1")
+        field.value = None
+        values = {"a": {"b": [{"1": "yep"}]}}
+        field.write(values)
+        self.assertEqual(values, {"a": {"b": [{"1": None}]}})
+
     def test_create(self):
 
         field = relations.Field(int, store="_id")

@@ -771,6 +771,8 @@ class Model(ModelIdentity):
             if self._parents.get(name) is None:
                 if self._action == "retrieve":
                     self._parents[name] = relation.Parent.many().limit(self._chunk)
+                elif self[relation.child_parent_ref] is None:
+                    return None # No key means no parent, nothing to cache
                 else:
                     self._parents[name] = relation.Parent(_child={relation.parent_id: self[relation.child_parent_ref]})
 

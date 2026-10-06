@@ -101,6 +101,17 @@ class Case(ModelTest):
 
 relations.OneToOne(Test, Case)
 
+class Owner(ModelTest):
+    id = int
+    name = str
+
+class Pet(ModelTest):
+    id = int
+    name = str
+    what = dict
+
+relations.OneToMany(Owner, Pet, child_inject="what")
+
 class Run(ModelTest):
     id = int
     test_id = int
@@ -1118,15 +1129,14 @@ class TestModel(unittest.TestCase):
 
         # parents
 
-        self.assertEqual(test.unit._related, {"id": None})
-        self.assertEqual(test.unit._role, "parent")
-        self.assertEqual(test.unit._mode, "one")
-        self.assertEqual(test.unit._action, "retrieve")
-        self.assertEqual(test.unit._record._action, "retrieve")
-        self.assertTrue(test.unit._record._names["id"].criteria["null"])
+        # no key means no parent
+
+        self.assertIsNone(test.unit)
 
         test.unit_id = 1
         self.assertEqual(test.unit._related, {"id": 1})
+        self.assertEqual(test.unit._role, "parent")
+        self.assertEqual(test.unit._mode, "one")
         self.assertEqual(test.unit.name, "ya")
         self.assertEqual(test.unit._action, "update")
         self.assertEqual(test.unit._record._action, "update")
@@ -1251,6 +1261,51 @@ class TestModel(unittest.TestCase):
         self.assertEqual(mary.bro.id, [dick.id, tom.id])
         self.assertEqual(harry.sis.id, [dot.id, nikki.id])
 
+        # an injected key works the same, no key no parent
+
+        class Mom(ModelTest):
+            id = int
+            name = str
+
+        class Son(ModelTest):
+            id = int
+            name = str
+            what = dict
+
+        relations.OneToMany(Mom, Son, child_inject="what")
+
+        son = Son(name="loner")
+
+        self.assertIsNone(son.mom)
+
+        son.mom_id = 7
+
+        self.assertEqual(son.mom._related, {"id": 7})
+        self.assertEqual(son.mom._role, "parent")
+
+        # an injected key stores, retrieves and relates like a column
+
+        mom = Mom("mommy").create()
+        Mom("nobody").create()
+
+        Son(name="kid", mom_id=mom.id).create()
+        Son(name="loner").create()
+
+        self.assertEqual(Son.one(name="kid").what, {"relations": {"mom": {"id": mom.id}}})
+
+        self.assertEqual(Son.many(mom_id=mom.id).name, ["kid"])
+        self.assertEqual(Son.many(mom_id__in=[mom.id]).name, ["kid"])
+        self.assertEqual(Son.many(mom_id__null=True).name, ["loner"])
+
+        self.assertEqual(Son.one(name="kid").mom.name, "mommy")
+        self.assertIsNone(Son.one(name="loner").mom)
+
+        self.assertEqual(Mom.one(mom.id).son.name, ["kid"])
+        self.assertEqual(Mom.one(name="nobody").son.name, [])
+
+        self.assertEqual(Son.many(mom__name="mommy").name, ["kid"])
+        self.assertEqual(Mom.many(son__name="kid").name, ["mommy"])
+
     def test__collate(self):
 
         unit = Unit("ya")
@@ -1329,6 +1384,30 @@ class TestModel(unittest.TestCase):
         self.assertEqual(unit.test[0].unit_id, 2)
         self.assertEqual(unit.test._related, {"unit_id": 2})
         self.assertEqual(unit.test[0]._related, {"unit_id": 2})
+
+        # injected keys propagate the same
+
+        owner = Owner("yep")
+        owner.pet.add("sup")
+
+        self.assertIsNone(owner.pet[0].owner_id)
+        self.assertEqual(owner.pet._related, {"owner_id": None})
+        self.assertEqual(owner.pet[0]._related, {"owner_id": None})
+
+        owner.create()
+
+        self.assertEqual(owner.pet[0].owner_id, 1)
+        self.assertEqual(owner.pet._related, {"owner_id": 1})
+        self.assertEqual(owner.pet[0]._related, {"owner_id": 1})
+        self.assertEqual(Pet.one(name="sup").owner_id, 1)
+
+        pet = Pet(name="rex")
+
+        pet.owner_id = 1
+        self.assertEqual(pet.owner.name, "yep")
+
+        pet.owner_id = 2
+        self.assertIsNone(pet._parents["owner"])
 
     def test__input(self):
 
@@ -1470,6 +1549,12 @@ class TestModel(unittest.TestCase):
         units = Unit([["ya"], ["sure"], ["whatever"]]).create().sort("name")
         self.assertEqual(units.name, ["sure", "whatever", "ya"])
 
+        owner = Owner([["pat"], ["sam"]]).create()
+        Pet([{"name": "rex", "owner_id": 2}, {"name": "fido", "owner_id": 1}, {"name": "spot", "owner_id": 2}]).create()
+
+        self.assertEqual(Pet.many().sort("owner_id", "name").name, ["fido", "rex", "spot"])
+        self.assertEqual(Pet.many().sort("-owner_id", "name").name, ["rex", "spot", "fido"])
+
         self.assertRaisesRegex(relations.ModelError, "unit: unknown sort field nope", Unit.many().sort, "nope")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot sort one", Unit.one(name="ya").retrieve().sort)
 
@@ -1541,6 +1626,13 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(len(UnitTest.many()), 2)
 
+        pets = Pet.bulk(2)
+
+        pets.add("rex", owner_id=1)
+        pets.add("fido", owner_id=1)
+
+        self.assertEqual(Pet.many(owner_id=1).name, ["fido", "rex"])
+
     def test_export(self):
 
         models = Net.many()
@@ -1603,6 +1695,22 @@ class TestModel(unittest.TestCase):
         unit = Unit.one(0)
         self.assertRaisesRegex(relations.ModelError, "unit: cannot create during retrieve", unit.create)
 
+        owner = Owner("pat").create()
+
+        Pet(name="rex", owner_id=owner.id).create()
+        Pet(name="stray").create()
+
+        self.assertEqual(Pet.one(name="rex").owner_id, 1)
+        self.assertEqual(Pet.one(name="rex").what, {"relations": {"owner": {"id": 1}}})
+        self.assertIsNone(Pet.one(name="stray").owner_id)
+        self.assertEqual(Pet.one(name="stray").what, {})
+
+        owner = Owner("sam")
+        owner.pet.add("fido").add("spot")
+        owner.create()
+
+        self.assertEqual(Pet.many(owner_id=owner.id).name, ["fido", "spot"])
+
     def test_count(self):
 
         self.assertEqual(Unit.many(name="yep").count(), 0)
@@ -1612,6 +1720,16 @@ class TestModel(unittest.TestCase):
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot count during create", unit.count)
+
+        owner = Owner("pat").create()
+
+        Pet(name="rex", owner_id=owner.id).create()
+        Pet(name="stray").create()
+
+        self.assertEqual(Pet.many().count(), 2)
+        self.assertEqual(Pet.many(owner_id=owner.id).count(), 1)
+        self.assertEqual(Pet.many(owner_id__null=True).count(), 1)
+        self.assertEqual(Pet.many(owner_id=99).count(), 0)
 
     def test_retrieve(self):
 
@@ -1623,6 +1741,13 @@ class TestModel(unittest.TestCase):
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot retrieve during create", unit.retrieve)
 
+        owner = Owner("pat").create()
+
+        Pet(name="rex", owner_id=owner.id).create()
+
+        self.assertEqual(Pet.one(owner_id=owner.id).retrieve().name, "rex")
+        self.assertIsNone(Pet.one(owner_id=99).retrieve(False))
+
     def test_titles(self):
 
         Unit("yep").create()
@@ -1630,6 +1755,13 @@ class TestModel(unittest.TestCase):
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot titles during create", unit.titles)
+
+        owner = Owner("pat").create()
+
+        Pet(name="rex", owner_id=owner.id).create()
+        Pet(name="stray").create()
+
+        self.assertEqual(Pet.many(owner_id=owner.id).titles().ids, [1])
 
     def test_update(self):
 
@@ -1644,6 +1776,29 @@ class TestModel(unittest.TestCase):
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot update during create", unit.update)
 
+        pat = Owner("pat").create()
+        sam = Owner("sam").create()
+
+        pet = Pet(name="rex", owner_id=pat.id).create()
+
+        pet.owner_id = sam.id
+
+        self.assertEqual(pet.update(), 1)
+        self.assertEqual(Pet.one(name="rex").owner_id, sam.id)
+        self.assertEqual(Pet.many(owner_id=pat.id).count(), 0)
+
+        pet = Pet.one(name="rex").retrieve()
+        pet.owner_id = None
+
+        self.assertEqual(pet.update(), 1)
+        self.assertIsNone(Pet.one(name="rex").owner_id)
+        self.assertEqual(Pet.many(owner_id__null=True).count(), 1)
+
+        self.assertEqual(Pet.one(name="rex").set(owner_id=pat.id).update(), 1)
+        self.assertEqual(Pet.one(name="rex").owner_id, pat.id)
+
+        self.assertRaisesRegex(relations.FieldError, "no mass update with inject", Pet.many(name="rex").set(owner_id=sam.id).update)
+
     def test_delete(self):
 
         unit = Unit("yep").create()
@@ -1656,6 +1811,14 @@ class TestModel(unittest.TestCase):
 
         unit = Unit("sure")
         self.assertRaisesRegex(relations.ModelError, "unit: cannot delete during create", unit.delete)
+
+        owner = Owner("pat").create()
+
+        Pet(name="rex", owner_id=owner.id).create()
+        Pet(name="stray").create()
+
+        self.assertEqual(Pet.many(owner_id=owner.id).delete(), 1)
+        self.assertEqual(Pet.many().name, ["stray"])
 
     def test_query(self):
 

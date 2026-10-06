@@ -428,7 +428,17 @@ class Field: # pylint: disable=too-many-instance-attributes
 
         value = self.export()
         if self.inject:
-            overscore.set(values, self.inject.split('__', 1)[-1], value)
+            path = self.inject.split('__', 1)[-1]
+            if value is None:
+                # None isn't stored if it's only dict keys, a missing key reads back as None and storage has no nulls to trip over
+                keys = overscore.parse(path)
+                container = values
+                for key in keys[:-1]:
+                    container = container.get(key, {}) if isinstance(container, dict) and isinstance(key, str) else None
+                if isinstance(container, dict) and isinstance(keys[-1], str):
+                    container.pop(keys[-1], None)
+                    return
+            overscore.set(values, path, value)
         elif self.store:
             values[self.store] = value
 
