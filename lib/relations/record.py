@@ -209,7 +209,13 @@ class Record:
         """
 
         for field in self._order:
-            if not field.retrieve(values):
+
+            if field.inject:
+                store = self._names[field.inject.split('__')[0]].store
+                injected = overscore.get(values.get(store) or {}, field.inject.split('__', 1)[-1])
+                if not field.retrieve({field.store: injected}):
+                    return False
+            elif not field.retrieve(values):
                 return False
 
         return True

@@ -231,6 +231,21 @@ class TestRecord(unittest.TestCase):
         self.assertFalse(self.record.retrieve({"_id": 2, "_name": "unit"}))
         self.assertFalse(self.record.retrieve({"_id": 1, "_name": "test"}))
 
+        # injected fields are checked where they're stored, in the other field
+
+        self.things = relations.Field(dict, name="things", store="_things", default=dict)
+        self.push = relations.Field(str, name="push", inject="things__a__b__0____1")
+
+        self.record.append(self.things)
+        self.record.append(self.push)
+
+        self.record.filter("push", "yep")
+
+        self.assertTrue(self.record.retrieve({"_id": 1, "_name": "unit", "_things": {"a": {"b": [{"1": "yep"}]}}}))
+        self.assertFalse(self.record.retrieve({"_id": 1, "_name": "unit", "_things": {"a": {"b": [{"1": "nope"}]}}}))
+        self.assertFalse(self.record.retrieve({"_id": 1, "_name": "unit", "_things": {}}))
+        self.assertFalse(self.record.retrieve({"_id": 1, "_name": "unit"}))
+
     def test_like(self):
 
         self.things = relations.Field(dict, name="things", store="_things", default=dict)

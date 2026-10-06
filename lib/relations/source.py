@@ -6,6 +6,11 @@ relations module for storing sources
 
 import relations
 
+class SourceError(Exception):
+    """
+    Generic source Error for easier tracing
+    """
+
 class Source:
     """
     Base Abstraction for Source

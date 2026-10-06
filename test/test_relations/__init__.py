@@ -38,6 +38,14 @@ class TestRelations(unittest.TestCase):
         self.assertTrue(relations.INDEX.match("-1"))
         self.assertFalse(relations.INDEX.match("nope"))
 
+    def test_dns(self):
+
+        for name in ["a", "A", "0", "a-b", "relations-restx", "TestModel", "a" * 63]:
+            self.assertTrue(relations.DNS.match(name), name)
+
+        for name in ["", "_", "a_b", "-ab", "ab-", "a b", "a.b", "ab\n", "a" * 64]:
+            self.assertFalse(relations.DNS.match(name), name)
+
     @unittest.mock.patch("relations.SOURCES", {})
     def test_register(self):
 
@@ -45,6 +53,17 @@ class TestRelations(unittest.TestCase):
         source.name = "a"
 
         relations.register(source)
+
+        self.assertEqual(relations.SOURCES, {"a": source})
+
+        # Names have to be dns compliant
+
+        for name in [None, 1, "", "a_b", "-ab", "ab-", "a b", "a.b", "a" * 64]:
+
+            nope = unittest.mock.MagicMock()
+            nope.name = name
+
+            self.assertRaisesRegex(relations.SourceError, f"source {name} is not dns compliant", relations.register, nope)
 
         self.assertEqual(relations.SOURCES, {"a": source})
 

@@ -83,6 +83,7 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(relation.child_parent_attr, "mom")
         self.assertEqual(relation.parent_id, "id")
         self.assertEqual(relation.child_parent_ref, "mom_id")
+        self.assertIsNone(relation.child_inject)
 
         relation = relations.OneTo(Mom, Son, "sons", "mommy", "ident", "mom_ident")
 
@@ -90,6 +91,166 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(relation.child_parent_attr, "mommy")
         self.assertEqual(relation.parent_id, "ident")
         self.assertEqual(relation.child_parent_ref, "mom_ident")
+
+        # Injecting the parent id into a dict field of the child
+
+        class Daughter(relations.Model):
+            id = int
+            name = str
+            what = dict
+
+        relation = relations.OneTo(Mom, Daughter, child_inject="what")
+
+        self.assertEqual(relation.parent_child_attr, "daughter")
+        self.assertEqual(relation.child_parent_attr, "mom")
+        self.assertEqual(relation.parent_id, "id")
+        self.assertEqual(relation.child_parent_ref, "mom_id")
+        self.assertEqual(relation.child_inject, "what")
+
+        fields = Daughter.thy()._fields._names
+
+        self.assertIs(fields["mom_id"].kind, int)
+        self.assertEqual(fields["mom_id"].inject, "what__relations__mom__id")
+        self.assertTrue(fields["mom_id"].none)
+        self.assertEqual(fields["what"].extract, {"relations__mom__id": int})
+
+        self.assertIn("mom", Daughter.PARENTS)
+        self.assertIn("daughter", Mom.CHILDREN)
+
+        self.assertEqual(Daughter(name="kid", mom_id=7).mom_id, 7)
+        self.assertIsNone(Daughter(name="loner").mom_id)
+
+        # Another parent merges into the same dict field
+
+        class Dad(relations.Model):
+            id = int
+            name = str
+
+        relations.OneTo(Dad, Daughter, child_inject="what")
+
+        fields = Daughter.thy()._fields._names
+
+        self.assertEqual(fields["dad_id"].inject, "what__relations__dad__id")
+        self.assertEqual(fields["what"].extract, {"relations__mom__id": int, "relations__dad__id": int})
+
+        # Overrides, and merging into an existing extract
+
+        class Twin(relations.Model):
+            id = int
+            name = str
+            data = relations.Field(dict, extract="other")
+
+        relation = relations.OneTo(Mom, Twin, "twins", "mommy", "ident", "parent", "data")
+
+        self.assertEqual(relation.parent_child_attr, "twins")
+        self.assertEqual(relation.child_parent_attr, "mommy")
+        self.assertEqual(relation.parent_id, "ident")
+        self.assertEqual(relation.child_parent_ref, "parent")
+
+        fields = Twin.thy()._fields._names
+
+        self.assertEqual(fields["parent"].inject, "data__relations__mom__ident")
+        self.assertEqual(fields["data"].extract, {"other": str, "relations__mom__ident": int})
+
+        # Other ways of declaring the dict field
+
+        class Sister(relations.Model):
+            id = int
+            name = str
+            what = dict, {"extract": "other"}
+
+        class Brother(relations.Model):
+            id = int
+            name = str
+            what = {"kind": dict, "extract": "other"}
+
+        for Sibling in [Sister, Brother]:
+            relations.OneTo(Mom, Sibling, child_inject="what")
+            self.assertEqual(Sibling.thy()._fields._names["what"].extract, {"other": str, "relations__mom__id": int})
+
+        # Same source is just model_id, different sources prefix the parent's source
+
+        class Ally(relations.Model):
+            SOURCE = "cumulus"
+            id = int
+            name = str
+
+        class Friend(relations.Model):
+            SOURCE = "Bucket-App"
+            id = int
+            name = str
+
+        class Entity(relations.Model):
+            SOURCE = "cumulus"
+            id = int
+            name = str
+            what = dict
+
+        relation = relations.OneTo(Ally, Entity, child_inject="what")
+
+        self.assertEqual(relation.child_parent_ref, "ally_id")
+        self.assertEqual(Entity.thy()._fields._names["ally_id"].inject, "what__relations__ally__id")
+
+        relation = relations.OneTo(Friend, Entity, child_inject="what")
+
+        self.assertEqual(relation.child_parent_ref, "bucket_app_friend_id")
+
+        fields = Entity.thy()._fields._names
+
+        self.assertEqual(fields["bucket_app_friend_id"].inject, "what__relations__bucket_app_friend__id")
+        self.assertEqual(fields["what"].extract, {"relations__ally__id": int, "relations__bucket_app_friend__id": int})
+
+        self.assertEqual(Entity(name="kid", bucket_app_friend_id=7).bucket_app_friend_id, 7)
+
+        # Errors
+
+        class Cousin(relations.Model):
+            id = int
+            name = str
+            mom_id = int
+            what = dict
+
+        class Orphan(relations.Model):
+            id = int
+            name = str
+
+        self.assertRaisesRegex(relations.ModelError, "field mom_id already exists in cousin", relations.OneTo, Mom, Cousin, child_inject="what")
+        self.assertRaisesRegex(relations.ModelError, "cannot find field what in orphan", relations.OneTo, Mom, Orphan, child_inject="what")
+        self.assertRaisesRegex(relations.ModelError, "field name not a dict in orphan", relations.OneTo, Mom, Orphan, child_inject="name")
+
+        # Sources have to be dns compliant when they're used in a name
+
+        for source in [None, "", "a_b", "-ab", "ab-", "a b", "a.b", "ab\n", "a" * 64]:
+
+            class Stranger(relations.Model):
+                SOURCE = source
+                id = int
+                name = str
+
+            class Local(relations.Model):
+                SOURCE = "cumulus"
+                id = int
+                name = str
+                what = dict
+
+            self.assertRaisesRegex(
+                relations.ModelError, f"stranger: source {source} is not dns compliant", relations.OneTo, Stranger, Local, child_inject="what"
+            )
+            self.assertNotIn("stranger", Local.PARENTS or {})
+            self.assertNotIn("stranger_id", Local.__dict__)
+
+        class Fine(relations.Model):
+            SOURCE = "a" * 63
+            id = int
+            name = str
+
+        class Home(relations.Model):
+            SOURCE = "cumulus"
+            id = int
+            name = str
+            what = dict
+
+        self.assertEqual(relations.OneTo(Fine, Home, child_inject="what").child_parent_ref, f"{'a' * 63}_fine_id")
 
 class TestOneToMany(unittest.TestCase):
 
