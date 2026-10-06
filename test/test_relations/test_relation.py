@@ -112,7 +112,7 @@ class TestOneTo(unittest.TestCase):
         self.assertIs(fields["mom_id"].kind, int)
         self.assertEqual(fields["mom_id"].inject, "what__relations__mom__id")
         self.assertTrue(fields["mom_id"].none)
-        self.assertEqual(fields["what"].extract, {"relations__mom__id": int})
+        self.assertIsNone(fields["what"].extract)
 
         self.assertIn("mom", Daughter.PARENTS)
         self.assertIn("daughter", Mom.CHILDREN)
@@ -120,7 +120,7 @@ class TestOneTo(unittest.TestCase):
         self.assertEqual(Daughter(name="kid", mom_id=7).mom_id, 7)
         self.assertIsNone(Daughter(name="loner").mom_id)
 
-        # Another parent merges into the same dict field
+        # Another parent goes into the same dict field
 
         class Dad(relations.Model):
             id = int
@@ -131,9 +131,9 @@ class TestOneTo(unittest.TestCase):
         fields = Daughter.thy()._fields._names
 
         self.assertEqual(fields["dad_id"].inject, "what__relations__dad__id")
-        self.assertEqual(fields["what"].extract, {"relations__mom__id": int, "relations__dad__id": int})
+        self.assertIsNone(fields["what"].extract)
 
-        # Overrides, and merging into an existing extract
+        # Overrides, and an existing extract is left alone
 
         class Twin(relations.Model):
             id = int
@@ -150,23 +150,7 @@ class TestOneTo(unittest.TestCase):
         fields = Twin.thy()._fields._names
 
         self.assertEqual(fields["parent"].inject, "data__relations__mom__ident")
-        self.assertEqual(fields["data"].extract, {"other": str, "relations__mom__ident": int})
-
-        # Other ways of declaring the dict field
-
-        class Sister(relations.Model):
-            id = int
-            name = str
-            what = dict, {"extract": "other"}
-
-        class Brother(relations.Model):
-            id = int
-            name = str
-            what = {"kind": dict, "extract": "other"}
-
-        for Sibling in [Sister, Brother]:
-            relations.OneTo(Mom, Sibling, child_inject="what")
-            self.assertEqual(Sibling.thy()._fields._names["what"].extract, {"other": str, "relations__mom__id": int})
+        self.assertEqual(fields["data"].extract, {"other": str})
 
         # Same source is just model_id, different sources prefix the parent's source
 
@@ -198,7 +182,7 @@ class TestOneTo(unittest.TestCase):
         fields = Entity.thy()._fields._names
 
         self.assertEqual(fields["bucket_app_friend_id"].inject, "what__relations__bucket_app_friend__id")
-        self.assertEqual(fields["what"].extract, {"relations__ally__id": int, "relations__bucket_app_friend__id": int})
+        self.assertIsNone(fields["what"].extract)
 
         self.assertEqual(Entity(name="kid", bucket_app_friend_id=7).bucket_app_friend_id, 7)
 

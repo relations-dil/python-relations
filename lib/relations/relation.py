@@ -103,23 +103,10 @@ class OneTo(Relation):
                 raise relations.ModelError(child, f"field {child_parent_ref} already exists in {child.NAME}")
 
             kind = parent._fields._names[self.parent_id].kind
-            path = f"relations__{named}__{self.parent_id}"
 
-            # Register the path in the extract of the dict field so it gets a virtual column
-
-            dicting = getattr(self.Child, child_inject)
-
-            if dicting is dict:
-                dicting = relations.Field(dict)
-            elif isinstance(dicting, tuple):
-                dicting = relations.Field(*dicting)
-            elif isinstance(dicting, dict):
-                dicting = relations.Field(**dicting)
-
-            dicting.extract = {**(dicting.extract or {}), path: kind}
-
-            setattr(self.Child, child_inject, dicting)
-            setattr(self.Child, child_parent_ref, relations.Field(kind, inject=f"{child_inject}__{path}", none=True))
+            setattr(self.Child, child_parent_ref, relations.Field(
+                kind, inject=f"{child_inject}__relations__{named}__{self.parent_id}", none=True
+            ))
 
             child = self.Child.thy()
         self.parent_child_attr = parent_child_attr if parent_child_attr is not None else child.NAME
