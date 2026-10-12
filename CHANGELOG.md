@@ -3,9 +3,15 @@
 All notable changes to python-relations are recorded here, newest first. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.6.17] - 2026-10-12
 
-Shipping as 0.6.16.
+### Added
+- `Model.pre(action, *args, **kwargs)` and `Model.post(action, result, *args, **kwargs)`, empty hooks run around every source action (`create`, `count`, `retrieve`, `titles`, `update`, `delete`). Override `pre` to deny (raise) or rewrite (`self.filter(...)`), bulk calls included; override `post` to transform the result. Chain through `super()` for mixins.
+
+### Changed
+- Overriding one of `Model`'s own methods in a model class (like `pre` or `post`) no longer turns it into a field.
+
+## [0.6.16] - 2026-10-06
 
 ### Added
 - `child_inject` on `OneTo` (so `OneToMany` and `OneToOne` too): `relations.OneToMany(Unum, Entity, child_inject="what")` adds a nullable key field to the child, `unum_id`, stored inside the child's `what` dict at `what__relations__unum__id`, so a model shared between apps can take on an optional parent without being edited or getting a column. The dict field has to be named, it isn't touched (no `extract`), and several parents can use the same one. It raises a `ModelError` if the key field already exists, the named field is missing, or it isn't a dict. The relation keeps it as `relation.child_inject`.
