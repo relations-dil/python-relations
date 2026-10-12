@@ -7,6 +7,7 @@ Relations Module for handling models
 import copy
 
 import functools
+import inspect
 
 import overscore
 import relations
@@ -123,6 +124,11 @@ class ModelIdentity:
 
             if name.startswith('_') or name != name.lower():
                 continue # pragma: no cover
+
+            # Overrides of Model's own methods (pre, post, etc) aren't fields
+
+            if inspect.isfunction(attribute) and hasattr(Model, name):
+                continue
 
             if attribute in [bool, int, float, str, set, list, dict]:
                 field = relations.Field(attribute)
@@ -1117,6 +1123,29 @@ class Model(ModelIdentity):
         """
         return relations.source(cls.SOURCE).define(cls.thy().define(), *args, **kwargs)
 
+    def pre(self, action, *args, **kwargs): # pylint: disable=unused-argument
+        """
+        Called before every source action (create, count, retrieve, titles, update, delete).
+        Override to deny (raise) or rewrite (e.g. self.filter(...)) before the source runs.
+        Bulk calls come through here too, as a model in many mode.
+        """
+
+    def post(self, action, result, *args, **kwargs): # pylint: disable=unused-argument,no-self-use
+        """
+        Called after every source action with what the source returned.
+        Override to transform the result. Must return the result.
+        """
+        return result
+
+    def _hook(self, action, *args, **kwargs):
+        """
+        Runs pre, the source action, then post
+        """
+
+        self.pre(action, *args, **kwargs)
+        result = getattr(relations.source(self.SOURCE), action)(self, *args, **kwargs)
+        return self.post(action, result, *args, **kwargs)
+
     def create(self, *args, **kwargs):
         """
         create the model
@@ -1125,7 +1154,7 @@ class Model(ModelIdentity):
         if self._action not in ["create", "update"]:
             raise ModelError(self, f"cannot create during {self._action}")
 
-        return relations.source(self.SOURCE).create(self, *args, **kwargs)
+        return self._hook("create", *args, **kwargs)
 
     def count(self, *args, **kwargs):
         """
@@ -1135,7 +1164,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot count during {self._action}")
 
-        return relations.source(self.SOURCE).count(self, *args, **kwargs)
+        return self._hook("count", *args, **kwargs)
 
     def retrieve(self, verify=True, *args, **kwargs):
         """
@@ -1145,7 +1174,7 @@ class Model(ModelIdentity):
         if self._action != "retrieve":
             raise ModelError(self, f"cannot retrieve during {self._action}")
 
-        return relations.source(self.SOURCE).retrieve(self, verify, *args, **kwargs)
+        return self._hook("retrieve", verify, *args, **kwargs)
 
     def titles(self, *args, **kwargs):
         """
@@ -1155,7 +1184,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot titles during {self._action}")
 
-        return relations.source(self.SOURCE).titles(self, *args, **kwargs)
+        return self._hook("titles", *args, **kwargs)
 
     def update(self, *args, **kwargs):
         """
@@ -1165,7 +1194,7 @@ class Model(ModelIdentity):
         if self._action not in ["update", "retrieve"]:
             raise ModelError(self, f"cannot update during {self._action}")
 
-        return relations.source(self.SOURCE).update(self, *args, **kwargs)
+        return self._hook("update", *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """
@@ -1178,7 +1207,7 @@ class Model(ModelIdentity):
         if self._action == "retrieve" and self._mode == "one":
             self.retrieve()
 
-        return relations.source(self.SOURCE).delete(self, *args, **kwargs)
+        return self._hook("delete", *args, **kwargs)
 
     def query(self, action=None, *args, **kwargs):
         """

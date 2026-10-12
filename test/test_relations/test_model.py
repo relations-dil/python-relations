@@ -1863,3 +1863,137 @@ class TestModel(unittest.TestCase):
         query = unit.query()
         self.assertEqual(query.action, "RETRIEVE")
         self.assertEqual(query.model, unit)
+
+
+class Hooked(ModelTest):
+    id = int
+    name = str
+    owner = str
+
+    CALLS = []
+
+    def pre(self, action, *args, **kwargs):
+        self.CALLS.append(("pre", action))
+        if self.CONTEXT.get("deny") == action:
+            raise relations.ModelError(self, f"denied {action}")
+        if self.CONTEXT.get("owner") and action != "create":
+            self.filter(owner=self.CONTEXT["owner"])
+
+    def post(self, action, result, *args, **kwargs):
+        self.CALLS.append(("post", action))
+        if action == "count" and self.CONTEXT.get("double"):
+            return result * 2
+        return result
+
+    CONTEXT = {}
+
+
+class Security:
+
+    def pre(self, action, *args, **kwargs):
+        self.CALLS.append(("security", action))
+        super().pre(action, *args, **kwargs)
+
+
+class Journal:
+
+    def pre(self, action, *args, **kwargs):
+        self.CALLS.append(("journal", action))
+        super().pre(action, *args, **kwargs)
+
+
+class Chained(Security, Journal, ModelTest):
+    id = int
+    name = str
+
+    CALLS = []
+
+
+class TestModelHooks(unittest.TestCase):
+
+    maxDiff = None
+
+    def setUp(self):
+
+        self.source = relations.unittest.MockSource("TestModel")
+        Hooked.CALLS.clear()
+        Hooked.CONTEXT.clear()
+        Chained.CALLS.clear()
+
+    def tearDown(self):
+
+        del relations.SOURCES["TestModel"]
+
+    def test_defaults(self):
+
+        unit = Unit("yep")
+        self.assertIsNone(unit.pre("create"))
+        self.assertEqual(unit.post("create", "result"), "result")
+
+    def test_order(self):
+
+        Hooked("a", owner="pat").create()
+        Hooked.one(name="a").retrieve()
+
+        self.assertEqual(Hooked.CALLS, [
+            ("pre", "create"), ("post", "create"),
+            ("pre", "retrieve"), ("post", "retrieve")
+        ])
+
+    def test_actions(self):
+
+        hooked = Hooked("a", owner="pat").create()
+        Hooked.many().count()
+        Hooked.many().titles()
+        hooked.name = "b"
+        hooked.update()
+        hooked.delete()
+
+        self.assertEqual([call[1] for call in Hooked.CALLS if call[0] == "pre"],
+                         ["create", "count", "titles", "update", "delete"])
+
+    def test_deny(self):
+
+        Hooked.CONTEXT["deny"] = "create"
+        self.assertRaisesRegex(relations.ModelError, "denied create", Hooked("a").create)
+        self.assertEqual(Hooked.CALLS, [("pre", "create")])
+
+        Hooked.CONTEXT.clear()
+        self.assertEqual(Hooked.many().count(), 0)
+
+    def test_rewrite(self):
+
+        Hooked("a", owner="pat").create()
+        Hooked("b", owner="sam").create()
+        Hooked("c", owner="pat").create()
+
+        Hooked.CONTEXT["owner"] = "pat"
+
+        self.assertEqual(Hooked.many().name, ["a", "c"])
+        self.assertEqual(Hooked.many().count(), 2)
+        self.assertIsNone(Hooked.one(name="b").retrieve(False))
+
+    def test_rewrite_bulk(self):
+
+        Hooked("a", owner="pat").create()
+        Hooked("b", owner="sam").create()
+
+        Hooked.CONTEXT["owner"] = "pat"
+
+        self.assertEqual(Hooked.many().set(name="z").update(), 1)
+        self.assertEqual(Hooked.many().delete(), 1)
+
+        Hooked.CONTEXT.clear()
+        self.assertEqual(Hooked.many().name, ["b"])
+
+    def test_post(self):
+
+        Hooked("a").create()
+        Hooked.CONTEXT["double"] = True
+        self.assertEqual(Hooked.many().count(), 2)
+
+    def test_chain(self):
+
+        Chained("a").create()
+
+        self.assertEqual(Chained.CALLS, [("security", "create"), ("journal", "create")])
