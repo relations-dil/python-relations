@@ -1130,7 +1130,7 @@ class Model(ModelIdentity):
         Bulk calls come through here too, as a model in many mode.
         """
 
-    def post(self, action, result, *args, **kwargs): # pylint: disable=unused-argument
+    def post(self, action, result, *args, **kwargs): # pylint: disable=unused-argument,no-self-use
         """
         Called after every source action with what the source returned.
         Override to transform the result. Must return the result.
