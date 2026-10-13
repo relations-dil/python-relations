@@ -18,6 +18,7 @@ PYPI=-v ${PWD}/LICENSE.txt:/opt/service/LICENSE.txt \
 	-v ${HOME}/.pypirc:/opt/service/.pypirc
 
 .PHONY: build shell debug test lint setup tag untag testpypi pypi new version release-check release dist-check testpypi-verify test-release help
+.DEFAULT_GOAL := help
 
 build: ## Builds the docker image
 	docker build . -t $(ACCOUNT)/$(IMAGE):$(VERSION)
