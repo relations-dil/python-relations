@@ -17,6 +17,11 @@ pipeline {
                 sh 'make lint'
             }
         }
+        stage('test-release') {
+            steps {
+                sh 'make test-release'
+            }
+        }
         stage('setup') {
             steps {
                 sh 'make setup'
