@@ -52,7 +52,7 @@ tag:
 
 untag:
 	-git tag -d $(VERSION)
-	git push origin ":refs/tags/$(VERSION)
+	git push origin ":refs/tags/$(VERSION)"
 
 testpypi:
 	docker run $(TTY) $(VOLUMES) $(PYPI) gaf3/pypi sh -c "cd /opt/service && \

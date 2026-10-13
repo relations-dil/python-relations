@@ -228,13 +228,22 @@ class MockSource(relations.Source):
 
             self.ids[model.NAME] += 1
 
-            self.uniques(model, values, self.ids[model.NAME])
+            key = self.ids[model.NAME]
 
-            if model._id is not None and values.get(model._id) is None:
-                values[model._fields._names[model._id].store] = self.ids[model.NAME]
-                creating[model._id] = self.ids[model.NAME]
+            # Ids the caller supplies (slugs) are the keys, else it's the next number
 
-            self.data[model.NAME][self.ids[model.NAME]] = self.extract(creating, values)
+            if model._id is not None and not model._fields._names[model._id].auto:
+                key = values.get(model._fields._names[model._id].store)
+                if key is None or key in self.data[model.NAME]:
+                    raise self.UniqueError(model, f"value {json.dumps(key)} violates unique {model._id}")
+
+            self.uniques(model, values, key)
+
+            if model._id is not None and model._fields._names[model._id].auto and values.get(model._id) is None:
+                values[model._fields._names[model._id].store] = key
+                creating[model._id] = key
+
+            self.data[model.NAME][key] = self.extract(creating, values)
 
             if not model._bulk:
 

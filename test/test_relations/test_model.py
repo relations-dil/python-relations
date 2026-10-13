@@ -171,6 +171,83 @@ class SisBro(ModelTest):
 
 relations.ManyToMany(Sis, Bro, SisBro)
 
+class Tag(relations.Model):
+    id = str
+    label = str
+
+class TagNamed(relations.Model):
+    ID = "slug"
+    slug = str
+    label = str
+    TITLES = "label"
+    UNIQUE = "label"
+    ORDER = "-label"
+
+class TagMany(relations.Model):
+    id = str
+    label = str
+    UNIQUE = {}
+
+class TestModelStringId(unittest.TestCase):
+
+    maxDiff = None
+
+    def test_thy(self):
+
+        tag = Tag.thy()
+        field = tag._fields._names["id"]
+
+        self.assertEqual(tag._id, "id")
+        self.assertIs(field.auto, False)
+        self.assertIs(field.none, False)
+        self.assertIs(field.readonly, True)
+        self.assertEqual(tag._titles, ["id"])
+        self.assertEqual(tag._list, ["id"])
+        self.assertEqual(tag._unique, {})
+        self.assertEqual(tag._order, ["+id"])
+
+        self.assertIs(tag._fields._names["label"].readonly, None)
+
+    def test_thy_int(self):
+
+        people = People.thy()
+
+        self.assertIsNone(people._fields._names["id"].auto)
+        self.assertIsNone(people._fields._names["id"].readonly)
+
+    def test_thy_explicit(self):
+
+        tag = TagNamed.thy()
+        field = tag._fields._names["slug"]
+
+        self.assertEqual(tag._id, "slug")
+        self.assertIs(field.auto, False)
+        self.assertIs(field.readonly, True)
+        self.assertEqual(tag._titles, ["label"])
+        self.assertEqual(tag._unique, {"label": ["label"]})
+        self.assertEqual(tag._order, ["-label"])
+
+    def test_thy_overrides(self):
+
+        class Over(relations.Model):
+            id = relations.Field(str, auto=True, none=True, readonly=False)
+            label = str
+
+        field = Over.thy()._fields._names["id"]
+
+        self.assertIs(field.auto, True)
+        self.assertIs(field.none, True)
+        self.assertIs(field.readonly, False)
+
+    def test_input(self):
+
+        tag = Tag("fine", "Fine")
+        self.assertEqual(tag.id, "fine")
+        self.assertEqual(tag.label, "Fine")
+
+        tag = Tag(id="fine", label="Fine")
+        self.assertEqual(tag.id, "fine")
+
 class TestModelIdentity(unittest.TestCase):
 
     maxDiff = None
@@ -223,7 +300,8 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].kind, str)
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
-        self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
+        self.assertEqual(stuff._titles, ["name"])
+        self.assertEqual(stuff._unique, {})
         self.assertEqual(stuff._order, ["+name"])
 
         things = Things.thy()

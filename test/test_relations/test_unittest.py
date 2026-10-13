@@ -16,6 +16,17 @@ class Simple(SourceModel):
     id = int
     name = str
 
+class Slug(SourceModel):
+    id = str
+    name = str
+
+class Piece(SourceModel):
+    id = str
+    slug_id = str
+    name = str
+
+relations.OneToMany(Slug, Piece)
+
 class Plain(SourceModel):
     ID = None
     simple_id = int
@@ -142,6 +153,68 @@ class TestSource(unittest.TestCase):
         self.assertEqual(self.source.data, {"check": {}})
         self.assertEqual(self.source.unique, {"check": {"name": {}}})
         self.assertTrue(model._fields._names["id"].auto)
+
+    def test_init_string(self):
+
+        class Check(relations.Model):
+            id = str
+            name = str
+
+        model = Check()
+
+        self.source.init(model)
+
+        self.assertEqual(self.source.unique, {"check": {}})
+        self.assertFalse(model._fields._names["id"].auto)
+
+    def test_string_id(self):
+
+        slug = Slug("sure", "Sure")
+        slug.piece.add("p1", name="fine")
+        slug.create()
+
+        self.assertEqual(slug.id, "sure")
+        self.assertEqual(slug.piece[0].slug_id, "sure")
+        self.assertEqual(slug.piece[0].id, "p1")
+        self.assertEqual(slug._action, "update")
+
+        Slug(id="more", name="More").create()
+
+        self.assertEqual(Slug.one("sure").name, "Sure")
+        self.assertEqual(Slug.one(id="more").name, "More")
+        self.assertEqual([slug.id for slug in Slug.many()], ["more", "sure"])
+        self.assertEqual(Slug.one("sure").piece[0].name, "fine")
+        self.assertEqual(Piece.one("p1").slug.name, "Sure")
+
+        self.assertEqual(self.source.data["slug"], {
+            "sure": {"id": "sure", "name": "Sure"},
+            "more": {"id": "more", "name": "More"}
+        })
+
+        self.assertEqual(Slug.one("sure").set(name="Changed").update(), 1)
+        self.assertEqual(Slug.one("sure").name, "Changed")
+
+        slug = Slug.one("sure")
+        slug.id = "renamed"
+        slug.name = "Again"
+        slug.update()
+        self.assertEqual(slug.id, "sure")
+        self.assertEqual(Slug.one("sure").name, "Again")
+        self.assertEqual(self.source.data["slug"]["sure"]["id"], "sure")
+
+        self.assertEqual(Slug.many(id__in=["more", "sure"]).set(name="Mass").update(), 2)
+        self.assertEqual(Slug.one("more").name, "Mass")
+
+        self.assertEqual(Slug.one("more").delete(), 1)
+        self.assertEqual([slug.id for slug in Slug.many()], ["sure"])
+        self.assertNotIn("more", self.source.data["slug"])
+
+    def test_string_id_duplicate(self):
+
+        Slug(id="sure", name="Sure").create()
+
+        with self.assertRaisesRegex(relations.unittest.MockSource.UniqueError, "violates unique"):
+            Slug(id="sure", name="Dupe").create()
 
     def test_field_define(self):
 
