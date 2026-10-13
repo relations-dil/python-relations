@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Shared by the release scripts, source it: . "$(dirname "$0")/lib.sh"
 # PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less.
 
@@ -60,4 +61,36 @@ state() {
         yesno) echo publish-pending ;;
         *) echo unreleased ;;
     esac
+}
+
+# problems: everything that would stop a release
+problems() {
+    grep -Eq "^## \[$(version)\] - [^ ]" CHANGELOG.md || echo "CHANGELOG.md has no ## [$(version)] - <date> section"
+    grep 'git+' requirements.txt | sed 's/^/requirements.txt has a git pin: /'
+    sed -En "s/.*['\"]([A-Za-z0-9_.-]+)(>=|==)([0-9][^'\" ,]*)['\"].*/\\1 \\3/p" setup.py | while read -r name floor; do
+        curl -sf -o /dev/null "$PYPI_URL/pypi/$name/$floor/json" || echo "$name $floor (the floor in setup.py) isn't published yet"
+    done
+}
+
+# check: says where the release is up to and what would stop it
+check() {
+    current=$(state)
+    testpypi=no
+    published test "$(version)" && testpypi=yes
+    echo "$(version): $current (testpypi: $testpypi)"
+
+    if [ "$current" = released ]; then
+        echo "nothing to release"
+        return 0
+    fi
+
+    # a published version has already passed these, all that's left is the tag
+    if [ "$current" != tag-pending ]; then
+        found=$(problems)
+        [ -z "$found" ] || { echo "$found"; return 1; }
+        make dist-check || return 1
+        [ -n "$RELEASE_SKIP_STAGES" ] || make build test lint setup || return 1
+    fi
+
+    echo "ready to release"
 }

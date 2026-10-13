@@ -1,5 +1,5 @@
 #!/bin/sh
-# verify.sh: installs the version from testpypi in a clean container and checks it's the one, with pypi for its dependencies
+# testpypi-verify.sh: installs the version from testpypi in a clean container and checks it's the one, with pypi for its dependencies
 
 . "$(dirname "$0")/lib.sh"
 

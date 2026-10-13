@@ -11,7 +11,8 @@ All notable changes to python-relations are recorded here, newest first. Format 
 - `make release-check` says where the release is up to (`unreleased`, `publish-pending`, `tag-pending` or `released`) and what would stop it: a missing changelog section, a git pin in `requirements.txt`, or a `setup.py` floor that isn't published. It changes nothing, and says "nothing to release" for a version that's out.
 - `make release` does the rest from `main`: the checks, build, test, lint and setup, TestPyPI (once per version) and a clean install from it, PyPI, waiting until it's live, and the tag. It does only what's left, so running it again does nothing.
 - `make dist-check` builds the distributions and runs `twine check` on them, uploading nothing.
-- The work is in `scripts/`.
+- `make test-release` tests the release scripts against a throwaway repo, a local origin and fake indexes, so nothing real is touched.
+- The work is in `scripts/`, where a target has a script, `make X` runs `scripts/X.sh` (`lib.sh` is what they share).
 
 ### Changed
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
