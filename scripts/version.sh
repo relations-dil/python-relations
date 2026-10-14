@@ -47,7 +47,7 @@ echo "$current $new" | awk '
         exit 1
     }' || fail "$new does not increase $current"
 
-! published pypi "$new" || fail "$(package) $new is already published"
+! listed pypi "$new" || fail "$(package) $new is already published"
 
 [ "$mode" = write ] && echo "$new" > VERSION
 

@@ -36,8 +36,8 @@ version=$(cat VERSION)
 for target in "$@"; do
     [ "$target" = "$MAKE_FAIL" ] && exit 1
     case "$target" in
-        testpypi) mkdir -p "$FAKE_TEST/pypi/pkg/$version" && touch "$FAKE_TEST/pypi/pkg/$version/json" ;;
-        pypi) mkdir -p "$FAKE_PYPI/pypi/pkg/$version" && touch "$FAKE_PYPI/pypi/pkg/$version/json" ;;
+        testpypi) mkdir -p "$FAKE_TEST/simple/pkg" && echo "<a href=\"pkg-$version.tar.gz\">pkg-$version.tar.gz</a>" >> "$FAKE_TEST/simple/pkg/index.html" ;;
+        pypi) mkdir -p "$FAKE_PYPI/simple/pkg" && echo "<a href=\"pkg-$version.tar.gz\">pkg-$version.tar.gz</a>" >> "$FAKE_PYPI/simple/pkg/index.html" ;;
         tag) git tag "$version" && git push -q origin "$version" ;;
     esac
 done
@@ -97,21 +97,21 @@ fails() {
     if [ "$CODE" != 0 ]; then ok "$name"; else bad "$name" "exit 0: $OUT"; fi
 }
 
-publish() { # publish pypi|test version
+publish() { # publish pypi|test version [name]: on the simple index, what pip reads
     root=$FAKE_PYPI
     [ "$1" = test ] && root=$FAKE_TEST
-    mkdir -p "$root/pypi/pkg/$2"
-    touch "$root/pypi/pkg/$2/json"
+    name=${3:-pkg}
+    mkdir -p "$root/simple/$name"
+    echo "<a href=\"$name-$2.tar.gz\">$name-$2.tar.gz</a>" >> "$root/simple/$name/index.html"
 }
 
 unpublish() {
-    rm -rf "$FAKE_PYPI/pypi/pkg" "$FAKE_TEST/pypi/pkg"
+    rm -rf "$FAKE_PYPI/simple/pkg" "$FAKE_TEST/simple/pkg"
 }
 
 # the floor setup.py asks of its dependency
 publish_dep() {
-    mkdir -p "$FAKE_PYPI/pypi/dep/1.0.0"
-    touch "$FAKE_PYPI/pypi/dep/1.0.0/json"
+    publish pypi 1.0.0 dep
 }
 
 # fresh: a clean repo on main, level with a bare origin
@@ -283,7 +283,7 @@ eq "check fails on a git pin" 1 "$CODE"
 has "check names the pin" "requirements.txt has a git pin" "$OUT"
 
 fresh
-rm -rf "$FAKE_PYPI/pypi/dep"
+rm -rf "$FAKE_PYPI/simple/dep"
 run sh scripts/release-check.sh
 eq "check fails on an unpublished floor" 1 "$CODE"
 has "check names the floor" "dep 1.0.0 (the floor in setup.py) isn't published yet" "$OUT"
@@ -379,10 +379,31 @@ echo "== lib.sh"
 fresh
 eq "package" "pkg" "$(package)"
 eq "version" "0.6.1" "$(version)"
+
+# the defaults wait 30 minutes, the index lags for minutes
+
+eq "default wait" "180 10" "$(env -u WAIT_TRIES -u WAIT_DELAY sh -c '. scripts/lib.sh; echo "$WAIT_TRIES $WAIT_DELAY"')"
+
+# listed: whether the simple index, what pip reads, has the version
+
+fails "listed says no when it isn't" listed pypi 0.6.1
+publish pypi 0.6.1
+passes "listed says yes when it is" listed pypi 0.6.1
+fails "listed says no on the other index" listed test 0.6.1
+fails "listed doesn't match a longer version" listed pypi 0.6
+fails "listed doesn't match a shorter version" listed pypi 0.6.10
+passes "listed takes another package's name" listed pypi 1.0.0 dep
+fails "listed says no for a package that isn't there" listed pypi 1.0.0 nope
+
+# wait_for waits for it on one index
+
+unpublish
 fails "wait_for gives up" wait_for pypi
 has "wait_for says why" "pkg 0.6.1 is not on pypi" "$OUT"
 publish pypi 0.6.1
 passes "wait_for finds it" wait_for pypi
+publish test 0.6.1
+passes "wait_for finds it on test" wait_for test
 
 echo
 echo "$PASS passed, $FAIL failed"

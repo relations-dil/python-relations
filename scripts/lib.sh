@@ -1,10 +1,10 @@
 # shellcheck shell=sh
 # Shared by the release scripts, source it: . "$(dirname "$0")/lib.sh"
-# PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less.
+# PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less or longer.
 
 PYPI_URL=${PYPI_URL:-https://pypi.org}
 TESTPYPI_URL=${TESTPYPI_URL:-https://test.pypi.org}
-WAIT_TRIES=${WAIT_TRIES:-60}
+WAIT_TRIES=${WAIT_TRIES:-180}
 WAIT_DELAY=${WAIT_DELAY:-10}
 
 # the name on pypi, and the version being worked on
@@ -16,20 +16,20 @@ version() {
     cat VERSION
 }
 
-# published pypi|test version: whether the version is on the index
-published() {
+# listed pypi|test version [name]: whether the simple index, what pip reads, lists the version of the package (or another), it lags
+listed() {
     case "$1" in
         test) base=$TESTPYPI_URL ;;
         *) base=$PYPI_URL ;;
     esac
-    curl -sf -o /dev/null "$base/pypi/$(package)/$2/json"
+    curl -sfL "$base/simple/${3:-$(package)}/" | grep -Eq -- "[-_]$(echo "$2" | sed 's/\./\\./g')(\.tar\.gz|-py)"
 }
 
-# wait_for pypi|test: waits for the version to show up on the index, they lag for minutes after an upload
+# wait_for pypi|test: waits for the version to show up on the index, it lags for minutes after an upload
 wait_for() {
     tries=0
     while [ "$tries" -lt "$WAIT_TRIES" ]; do
-        if published "$1" "$(version)"; then
+        if listed "$1" "$(version)"; then
             echo "$(package) $(version) is on $1"
             return 0
         fi
@@ -54,7 +54,7 @@ state() {
     tagged=no
     git ls-remote --exit-code --tags origin "$(version)" > /dev/null 2>&1 && tagged=yes
     live=no
-    published pypi "$(version)" && live=yes
+    listed pypi "$(version)" && live=yes
     case "$tagged$live" in
         yesyes) echo released ;;
         noyes) echo tag-pending ;;
@@ -68,7 +68,7 @@ problems() {
     grep -Eq "^## \[$(version)\] - [^ ]" CHANGELOG.md || echo "CHANGELOG.md has no ## [$(version)] - <date> section"
     grep 'git+' requirements.txt | sed 's/^/requirements.txt has a git pin: /'
     sed -En "s/.*['\"]([A-Za-z0-9_.-]+)(>=|==)([0-9][^'\" ,]*)['\"].*/\\1 \\3/p" setup.py | while read -r name floor; do
-        curl -sf -o /dev/null "$PYPI_URL/pypi/$name/$floor/json" || echo "$name $floor (the floor in setup.py) isn't published yet"
+        listed pypi "$floor" "$name" || echo "$name $floor (the floor in setup.py) isn't published yet"
     done
 }
 
@@ -76,7 +76,7 @@ problems() {
 check() {
     current=$(state)
     testpypi=no
-    published test "$(version)" && testpypi=yes
+    listed test "$(version)" && testpypi=yes
     echo "$(version): $current (testpypi: $testpypi)"
 
     if [ "$current" = released ]; then

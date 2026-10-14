@@ -15,10 +15,10 @@ release() {
 
     check || return 1
 
-    if ! published pypi "$(version)"; then
+    if ! listed pypi "$(version)"; then
         if [ "$RELEASE_TEST" != 0 ]; then
             # testpypi takes a version once, so upload only what isn't there, but always check the install before pypi
-            published test "$(version)" || make testpypi || return 1
+            listed test "$(version)" || make testpypi || return 1
             wait_for test || return 1
             make testpypi-verify || return 1
         fi
