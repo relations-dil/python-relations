@@ -6,7 +6,7 @@ All notable changes to python-relations are recorded here, newest first. Format 
 ## [Unreleased]
 
 ### Added
-- Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github-release` credential to push the tag, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
+- Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github` credential to push the tag, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
 - `make new [V=+0.0.1|+0.1|+1|x.y.z] [B=name]` starts a release: from a clean `main` that's level with `origin/main` it works out the next version, makes the branch (`gaf3/<name>`, or `gaf3/<version>`), writes `VERSION` and the changelog section, and commits `Version x.y.z`.
 - `make version [V=...]` sets the version on any branch. A bump is `+1`, `+0.1` or `+0.0.1` (everything after the raised place resets to 0), anything else is the version outright. It has to be `x.y.z`, has to increase, and can't be published already.
 - `make release-check` says where the release is up to (`unreleased`, `publish-pending`, `tag-pending` or `released`) and what would stop it: a missing changelog section, a git pin in `requirements.txt`, or a `setup.py` floor that isn't published. It changes nothing, and says "nothing to release" for a version that's out.
