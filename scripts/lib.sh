@@ -43,7 +43,7 @@ wait_for() {
 # guard: makes sure we're on a clean main that's level with origin.
 guard() {
     git fetch -q origin
-    branch=$(git branch --show-current)
+    branch=$(git rev-parse --abbrev-ref HEAD)
     [ "$branch" = main ] || { echo "not on main (on ${branch:-no branch})"; return 1; }
     [ -z "$(git status --porcelain)" ] || { echo "the working tree isn't clean"; return 1; }
     [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main isn't level with origin/main"; return 1; }
