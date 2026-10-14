@@ -6,7 +6,7 @@ All notable changes to python-relations are recorded here, newest first. Format 
 ## [Unreleased]
 
 ### Added
-- Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github-release` credential to push the tag, `RELEASE_SKIP_STAGES=1` since the stages just ran, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
+- Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github-release` credential to push the tag, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
 - `make new [V=+0.0.1|+0.1|+1|x.y.z] [B=name]` starts a release: from a clean `main` that's level with `origin/main` it works out the next version, makes the branch (`gaf3/<name>`, or `gaf3/<version>`), writes `VERSION` and the changelog section, and commits `Version x.y.z`.
 - `make version [V=...]` sets the version on any branch. A bump is `+1`, `+0.1` or `+0.0.1` (everything after the raised place resets to 0), anything else is the version outright. It has to be `x.y.z`, has to increase, and can't be published already.
 - `make release-check` says where the release is up to (`unreleased`, `publish-pending`, `tag-pending` or `released`) and what would stop it: a missing changelog section, a git pin in `requirements.txt`, or a `setup.py` floor that isn't published. It changes nothing, and says "nothing to release" for a version that's out.
@@ -17,9 +17,7 @@ All notable changes to python-relations are recorded here, newest first. Format 
 - The work is in `scripts/`, where a target has a script, `make X` runs `scripts/X.sh` (`lib.sh` is what they share).
 
 ### Changed
-- `wait_for` waits for a version on both the json endpoint and the simple index pip reads (`listed`, new), which lagged and failed the install check twice, and waits 30 minutes by default (`WAIT_TRIES` 180) instead of 10.
-- `guard` takes the branch from `BRANCH_NAME` for a detached checkout, and compares to the remote's main with `git ls-remote`, so it needs no local copy of `origin/main`.
-- `release-check` and `release` skip build, test, lint and setup when `RELEASE_SKIP_STAGES=1`, for Jenkins which has just run them.
+- The release scripts ask the simple index, what pip reads, whether a version is up (`listed`, one function, in place of `published`, which asked the json endpoint). The json is ahead of the simple index, and that lag failed the install check twice (pymysql, psycopg2). `wait_for` waits 30 minutes by default (`WAIT_TRIES` 180) instead of 10.
 - Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
 

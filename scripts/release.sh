@@ -1,6 +1,6 @@
 #!/bin/sh
 # release.sh: from main, does what's left of the release: the checks, testpypi and a clean install from it, pypi, waiting for it, the tag
-# RELEASE_TEST=0 skips testpypi. RELEASE_SKIP_STAGES=1 skips build, test, lint and setup, for Jenkins which has just run them.
+# RELEASE_TEST=0 skips testpypi.
 
 . "$(dirname "$0")/lib.sh"
 
@@ -15,10 +15,10 @@ release() {
 
     check || return 1
 
-    if ! published pypi "$(version)"; then
+    if ! listed pypi "$(version)"; then
         if [ "$RELEASE_TEST" != 0 ]; then
             # testpypi takes a version once, so upload only what isn't there, but always check the install before pypi
-            published test "$(version)" || make testpypi || return 1
+            listed test "$(version)" || make testpypi || return 1
             wait_for test || return 1
             make testpypi-verify || return 1
         fi

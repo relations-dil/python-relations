@@ -34,11 +34,11 @@ pipeline {
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-release', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
-                    // The tag is pushed with the credential, and the checkout's own url is put back after
+                    // Jenkins checks out a detached commit, the release scripts want to be on main, and the tag is pushed with the credential
                     sh '''
-                        trap 'git remote set-url origin "$GIT_URL"' EXIT
+                        git checkout -B main
                         git remote set-url origin "https://$GH_USER:$GH_TOKEN@${GIT_URL#https://}"
-                        RELEASE_SKIP_STAGES=1 make release
+                        make release
                     '''
                 }
             }

@@ -1,8 +1,6 @@
 # shellcheck shell=sh
 # Shared by the release scripts, source it: . "$(dirname "$0")/lib.sh"
 # PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less or longer.
-# BRANCH_NAME names the branch when the checkout is detached, the way Jenkins has it.
-# RELEASE_SKIP_STAGES=1 skips build, test, lint and setup in check, for Jenkins which has just run them.
 
 PYPI_URL=${PYPI_URL:-https://pypi.org}
 TESTPYPI_URL=${TESTPYPI_URL:-https://test.pypi.org}
@@ -18,29 +16,20 @@ version() {
     cat VERSION
 }
 
-# published pypi|test version: whether the version is on the index
-published() {
-    case "$1" in
-        test) base=$TESTPYPI_URL ;;
-        *) base=$PYPI_URL ;;
-    esac
-    curl -sf -o /dev/null "$base/pypi/$(package)/$2/json"
-}
-
-# listed pypi|test version: whether the simple index, what pip reads, lists the version. It can lag the json by minutes
+# listed pypi|test version [name]: whether the simple index, what pip reads, lists the version of the package (or another), it lags
 listed() {
     case "$1" in
         test) base=$TESTPYPI_URL ;;
         *) base=$PYPI_URL ;;
     esac
-    curl -sf "$base/simple/$(package)/" | grep -Eq -- "[-_]$(echo "$2" | sed 's/\./\\./g')(\.tar\.gz|-py)"
+    curl -sfL "$base/simple/${3:-$(package)}/" | grep -Eq -- "[-_]$(echo "$2" | sed 's/\./\\./g')(\.tar\.gz|-py)"
 }
 
-# wait_for pypi|test: waits for the version to show up on both the json and the simple index, they lag for minutes after an upload
+# wait_for pypi|test: waits for the version to show up on the index, it lags for minutes after an upload
 wait_for() {
     tries=0
     while [ "$tries" -lt "$WAIT_TRIES" ]; do
-        if published "$1" "$(version)" && listed "$1" "$(version)"; then
+        if listed "$1" "$(version)"; then
             echo "$(package) $(version) is on $1"
             return 0
         fi
@@ -51,12 +40,13 @@ wait_for() {
     return 1
 }
 
-# guard: makes sure we're on a clean main that's level with origin's. A detached checkout (Jenkins) names its branch in BRANCH_NAME.
+# guard: makes sure we're on a clean main that's level with origin.
 guard() {
-    branch=${BRANCH_NAME:-$(git branch --show-current)}
+    git fetch -q origin
+    branch=$(git branch --show-current)
     [ "$branch" = main ] || { echo "not on main (on ${branch:-no branch})"; return 1; }
     [ -z "$(git status --porcelain)" ] || { echo "the working tree isn't clean"; return 1; }
-    [ "$(git rev-parse HEAD)" = "$(git ls-remote origin refs/heads/main | cut -f1)" ] || { echo "main isn't level with origin/main"; return 1; }
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main isn't level with origin/main"; return 1; }
 }
 
 # state: how far the release of this version is: released, tag-pending, publish-pending or unreleased
@@ -64,7 +54,7 @@ state() {
     tagged=no
     git ls-remote --exit-code --tags origin "$(version)" > /dev/null 2>&1 && tagged=yes
     live=no
-    published pypi "$(version)" && live=yes
+    listed pypi "$(version)" && live=yes
     case "$tagged$live" in
         yesyes) echo released ;;
         noyes) echo tag-pending ;;
@@ -78,7 +68,7 @@ problems() {
     grep -Eq "^## \[$(version)\] - [^ ]" CHANGELOG.md || echo "CHANGELOG.md has no ## [$(version)] - <date> section"
     grep 'git+' requirements.txt | sed 's/^/requirements.txt has a git pin: /'
     sed -En "s/.*['\"]([A-Za-z0-9_.-]+)(>=|==)([0-9][^'\" ,]*)['\"].*/\\1 \\3/p" setup.py | while read -r name floor; do
-        curl -sf -o /dev/null "$PYPI_URL/pypi/$name/$floor/json" || echo "$name $floor (the floor in setup.py) isn't published yet"
+        listed pypi "$floor" "$name" || echo "$name $floor (the floor in setup.py) isn't published yet"
     done
 }
 
@@ -86,7 +76,7 @@ problems() {
 check() {
     current=$(state)
     testpypi=no
-    published test "$(version)" && testpypi=yes
+    listed test "$(version)" && testpypi=yes
     echo "$(version): $current (testpypi: $testpypi)"
 
     if [ "$current" = released ]; then
@@ -99,7 +89,7 @@ check() {
         found=$(problems)
         [ -z "$found" ] || { echo "$found"; return 1; }
         make dist-check || return 1
-        [ -n "$RELEASE_SKIP_STAGES" ] || make build test lint setup || return 1
+        make build test lint setup || return 1
     fi
 
     echo "ready to release"
