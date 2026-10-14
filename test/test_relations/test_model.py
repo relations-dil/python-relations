@@ -171,6 +171,18 @@ class SisBro(ModelTest):
 
 relations.ManyToMany(Sis, Bro, SisBro)
 
+class Tag(relations.Model):
+    id = str
+    label = str
+
+class TagNamed(relations.Model):
+    ID = "slug"
+    slug = str
+    label = str
+    TITLES = "label"
+    UNIQUE = "label"
+    ORDER = "-label"
+
 class TestModelIdentity(unittest.TestCase):
 
     maxDiff = None
@@ -223,7 +235,8 @@ class TestModelIdentity(unittest.TestCase):
         self.assertEqual(stuff._fields._names["people"].kind, str)
         self.assertEqual(stuff._fields._names["people"].default, stuffit)
         self.assertEqual(stuff._id, "name")
-        self.assertEqual(stuff._unique, {"id-people_id-people": ["id", "people_id", "people"]})
+        self.assertEqual(stuff._titles, ["name"])
+        self.assertEqual(stuff._unique, {})
         self.assertEqual(stuff._order, ["+name"])
 
         things = Things.thy()
@@ -301,6 +314,45 @@ class TestModelIdentity(unittest.TestCase):
         self.assertTrue(Sis.thy()._fields._names["bro_id"].tied)
         self.assertFalse(Bro.thy()._fields._names["sis_id"].store)
         self.assertTrue(Bro.thy()._fields._names["sis_id"].tied)
+
+        tag = Tag.thy()
+        field = tag._fields._names["id"]
+
+        self.assertEqual(tag._id, "id")
+        self.assertIs(field.auto, False)
+        self.assertIs(field.none, False)
+        self.assertIs(field.readonly, True)
+        self.assertEqual(tag._titles, ["id"])
+        self.assertEqual(tag._list, ["id"])
+        self.assertEqual(tag._unique, {})
+        self.assertEqual(tag._order, ["+id"])
+
+        self.assertIs(tag._fields._names["label"].readonly, None)
+
+        people = People.thy()
+
+        self.assertIsNone(people._fields._names["id"].auto)
+        self.assertIsNone(people._fields._names["id"].readonly)
+
+        tag = TagNamed.thy()
+        field = tag._fields._names["slug"]
+
+        self.assertEqual(tag._id, "slug")
+        self.assertIs(field.auto, False)
+        self.assertIs(field.readonly, True)
+        self.assertEqual(tag._titles, ["label"])
+        self.assertEqual(tag._unique, {"label": ["label"]})
+        self.assertEqual(tag._order, ["-label"])
+
+        class Over(relations.Model):
+            id = relations.Field(str, auto=True, none=True, readonly=False)
+            label = str
+
+        field = Over.thy()._fields._names["id"]
+
+        self.assertIs(field.auto, True)
+        self.assertIs(field.none, True)
+        self.assertIs(field.readonly, False)
 
     def test__field_name(self):
 
@@ -1430,6 +1482,13 @@ class TestModel(unittest.TestCase):
         model._input(model._record, "relate")
         self.assertEqual(model.id, 2)
         self.assertEqual(model.name, "relate")
+
+        tag = Tag("fine", "Fine")
+        self.assertEqual(tag.id, "fine")
+        self.assertEqual(tag.label, "Fine")
+
+        tag = Tag(id="fine", label="Fine")
+        self.assertEqual(tag.id, "fine")
 
     def test__build(self):
 

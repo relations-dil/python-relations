@@ -44,7 +44,7 @@ class Field: # pylint: disable=too-many-instance-attributes
     validation = None # How to validate values (if not None)
     length = None     # Length of the value
     format = None     # How to format the value instructions
-    readonly = None   # Whether or not a field is readnoly
+    readonly = None   # Whether or not a field is readonly (written on create, never on update)
     auto = None       # Whether a field can be auto generated
     refresh = None    # Whether a field is to be refreshed if not touched
 
@@ -585,6 +585,14 @@ class Field: # pylint: disable=too-many-instance-attributes
         Writes values to dict for updates, whether a record has its values changed
         """
 
+        # Readonly fields aren't written, and snap back to what's stored
+
+        if self.readonly:
+            if self.original is not None and self.delta():
+                self.value = self.original
+                self.changed = False
+            return
+
         if self.refresh and not self.delta():
             self.value = self.default() if callable(self.default) else self.default
 
@@ -596,6 +604,9 @@ class Field: # pylint: disable=too-many-instance-attributes
         """
         Writes values to dict for a mass update, whether any field has been set
         """
+
+        if self.readonly:
+            return
 
         if self.refresh and not self.changed:
             self.value = self.default() if callable(self.default) else self.default
