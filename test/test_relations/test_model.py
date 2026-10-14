@@ -183,11 +183,6 @@ class TagNamed(relations.Model):
     UNIQUE = "label"
     ORDER = "-label"
 
-class TagMany(relations.Model):
-    id = str
-    label = str
-    UNIQUE = {}
-
 class TestModelIdentity(unittest.TestCase):
 
     maxDiff = None
