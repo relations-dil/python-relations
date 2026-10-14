@@ -13,9 +13,13 @@ ENVIRONMENT=-e PYTHONDONTWRITEBYTECODE=1 \
 			-e PYTHONUNBUFFERED=1 \
 			-e test="python -m unittest -v" \
 			-e debug="python -m ptvsd --host 0.0.0.0 --port 5678 --wait -m unittest -v"
-PYPI=-v ${PWD}/LICENSE.txt:/opt/service/LICENSE.txt \
-	-v ${PWD}/PYPI.md:/opt/service/README.md \
-	-v ${HOME}/.pypirc:/opt/service/.pypirc
+PYPI=-v ${PWD}/LICENSE.txt:/opt/service/LICENSE.txt:ro \
+	-v ${PWD}/PYPI.md:/opt/service/README.md:ro \
+	-v ${HOME}/.pypirc:/opt/service/.pypirc:ro
+# Building a package reads the source and keeps nothing, so it gets only what it uses, read-only
+PACKAGE=-v ${PWD}/lib:/opt/service/lib:ro \
+	-v ${PWD}/setup.py:/opt/service/setup.py:ro \
+	-v ${PWD}/VERSION:/opt/service/VERSION:ro
 
 .PHONY: build shell debug test lint setup tag untag testpypi pypi new version release-check release dist-check testpypi-verify test-release help
 .DEFAULT_GOAL := help
@@ -49,7 +53,7 @@ setup: ## Checks it installs and its modules run on the oldest python
 	python -m relations.migrations"
 
 tag: ## Tags the version and pushes the tag
-	-git tag -a $(VERSION) -m "Version $(VERSION)"
+	git rev-parse -q --verify refs/tags/$(VERSION) || git tag -a $(VERSION) -m "Version $(VERSION)"
 	git push origin --tags
 
 untag: ## Removes the version's tag
@@ -57,12 +61,12 @@ untag: ## Removes the version's tag
 	git push origin ":refs/tags/$(VERSION)"
 
 testpypi: ## Uploads the version to TestPyPI
-	docker run --rm $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
+	docker run --rm $(TTY) $(PACKAGE) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cp -r /opt/service /opt/install && cd /opt/install && \
 	BUILD_VERSION='$(VERSION)' python -m build && \
 	python -m twine upload -r testpypi --config-file=.pypirc dist/*"
 
 pypi: ## Uploads the version to PyPI
-	docker run --rm $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
+	docker run --rm $(TTY) $(PACKAGE) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cp -r /opt/service /opt/install && cd /opt/install && \
 	BUILD_VERSION='$(VERSION)' python -m build && \
 	python -m twine upload --config-file=.pypirc dist/*"
 
@@ -84,7 +88,7 @@ release: ## Does what's left of the release: checks, TestPyPI, PyPI, the tag
 	@sh scripts/release.sh
 
 dist-check: ## Builds the distributions and runs twine check
-	docker run --rm $(TTY) $(VOLUMES) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cd /opt/service && \
+	docker run --rm $(TTY) $(PACKAGE) $(PYPI) python:3 sh -c "pip install -q --root-user-action=ignore build twine && cp -r /opt/service /opt/install && cd /opt/install && \
 	BUILD_VERSION='$(VERSION)' python -m build && \
 	python -m twine check dist/*"
 
