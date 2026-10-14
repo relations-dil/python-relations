@@ -24,6 +24,11 @@ All notable changes to python-relations are recorded here, newest first. Format 
 ### Fixed
 - `untag` never closed its quote, so it failed with a shell error.
 
+## [0.6.20] - 2026-10-14
+
+### Changed
+- A model whose `NAME` has a `.` in it raises a `ModelError`. Ids built from a model's name (relations-unifist's `seq.model.source.unum`) use the dot to separate their parts. A class name can't have a dot, so this only catches an explicit `NAME`.
+
 ## [0.6.19] - 2026-10-14
 
 ### Added

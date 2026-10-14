@@ -405,6 +405,22 @@ class TestModelIdentity(unittest.TestCase):
         self.assertIs(field.none, True)
         self.assertIs(field.readonly, False)
 
+        # a dot in a model's name would break the ids built from it, seq.model.source.unum
+
+        class Dotted(relations.Model):
+            NAME = "has.dot"
+            id = int
+            name = str
+
+        self.assertRaisesRegex(relations.ModelError, "has.dot: model name cannot contain '.'", Dotted.thy)
+
+        class Titled(relations.Model):
+            TITLE = "Titled.Dotted"
+            id = int
+            name = str
+
+        self.assertRaisesRegex(relations.ModelError, ": model name cannot contain '.'", Titled.thy)
+
     def test__field_name(self):
 
         stuff = Stuff()
