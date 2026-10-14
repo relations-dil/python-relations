@@ -4,7 +4,9 @@ Model Record Module
 
 import overscore
 
-class RecordError(Exception):
+from relations.error import RelationsError
+
+class RecordError(RelationsError):
     """
     Record Error excception which capture the record with the issue
     """

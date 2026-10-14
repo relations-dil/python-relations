@@ -11,9 +11,10 @@ import inspect
 
 import overscore
 import relations
+from relations.error import RelationsError
 
 
-class ModelError(Exception):
+class ModelError(RelationsError):
     """
     Generic model Error for easier tracing
     """
@@ -29,6 +30,24 @@ class ModelError(Exception):
         Might want to mention the model and info about it
         """
         return f"{self.model.NAME}: {self.message}"
+
+
+class UniqueError(ModelError):
+    """
+    A value that has to be unique, but already exists, whichever source it was written to
+    """
+
+
+class NotFoundError(ModelError):
+    """
+    A record that was asked for one, to read, update or delete, but isn't there
+    """
+
+
+class MultipleError(ModelError):
+    """
+    More than one record where there should be only one
+    """
 
 
 class ModelIdentity:

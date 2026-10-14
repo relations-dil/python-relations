@@ -5,11 +5,12 @@ Main relations module
 import re
 import inspect
 
+from relations.error import RelationsError
 from relations.source import Source, SourceError
 from relations.field import Field, FieldError
 from relations.titles import Titles
 from relations.record import Record, RecordError
-from relations.model import Model, ModelIdentity, ModelError
+from relations.model import Model, ModelIdentity, ModelError, UniqueError, NotFoundError, MultipleError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany, ManyToMany
 from relations.migrations import Migrations, MigrationsError
 

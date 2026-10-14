@@ -439,6 +439,10 @@ class TestSource(unittest.TestCase):
 
     def test_uniques(self):
 
+        # the mock raises core's unique error
+
+        self.assertIs(relations.unittest.MockSource.UniqueError, relations.UniqueError)
+
         Simple("ya").create()
 
         sure = Simple("sure")
@@ -675,10 +679,10 @@ class TestSource(unittest.TestCase):
         Unit([["stuff"], ["people"]]).create()
 
         models = Unit.one(name__in=["people", "stuff"])
-        self.assertRaisesRegex(relations.ModelError, "unit: more than one retrieved", models.retrieve)
+        self.assertRaisesRegex(relations.MultipleError, "unit: more than one retrieved", models.retrieve)
 
         model = Unit.one(name="things")
-        self.assertRaisesRegex(relations.ModelError, "unit: none retrieved", model.retrieve)
+        self.assertRaisesRegex(relations.NotFoundError, "unit: none retrieved", model.retrieve)
 
         self.assertIsNone(model.retrieve(False))
 
