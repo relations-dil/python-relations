@@ -33,7 +33,7 @@ pipeline {
                 branch 'main'
             }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-release', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     // Jenkins checks out a detached commit, the release scripts want to be on main, and the tag is pushed with the credential
                     sh '''
                         git checkout -B main
