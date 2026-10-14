@@ -36,8 +36,8 @@ version=$(cat VERSION)
 for target in "$@"; do
     [ "$target" = "$MAKE_FAIL" ] && exit 1
     case "$target" in
-        testpypi) mkdir -p "$FAKE_TEST/pypi/pkg/$version" && touch "$FAKE_TEST/pypi/pkg/$version/json" ;;
-        pypi) mkdir -p "$FAKE_PYPI/pypi/pkg/$version" && touch "$FAKE_PYPI/pypi/pkg/$version/json" ;;
+        testpypi) mkdir -p "$FAKE_TEST/pypi/pkg/$version" "$FAKE_TEST/simple/pkg" && touch "$FAKE_TEST/pypi/pkg/$version/json" && echo "<a href=\"pkg-$version.tar.gz\">pkg-$version.tar.gz</a>" >> "$FAKE_TEST/simple/pkg/index.html" ;;
+        pypi) mkdir -p "$FAKE_PYPI/pypi/pkg/$version" "$FAKE_PYPI/simple/pkg" && touch "$FAKE_PYPI/pypi/pkg/$version/json" && echo "<a href=\"pkg-$version.tar.gz\">pkg-$version.tar.gz</a>" >> "$FAKE_PYPI/simple/pkg/index.html" ;;
         tag) git tag "$version" && git push -q origin "$version" ;;
     esac
 done
@@ -97,15 +97,23 @@ fails() {
     if [ "$CODE" != 0 ]; then ok "$name"; else bad "$name" "exit 0: $OUT"; fi
 }
 
-publish() { # publish pypi|test version
+publish_json() { # publish_json pypi|test version: only on the json endpoint, not yet on the simple index pip reads
     root=$FAKE_PYPI
     [ "$1" = test ] && root=$FAKE_TEST
     mkdir -p "$root/pypi/pkg/$2"
     touch "$root/pypi/pkg/$2/json"
 }
 
+publish() { # publish pypi|test version: on both
+    root=$FAKE_PYPI
+    [ "$1" = test ] && root=$FAKE_TEST
+    publish_json "$1" "$2"
+    mkdir -p "$root/simple/pkg"
+    echo "<a href=\"pkg-$2.tar.gz\">pkg-$2.tar.gz</a>" >> "$root/simple/pkg/index.html"
+}
+
 unpublish() {
-    rm -rf "$FAKE_PYPI/pypi/pkg" "$FAKE_TEST/pypi/pkg"
+    rm -rf "$FAKE_PYPI/pypi/pkg" "$FAKE_TEST/pypi/pkg" "$FAKE_PYPI/simple/pkg" "$FAKE_TEST/simple/pkg"
 }
 
 # the floor setup.py asks of its dependency
@@ -301,6 +309,11 @@ run sh scripts/release-check.sh
 has "check says nothing to release" "nothing to release" "$OUT"
 
 fresh
+RELEASE_SKIP_STAGES=1 run sh scripts/release-check.sh
+eq "check skips the stages when told to" 0 "$CODE"
+eq "check skipping runs only dist-check" "dist-check" "$(cat "$MAKE_LOG")"
+
+fresh
 MAKE_FAIL=dist-check run sh scripts/release-check.sh
 eq "check fails when dist-check does" 1 "$CODE"
 
@@ -328,6 +341,14 @@ eq "state is released after" "released" "$(state)"
 run sh scripts/release.sh
 has "release again does nothing" "nothing to release" "$OUT"
 eq "release again runs no make" "" "$(cat "$MAKE_LOG")"
+
+fresh
+RELEASE_SKIP_STAGES=1 run sh scripts/release.sh
+eq "release skipping the stages" "dist-check
+testpypi
+testpypi-verify
+pypi
+tag" "$(cat "$MAKE_LOG")"
 
 fresh
 RELEASE_TEST=0 run sh scripts/release.sh
@@ -379,10 +400,53 @@ echo "== lib.sh"
 fresh
 eq "package" "pkg" "$(package)"
 eq "version" "0.6.1" "$(version)"
+
+# the defaults wait 30 minutes, the indexes lag for minutes
+
+eq "default wait" "180 10" "$(env -u WAIT_TRIES -u WAIT_DELAY sh -c '. scripts/lib.sh; echo "$WAIT_TRIES $WAIT_DELAY"')"
+
+# listed: whether the simple index, what pip reads, has the version
+
+fails "listed says no when it isn't" listed pypi 0.6.1
+publish_json pypi 0.6.1
+fails "listed says no when only the json has it" listed pypi 0.6.1
+passes "published sees the json" published pypi 0.6.1
+publish pypi 0.6.1
+passes "listed says yes when the simple index has it" listed pypi 0.6.1
+fails "listed doesn't match a longer version" listed pypi 0.6
+
+# wait_for needs both indexes
+
+unpublish
 fails "wait_for gives up" wait_for pypi
 has "wait_for says why" "pkg 0.6.1 is not on pypi" "$OUT"
+publish_json pypi 0.6.1
+fails "wait_for waits on the simple index too" wait_for pypi
 publish pypi 0.6.1
 passes "wait_for finds it" wait_for pypi
+publish test 0.6.1
+passes "wait_for finds it on test" wait_for test
+
+# guard: a detached checkout, the way Jenkins has one, takes its branch from BRANCH_NAME
+
+fresh
+passes "guard on main" guard
+git checkout -q --detach
+fails "guard on a detached checkout without a branch name" guard
+has "guard says no branch" "no branch" "$OUT"
+BRANCH_NAME=main run guard
+eq "guard on a detached checkout named main" 0 "$CODE"
+BRANCH_NAME=other run guard
+eq "guard refuses another name" 1 "$CODE"
+has "guard says which" "not on main (on other)" "$OUT"
+git update-ref -d refs/remotes/origin/main
+BRANCH_NAME=main run guard
+eq "guard needs no local copy of origin/main" 0 "$CODE"
+git checkout -q main
+echo more > more.txt && git add more.txt && git commit -q -m local
+run guard
+eq "guard refuses ahead of the remote's main" 1 "$CODE"
+has "guard says not level" "isn't level" "$OUT"
 
 echo
 echo "$PASS passed, $FAIL failed"

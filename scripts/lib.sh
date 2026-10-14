@@ -1,10 +1,12 @@
 # shellcheck shell=sh
 # Shared by the release scripts, source it: . "$(dirname "$0")/lib.sh"
-# PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less.
+# PYPI_URL, TESTPYPI_URL, WAIT_TRIES and WAIT_DELAY can be set to point at other registries or wait less or longer.
+# BRANCH_NAME names the branch when the checkout is detached, the way Jenkins has it.
+# RELEASE_SKIP_STAGES=1 skips build, test, lint and setup in check, for Jenkins which has just run them.
 
 PYPI_URL=${PYPI_URL:-https://pypi.org}
 TESTPYPI_URL=${TESTPYPI_URL:-https://test.pypi.org}
-WAIT_TRIES=${WAIT_TRIES:-60}
+WAIT_TRIES=${WAIT_TRIES:-180}
 WAIT_DELAY=${WAIT_DELAY:-10}
 
 # the name on pypi, and the version being worked on
@@ -25,11 +27,20 @@ published() {
     curl -sf -o /dev/null "$base/pypi/$(package)/$2/json"
 }
 
-# wait_for pypi|test: waits for the version to show up on the index, they lag for minutes after an upload
+# listed pypi|test version: whether the simple index, what pip reads, lists the version. It can lag the json by minutes
+listed() {
+    case "$1" in
+        test) base=$TESTPYPI_URL ;;
+        *) base=$PYPI_URL ;;
+    esac
+    curl -sf "$base/simple/$(package)/" | grep -Eq -- "[-_]$(echo "$2" | sed 's/\./\\./g')(\.tar\.gz|-py)"
+}
+
+# wait_for pypi|test: waits for the version to show up on both the json and the simple index, they lag for minutes after an upload
 wait_for() {
     tries=0
     while [ "$tries" -lt "$WAIT_TRIES" ]; do
-        if published "$1" "$(version)"; then
+        if published "$1" "$(version)" && listed "$1" "$(version)"; then
             echo "$(package) $(version) is on $1"
             return 0
         fi
@@ -40,13 +51,12 @@ wait_for() {
     return 1
 }
 
-# guard: makes sure we're on a clean main that's level with origin.
+# guard: makes sure we're on a clean main that's level with origin's. A detached checkout (Jenkins) names its branch in BRANCH_NAME.
 guard() {
-    git fetch -q origin
-    branch=$(git branch --show-current)
+    branch=${BRANCH_NAME:-$(git branch --show-current)}
     [ "$branch" = main ] || { echo "not on main (on ${branch:-no branch})"; return 1; }
     [ -z "$(git status --porcelain)" ] || { echo "the working tree isn't clean"; return 1; }
-    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main isn't level with origin/main"; return 1; }
+    [ "$(git rev-parse HEAD)" = "$(git ls-remote origin refs/heads/main | cut -f1)" ] || { echo "main isn't level with origin/main"; return 1; }
 }
 
 # state: how far the release of this version is: released, tag-pending, publish-pending or unreleased
@@ -89,7 +99,7 @@ check() {
         found=$(problems)
         [ -z "$found" ] || { echo "$found"; return 1; }
         make dist-check || return 1
-        make build test lint setup || return 1
+        [ -n "$RELEASE_SKIP_STAGES" ] || make build test lint setup || return 1
     fi
 
     echo "ready to release"
