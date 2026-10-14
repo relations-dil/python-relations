@@ -32,6 +32,11 @@ pipeline {
             when {
                 branch 'main'
             }
+            // A tag needs a committer, and Jenkins has none
+            environment {
+                GIT_COMMITTER_NAME = 'Jenkins'
+                GIT_COMMITTER_EMAIL = 'jenkins@klot.io'
+            }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GH_USER', passwordVariable: 'GH_TOKEN')]) {
                     // Jenkins checks out a detached commit, the release scripts want to be on main, and the tag is pushed with the credential

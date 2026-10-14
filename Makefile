@@ -49,7 +49,7 @@ setup: ## Checks it installs and its modules run on the oldest python
 	python -m relations.migrations"
 
 tag: ## Tags the version and pushes the tag
-	-git tag -a $(VERSION) -m "Version $(VERSION)"
+	git rev-parse -q --verify refs/tags/$(VERSION) || git tag -a $(VERSION) -m "Version $(VERSION)"
 	git push origin --tags
 
 untag: ## Removes the version's tag
