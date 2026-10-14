@@ -264,11 +264,11 @@ eq "state publish-pending" "publish-pending" "$(state)"
 
 echo "== release-check.sh"
 fresh
-export RELEASE_SKIP_STAGES=1
 run sh scripts/release-check.sh
 eq "check ready" 0 "$CODE"
 has "check says ready" "ready to release" "$OUT"
-eq "check skips the stages but still builds dist" "dist-check" "$(cat "$MAKE_LOG")"
+eq "check builds dist then runs the stages" "dist-check
+build test lint setup" "$(cat "$MAKE_LOG")"
 
 fresh
 printf '# Changelog\n\n## [0.6.0] - 2026-01-01\n' > CHANGELOG.md
@@ -304,10 +304,6 @@ fresh
 MAKE_FAIL=dist-check run sh scripts/release-check.sh
 eq "check fails when dist-check does" 1 "$CODE"
 
-unset RELEASE_SKIP_STAGES
-fresh
-run sh scripts/release-check.sh
-has "check without skipping runs the stages" "build test lint setup" "$(cat "$MAKE_LOG")"
 fresh
 MAKE_FAIL=lint run sh scripts/release-check.sh
 eq "check fails when a stage does" 1 "$CODE"
@@ -376,10 +372,6 @@ git switch -q -c elsewhere
 run sh scripts/release.sh
 eq "release refuses off main" 1 "$CODE"
 eq "release off main runs no make" "" "$(cat "$MAKE_LOG")"
-
-fresh
-BRANCH_NAME=main run guard
-eq "guard takes BRANCH_NAME for a detached build" 0 "$CODE"
 
 # ---- wait_for
 

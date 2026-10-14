@@ -40,10 +40,10 @@ wait_for() {
     return 1
 }
 
-# guard: makes sure we're on a clean main that's level with origin. Jenkins builds a detached commit, so it names the branch.
+# guard: makes sure we're on a clean main that's level with origin.
 guard() {
     git fetch -q origin
-    branch=${BRANCH_NAME:-$(git branch --show-current)}
+    branch=$(git branch --show-current)
     [ "$branch" = main ] || { echo "not on main (on ${branch:-no branch})"; return 1; }
     [ -z "$(git status --porcelain)" ] || { echo "the working tree isn't clean"; return 1; }
     [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "main isn't level with origin/main"; return 1; }
@@ -89,7 +89,7 @@ check() {
         found=$(problems)
         [ -z "$found" ] || { echo "$found"; return 1; }
         make dist-check || return 1
-        [ -n "$RELEASE_SKIP_STAGES" ] || make build test lint setup || return 1
+        make build test lint setup || return 1
     fi
 
     echo "ready to release"

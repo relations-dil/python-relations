@@ -1,6 +1,6 @@
 #!/bin/sh
 # release.sh: from main, does what's left of the release: the checks, testpypi and a clean install from it, pypi, waiting for it, the tag
-# RELEASE_SKIP_STAGES=1 skips build, test, lint and setup, for Jenkins which has just run them. RELEASE_TEST=0 skips testpypi.
+# RELEASE_TEST=0 skips testpypi.
 
 . "$(dirname "$0")/lib.sh"
 
