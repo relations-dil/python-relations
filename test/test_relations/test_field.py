@@ -469,8 +469,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(values, {})
         self.assertIsNone(field.original)
 
-    def test_create_readonly(self):
-
         field = relations.Field(str, store="slug", readonly=True)
 
         field.value = "yes"
@@ -708,8 +706,6 @@ class TestField(unittest.TestCase):
         self.assertEqual(values, {'ip': {"address": "1.2.3.4", "value": 16909060}})
         self.assertEqual(field.original, {"address": "1.2.3.4", "value": 16909060})
 
-    def test_update_readonly(self):
-
         field = relations.Field(str, store="slug", readonly=True)
 
         field.value = "yes"
@@ -728,15 +724,6 @@ class TestField(unittest.TestCase):
         field.update(values)
         self.assertEqual(values, {})
         self.assertEqual(field.value, "yes")
-
-    def test_mass_readonly(self):
-
-        field = relations.Field(str, store="slug", readonly=True)
-
-        field.value = "yes"
-        values = {}
-        field.mass(values)
-        self.assertEqual(values, {})
 
     def test_mass(self):
 
@@ -774,6 +761,13 @@ class TestField(unittest.TestCase):
 
         field.inject = True
         self.assertRaisesRegex(relations.FieldError, "no mass update with inject", field.mass, {})
+
+        field = relations.Field(str, store="slug", readonly=True)
+
+        field.value = "yes"
+        values = {}
+        field.mass(values)
+        self.assertEqual(values, {})
 
     def test_tie(self):
 
