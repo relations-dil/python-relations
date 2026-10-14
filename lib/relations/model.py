@@ -135,6 +135,11 @@ class ModelIdentity:
         setattr(self, 'TITLE', cls.TITLE or cls.__name__)
         setattr(self, 'NAME', cls.NAME or cls.underscore(self.TITLE))
 
+        # Ids built from a model's name separate their parts with a dot
+
+        if "." in self.NAME:
+            raise ModelError(self, "model name cannot contain '.'")
+
         # Derive all the fields
 
         fields = relations.Record()
