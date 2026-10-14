@@ -3,6 +3,25 @@
 All notable changes to python-relations are recorded here, newest first. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `make new [V=+0.0.1|+0.1|+1|x.y.z] [B=name]` starts a release: from a clean `main` that's level with `origin/main` it works out the next version, makes the branch (`gaf3/<name>`, or `gaf3/<version>`), writes `VERSION` and the changelog section, and commits `Version x.y.z`.
+- `make version [V=...]` sets the version on any branch. A bump is `+1`, `+0.1` or `+0.0.1` (everything after the raised place resets to 0), anything else is the version outright. It has to be `x.y.z`, has to increase, and can't be published already.
+- `make release-check` says where the release is up to (`unreleased`, `publish-pending`, `tag-pending` or `released`) and what would stop it: a missing changelog section, a git pin in `requirements.txt`, or a `setup.py` floor that isn't published. It changes nothing, and says "nothing to release" for a version that's out.
+- `make release` does the rest from `main`: the checks, build, test, lint and setup, TestPyPI (once per version) and a clean install from it, PyPI, waiting until it's live, and the tag. It does only what's left, so running it again does nothing.
+- `make dist-check` builds the distributions and runs `twine check` on them, uploading nothing.
+- `make help` lists every target with what it does (each target has a `## description` after it), and is what a bare `make` runs.
+- `make test-release` tests the release scripts against a throwaway repo, a local origin and fake indexes, so nothing real is touched.
+- The work is in `scripts/`, where a target has a script, `make X` runs `scripts/X.sh` (`lib.sh` is what they share).
+
+### Changed
+- Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
+- `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
+
+### Fixed
+- `untag` never closed its quote, so it failed with a shell error.
+
 ## [0.6.18] - 2026-10-12
 
 ### Added
@@ -10,7 +29,6 @@ All notable changes to python-relations are recorded here, newest first. Format 
 - `Field.readonly`, which was declared but unused: a readonly field is written on create, skipped by `update` and mass updates, and an edited value snaps back to what is stored so `WHERE` clauses still find the record.
 
 ### Changed
-- The `untag` target in the `Makefile` quotes the tag it deletes.
 - `relations.unittest.MockSource` keys its data by the supplied id for non-auto ids (and raises a `UniqueError` for a missing or repeated one), instead of overwriting it with a counter.
 - Models whose `ID` field is a `str` (like `ID = "name"`) get the new defaults above, so their default titles and unique index change; set `TITLES` and `UNIQUE` to keep the old ones.
 
