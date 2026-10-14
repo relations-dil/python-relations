@@ -16,6 +16,7 @@ All notable changes to python-relations are recorded here, newest first. Format 
 - The work is in `scripts/`, where a target has a script, `make X` runs `scripts/X.sh` (`lib.sh` is what they share).
 
 ### Changed
+- Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
 
 ### Fixed
