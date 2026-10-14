@@ -29,6 +29,57 @@ class TestModelError(unittest.TestCase):
         self.assertEqual(str(error), "whoops: adaisy")
 
 
+class TestUniqueError(unittest.TestCase):
+
+    maxDiff = None
+
+    def test___init__(self):
+
+        error = relations.UniqueError("unittest", "oops")
+
+        self.assertEqual(error.model, "unittest")
+        self.assertEqual(error.message, "oops")
+        self.assertIsInstance(error, relations.ModelError)
+        self.assertIsInstance(error, relations.RelationsError)
+
+    def test___str__(self):
+
+        error = relations.UniqueError(Whoops(), "adaisy")
+
+        self.assertEqual(str(error), "whoops: adaisy")
+
+class TestNotFoundError(unittest.TestCase):
+
+    maxDiff = None
+
+    def test___init__(self):
+
+        error = relations.NotFoundError("unittest", "none retrieved")
+
+        self.assertEqual(error.model, "unittest")
+        self.assertEqual(error.message, "none retrieved")
+        self.assertIsInstance(error, relations.ModelError)
+
+    def test___str__(self):
+
+        self.assertEqual(str(relations.NotFoundError(Whoops(), "none retrieved")), "whoops: none retrieved")
+
+class TestMultipleError(unittest.TestCase):
+
+    maxDiff = None
+
+    def test___init__(self):
+
+        error = relations.MultipleError("unittest", "more than one retrieved")
+
+        self.assertEqual(error.model, "unittest")
+        self.assertEqual(error.message, "more than one retrieved")
+        self.assertIsInstance(error, relations.ModelError)
+
+    def test___str__(self):
+
+        self.assertEqual(str(relations.MultipleError(Whoops(), "more than one retrieved")), "whoops: more than one retrieved")
+
 class People(relations.ModelIdentity):
 
     EXTRA = "info"

@@ -8,7 +8,9 @@ import re
 import copy
 import overscore
 
-class FieldError(Exception):
+from relations.error import RelationsError
+
+class FieldError(RelationsError):
     """
     Field Error class that captures the field
     """

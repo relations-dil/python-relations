@@ -18,6 +18,7 @@ setup(
     package_dir = {'': 'lib'},
     py_modules = [
         'relations',
+        'relations.error',
         'relations.source',
         'relations.unittest',
         'relations.field',

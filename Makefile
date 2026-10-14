@@ -38,6 +38,7 @@ lint: ## Runs pylint
 setup: ## Checks it installs and its modules run on the oldest python
 	docker run --rm $(TTY) $(VOLUMES) $(PYPI) $(INSTALL) sh -c "cp -r /opt/service /opt/install && cd /opt/install/ && \
 	python setup.py install && \
+	python -m relations.error && \
 	python -m relations.source && \
 	python -m relations.unittest && \
 	python -m relations.field && \

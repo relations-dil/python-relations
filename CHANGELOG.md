@@ -22,6 +22,17 @@ All notable changes to python-relations are recorded here, newest first. Format 
 ### Fixed
 - `untag` never closed its quote, so it failed with a shell error.
 
+## [0.6.19] - 2026-10-14
+
+### Added
+- `relations.RelationsError`, the base of every error relations raises, so one `except` catches them all. `FieldError`, `ModelError`, `RecordError`, `MigrationsError` and `SourceError` now inherit from it instead of straight from `Exception`.
+- `relations.UniqueError`, a `ModelError` for a value that has to be unique but already exists, whichever source it was written to. It is for every source to raise (relations-dil/python-relations#78): the mock now raises it, and Redis and the SQL drivers follow in their own releases.
+- `relations.NotFoundError` ("none retrieved") and `relations.MultipleError` ("more than one retrieved"), both `ModelError`s with the same messages as before, for a record that isn't there and for more than one where there should be one. What a sync replay needs to tell apart. The mock raises them, the other sources follow.
+- `relations.error` is a new module, listed in `setup.py`.
+
+### Changed
+- `relations.unittest.MockSource.UniqueError` is `relations.UniqueError` instead of its own class, so code catching `MockSource.UniqueError` still works and also catches core's.
+
 ## [0.6.18] - 2026-10-12
 
 ### Added

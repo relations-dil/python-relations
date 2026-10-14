@@ -8,8 +8,9 @@ import json
 import datetime
 
 import relations
+from relations.error import RelationsError
 
-class MigrationsError(Exception):
+class MigrationsError(RelationsError):
     """
     General migrations error
     """
