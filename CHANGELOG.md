@@ -3,6 +3,14 @@
 All notable changes to python-relations are recorded here, newest first. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.7.0] - 2026-10-21
+
+### Added
+- `relations.security`, a way to hold a model's verbs to rules, using the `pre` and `post` hooks (relations-dil/python-relations#86). `Secure` mixes in in front of a model (`class Doc(relations.security.Secure, Base)`) and checks `create`, `count`, `retrieve`, `titles`, `update` and `delete` for the actor in effect (`acting(actor)`), by the `Rule` a `Policy` gives for the actor, model and verb. No actor, or no rule, is a `Denied`. Opt in: a model without `Secure` is as it was.
+- What an actor can't read is a miss (`NotFoundError`, or nothing matched), what they can read but can't write is a `Denied`. A scope is checked in memory where it can be (the model's own fields, including injected ones) and added to the source's query otherwise (relations), and by query `update` and `delete` are narrowed to what can be read and written, with no extra query.
+- `Rule(allow, scope, into, force, fields, check)`: `scope` is filter kwargs, or a function of the actor that gives them, `into` what new values have to satisfy (`{}` allows moving a record out of reach, after which it can't be read), `force` values set whatever was sent, `fields` the names that can be read or written, and `check` a function of the actor and the record's values. `filter`, `sort` and `like` can only use the names the actor can read, so they aren't a way to find out what they can't.
+- `Policy(rules)` gives rules from a dict by model name, then verb (`*` for any), and `count` and `titles` use `retrieve`'s. Override `Policy.rule(actor, model, verb)` to get them from elsewhere, and `relations.security.POLICY`, or a model's `POLICY`, says which to use. `system()` is for the code's own work, which isn't checked, and `cache()` is a dict kept while an actor is acting, for a policy to keep the rules it looked up.
+
 ## [0.6.21] - 2026-10-21
 
 ### Added

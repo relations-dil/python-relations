@@ -13,6 +13,7 @@ from relations.record import Record, RecordError
 from relations.model import Model, ModelIdentity, ModelError, UniqueError, NotFoundError, MultipleError
 from relations.relation import Relation, OneTo, OneToOne, OneToMany, ManyToMany
 from relations.migrations import Migrations, MigrationsError
+from relations import security
 
 INDEX = re.compile(r'^-?\d+$')
 DNS = re.compile(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\Z', re.IGNORECASE) # A dns label, what sources have to be named

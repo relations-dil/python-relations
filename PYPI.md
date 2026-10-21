@@ -80,3 +80,40 @@ unit.update()
 tests = Test.many(unit__name="thing", id__gt=0)
 tests[0].name # "moar"
 ```
+
+# Security
+
+`relations.security` holds a model's verbs (create, count, retrieve, titles, update and delete) to rules. Put `Secure` in front of the model, give it a policy, and say who is acting:
+
+```python
+
+import relations
+import relations.security
+
+class Doc(relations.security.Secure, Base):
+    id = int
+    owner = str
+    title = str
+    locked = bool, False
+
+# Rules by model name and verb. A scope is filter kwargs, or a function of the actor that gives them
+
+relations.security.POLICY = relations.security.Policy({
+    "doc": {
+        "retrieve": relations.security.Rule(scope=lambda actor: {"owner": actor}),
+        "create": relations.security.Rule(scope=lambda actor: {"owner": actor}),
+        "update": relations.security.Rule(scope=lambda actor: {"owner": actor, "locked": False})
+    }
+})
+
+with relations.security.acting("pat"):
+    Doc.many().title                 # only pat's
+    Doc(owner="sam", title="x").create()  # Denied
+```
+
+- No actor, or no rule, is no (`Denied`). `count` and `titles` use `retrieve`'s rule unless given their own.
+- What an actor can't read is a miss, as if it weren't there. What they can read but can't write is `Denied`, so they're told.
+- Scopes on the model's own fields are checked in memory, before the source. Those on relations are added to the source's query, and bulk updates and deletes are narrowed to what the actor can read and write, in the query they already make.
+- `Rule(allow, scope, into, force, fields, check)`: `into` is what new values have to satisfy (the scope if not given, and `{}` lets a record be moved out of reach, after which it can't be read), `force` values are set whatever was sent, `fields` the names that can be read or written, and `check` a function of the actor and the record's values.
+- Filtering, sorting and searching are held to the names the actor can read, or they'd be a way to find out what they can't. `Model.secure(**scope)` is `filter` for what security adds: it merges rather than filters in, so a scope can't be widened.
+- `relations.security.system()` is for the code's own work, which isn't checked. Override `Policy.rule(actor, model, verb)` to get rules from somewhere else, such as a database.
