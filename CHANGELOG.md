@@ -3,7 +3,7 @@
 All notable changes to python-relations are recorded here, newest first. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.6.21] - 2026-10-21
 
 ### Added
 - Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github` credential to push the tag, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
