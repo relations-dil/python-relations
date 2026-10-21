@@ -2,7 +2,7 @@
 Relations Module for handling models
 """
 
-# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements,too-many-instance-attributes
+# pylint: disable=unsupported-membership-test,too-few-public-methods,too-many-branches,too-many-statements,too-many-instance-attributes,too-many-public-methods
 
 import copy
 
@@ -1019,6 +1019,48 @@ class Model(ModelIdentity):
                         relation.filter(**{pieces[1]: value})
                     else:
                         self._record.filter(name, value)
+
+        return self
+
+    def _nothing(self):
+        """
+        Narrows the query to nothing
+        """
+
+        field = self._record._order[0]
+        field.criteria = {**(field.criteria or {}), "null": True, "not_null": True}
+
+    def secure(self, **scope):
+        """
+        Narrows the query by the criteria as well, filter kwargs like filter has, but for criteria that mustn't
+        widen what's there, such as what a caller isn't to see past. They're merged where filter would take the
+        union of an in and the last of the rest, so what's in both is what's left, and what can't be both is
+        nothing. Criteria that can't be merged raise a FieldError. Criteria on relations are filtered, as filter does
+        """
+
+        if self._action != "retrieve":
+            raise ModelError(self, "can only secure retrieve")
+
+        own = {}
+        other = {}
+
+        for name, value in scope.items():
+            (own if name.split('__')[0] in self._fields._names else other)[name] = value
+
+        if other:
+            self.filter(**other)
+
+        if own:
+
+            scoped = copy.deepcopy(self._fields)
+
+            for name, value in own.items():
+                scoped.filter(name, value)
+
+            for field in scoped._order:
+                for criterion, value in (field.criteria or {}).items():
+                    if not self._record._names[field.name].merge(criterion, value):
+                        self._nothing()
 
         return self
 

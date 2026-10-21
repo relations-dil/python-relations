@@ -2123,3 +2123,81 @@ class TestModelHooks(unittest.TestCase):
         Chained("a").create()
 
         self.assertEqual(Chained.CALLS, [("security", "create"), ("journal", "create")])
+
+
+class Scoped(ModelTest):
+    id = int
+    owner = str
+    name = str
+
+    UNIQUE = {}
+
+
+class TestModelSecure(unittest.TestCase):
+
+    maxDiff = None
+
+    def setUp(self):
+
+        self.source = relations.unittest.MockSource("TestModel")
+
+        Scoped([["pat", "a"], ["pat", "b"], ["sam", "c"]]).create()
+
+        Unit([["a"], ["b"]]).create()
+        Test([[1, "x"], [1, "y"], [2, "z"]]).create()
+
+    def tearDown(self):
+
+        del relations.SOURCES["TestModel"]
+
+    def test_filter(self):
+
+        # Filtering again adds to an in, and takes the last of the rest, so it can't be used to narrow
+
+        self.assertEqual(Scoped.many(id__in=[1, 2]).filter(id__in=[2, 3]).id, [1, 2, 3])
+        self.assertEqual(Scoped.many(owner="pat").filter(owner="sam").name, ["c"])
+
+    def test_secure(self):
+
+        unit = Scoped.many(id__in=[1, 2])
+
+        self.assertIs(unit.secure(id__in=[2, 3]), unit)
+        self.assertEqual(unit.id, [2])
+
+        self.assertEqual(Scoped.many().secure(owner="pat").name, ["a", "b"])
+        self.assertEqual(Scoped.many(owner="pat").secure(owner="pat").name, ["a", "b"])
+        self.assertEqual(Scoped.many(id__gt=1).secure(id__gt=2).name, ["c"])
+        self.assertEqual(Scoped.many(owner__not_in=["pat"]).secure(owner__not_in=["sam"]).name, [])
+        self.assertEqual(Scoped.many(owner="pat").secure(owner="pat", id__lt=2).secure(id__lt=5).name, ["a"])
+
+    def test_secure_nothing(self):
+
+        self.assertEqual(Scoped.many(owner="pat").secure(owner="sam").name, [])
+        self.assertEqual(Scoped.many(id__in=[1]).secure(id__in=[3]).name, [])
+        self.assertEqual(Scoped.many().secure(owner="pat").secure(owner="sam").name, [])
+        self.assertEqual(Scoped.many(id__in=[1]).secure(id__in=[3]).count(), 0)
+        self.assertIsNone(Scoped.one(name="a").secure(owner="sam").retrieve(False))
+        self.assertRaises(relations.NotFoundError, Scoped.one(name="a").secure(owner="sam").retrieve)
+
+        # even if the first field is the one that's secured
+
+        self.assertEqual(Scoped.many(id=1).secure(id=2).name, [])
+
+    def test_secure_unmerged(self):
+
+        self.assertRaisesRegex(relations.FieldError, "cannot merge like", Scoped.many(name__like="a").secure, name__like="b")
+
+    def test_secure_relations(self):
+
+        # Criteria on relations are filtered, to the related model
+
+        self.assertEqual(Test.many().secure(unit__name="a").name, ["x", "y"])
+        self.assertEqual(Test.many(name="x").secure(unit__name="a", id__lt=3).name, ["x"])
+        self.assertEqual(Test.many(name="z").secure(unit__name="a").name, [])
+
+        self.assertRaisesRegex(relations.RecordError, "unknown criterion 'nope'", Scoped.many().secure, nope="a")
+
+    def test_secure_retrieve(self):
+
+        self.assertRaisesRegex(relations.ModelError, "scoped: can only secure retrieve", Scoped(owner="pat").secure, owner="pat")
+        self.assertRaises(relations.ModelError, Scoped.many().retrieve().secure, owner="pat")
