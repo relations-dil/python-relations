@@ -3,9 +3,11 @@
 All notable changes to python-relations are recorded here, newest first. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.6.21] - 2026-10-21
 
 ### Added
+- `Model.secure(**scope)`, `filter` for criteria that mustn't widen what's already filtered, such as a security scope on top of what a caller asked. Filtering twice on the same criterion doesn't narrow: an `in` (and `has`, `any`, `all`) gets the union of the values and anything else the last, so a caller's `id__in=[1, 2]` plus a scope of `id__in=[2, 3]` matched 1, 2 and 3. `secure` merges instead: `in` keeps what's in both, `gt` and `gte` the larger, `lt` and `lte` the smaller, `not_in` and `not_any` what's left out by either, `has` what's needed by either. An `eq`, `null` or `all` that differs from what's there matches nothing, and criteria that can't be put in one (`like`, `start`, `end`, `any`, a differing `not_eq`) raise a `FieldError`. Criteria on relations are filtered as `filter` does. Only on a model that is retrieving, as `limit` is, and `filter` is unchanged (relations-dil/python-relations#87).
+- `Field.merge(criterion, value)`, what `secure` merges with. It returns False if nothing could satisfy both. `secure` is reserved as a field name, as `filter` is.
 - Jenkins releases on a merge to `main`: a `release` stage (only on `main`) runs `make release`, which does nothing for a version that is already released and otherwise does the test release, the release and the tag. It uses the `github` credential to push the tag, one build at a time, and a two hour timeout (relations-dil/python-relations#80).
 - `make new [V=+0.0.1|+0.1|+1|x.y.z] [B=name]` starts a release: from a clean `main` that's level with `origin/main` it works out the next version, makes the branch (`gaf3/<name>`, or `gaf3/<version>`), writes `VERSION` and the changelog section, and commits `Version x.y.z`.
 - `make version [V=...]` sets the version on any branch. A bump is `+1`, `+0.1` or `+0.0.1` (everything after the raised place resets to 0), anything else is the version outright. It has to be `x.y.z`, has to increase, and can't be published already.

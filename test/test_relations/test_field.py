@@ -312,6 +312,77 @@ class TestField(unittest.TestCase):
         field = relations.Field(int)
         self.assertRaisesRegex(relations.FieldError, "no path \['nope'\] with kind int", field.filter, 0, "nope")
 
+    def test_merge(self):
+
+        field = relations.Field(int)
+        self.assertTrue(field.merge("eq", 1))
+        self.assertEqual(field.criteria, {"eq": 1})
+
+        # the same is the same, and different can't both be
+
+        self.assertTrue(field.merge("eq", 1))
+        self.assertFalse(field.merge("eq", 2))
+        self.assertEqual(field.criteria, {"eq": 1})
+
+        # in is what's in both, where filter would add
+
+        field = relations.Field(int)
+        field.filter([1, 2], "in")
+        field.filter([3], "in")
+        self.assertEqual(field.criteria, {"in": [1, 2, 3]})
+
+        field = relations.Field(int)
+        field.filter([1, 2], "in")
+        self.assertTrue(field.merge("in", [2, 3]))
+        self.assertEqual(field.criteria, {"in": [2]})
+        self.assertFalse(field.merge("in", [4]))
+
+        # the tighter bound wins
+
+        field = relations.Field(int)
+        field.criteria = {"gt": 5, "lte": 9, "gte": 1, "lt": 20}
+        self.assertTrue(field.merge("gt", 7))
+        self.assertTrue(field.merge("lte", 8))
+        self.assertTrue(field.merge("gte", 0))
+        self.assertTrue(field.merge("lt", 30))
+        self.assertEqual(field.criteria, {"gt": 7, "lte": 8, "gte": 1, "lt": 20})
+
+        # not in adds to what's left out, has adds to what's needed, null and all can't differ
+
+        field = relations.Field(set)
+        field.criteria = {"not_in": [1], "not_any": [1], "has": [1], "null": True, "all": [1]}
+        self.assertTrue(field.merge("not_in", [2]))
+        self.assertTrue(field.merge("not_any", [2]))
+        self.assertTrue(field.merge("has", [2]))
+        self.assertFalse(field.merge("null", False))
+        self.assertFalse(field.merge("all", [2]))
+        self.assertEqual(field.criteria["not_in"], [1, 2])
+        self.assertEqual(field.criteria["not_any"], [1, 2])
+        self.assertEqual(field.criteria["has"], [1, 2])
+
+        # in a path, as the operator is last
+
+        field = relations.Field(dict)
+        field.criteria = {"a__gt": 1}
+        self.assertTrue(field.merge("a__gt", 2))
+        self.assertEqual(field.criteria, {"a__gt": 2})
+
+        # what can't be put together
+
+        field = relations.Field(int, name="count")
+        field.criteria = {"like": "a", "not_eq": 1, "any": [1], "not_has": [1], "gt": 1}
+        self.assertRaisesRegex(relations.FieldError, "cannot merge like", field.merge, "like", "b")
+        self.assertRaisesRegex(relations.FieldError, "cannot merge not_eq", field.merge, "not_eq", 2)
+        self.assertRaisesRegex(relations.FieldError, "cannot merge any", field.merge, "any", [2])
+        self.assertRaisesRegex(relations.FieldError, "cannot merge not_has", field.merge, "not_has", [2])
+        self.assertRaisesRegex(relations.FieldError, "cannot merge gt", field.merge, "gt", "a")
+
+    def test_reserved_secure(self):
+
+        field = relations.Field(int)
+
+        self.assertRaisesRegex(relations.FieldError, "field name 'secure' is reserved", setattr, field, "name", "secure")
+
     def test_export(self):
 
         field = relations.Field(int)

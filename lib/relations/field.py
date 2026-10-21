@@ -111,6 +111,7 @@ class Field: # pylint: disable=too-many-instance-attributes
         'read',
         'retrieve',
         'satisfy',
+        'secure',
         'set',
         'sort',
         'thy',
@@ -362,6 +363,63 @@ class Field: # pylint: disable=too-many-instance-attributes
                 self.criteria[criterion] = value
             else:
                 self.criteria[criterion] = self.valid(value)
+
+    def merge(self, criterion, value): # pylint: disable=too-many-return-statements
+        """
+        Adds a criterion as filter has made it (the same names, the values valid) so a record has to satisfy what's
+        there as well, where filtering again would not: an in gets the union of the values, anything else the
+        last. Returns False if nothing could satisfy both, and raises a FieldError if the two can't be put in one
+        """
+
+        if self.criteria is None:
+            self.criteria = {}
+
+        if criterion not in self.criteria:
+            self.criteria[criterion] = value
+            return True
+
+        current = self.criteria[criterion]
+
+        if current == value:
+            return True
+
+        operator = overscore.parse(criterion)[-1]
+        inverted = operator.startswith("not_")
+        operator = operator.split("not_", 1)[-1]
+
+        if inverted:
+
+            if operator in ("in", "any"):
+                self.criteria[criterion] = current + [each for each in value if each not in current]
+                return True
+
+            raise FieldError(self, f"cannot merge {criterion}")
+
+        try:
+
+            if operator == "in":
+                self.criteria[criterion] = [each for each in current if each in value]
+                return bool(self.criteria[criterion])
+
+            if operator == "has":
+                self.criteria[criterion] = current + [each for each in value if each not in current]
+                return True
+
+            if operator in ("gt", "gte"):
+                self.criteria[criterion] = max(current, value)
+                return True
+
+            if operator in ("lt", "lte"):
+                self.criteria[criterion] = min(current, value)
+                return True
+
+        except TypeError as exception:
+            raise FieldError(self, f"cannot merge {criterion}") from exception
+
+        if operator in ("eq", "null", "all"):
+            return False
+
+        raise FieldError(self, f"cannot merge {criterion}")
 
     def export(self):
         """
