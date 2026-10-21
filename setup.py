@@ -26,7 +26,8 @@ setup(
         'relations.model',
         'relations.record',
         'relations.relation',
-        'relations.migrations'
+        'relations.migrations',
+        'relations.security'
     ],
     install_requires=[
         'overscore==0.1.1'
