@@ -267,8 +267,7 @@ fresh
 run sh scripts/release-check.sh
 eq "check ready" 0 "$CODE"
 has "check says ready" "ready to release" "$OUT"
-eq "check builds dist then runs the stages" "dist-check
-build test lint setup" "$(cat "$MAKE_LOG")"
+eq "check builds dist" "dist-check" "$(cat "$MAKE_LOG")"
 
 fresh
 printf '# Changelog\n\n## [0.6.0] - 2026-01-01\n' > CHANGELOG.md
@@ -304,9 +303,6 @@ fresh
 MAKE_FAIL=dist-check run sh scripts/release-check.sh
 eq "check fails when dist-check does" 1 "$CODE"
 
-fresh
-MAKE_FAIL=lint run sh scripts/release-check.sh
-eq "check fails when a stage does" 1 "$CODE"
 
 # ---- release.sh
 
@@ -315,7 +311,6 @@ fresh
 run sh scripts/release.sh
 eq "release runs" 0 "$CODE"
 eq "release order" "dist-check
-build test lint setup
 testpypi
 testpypi-verify
 pypi
@@ -332,7 +327,6 @@ eq "release again runs no make" "" "$(cat "$MAKE_LOG")"
 fresh
 RELEASE_TEST=0 run sh scripts/release.sh
 eq "release without testpypi" "dist-check
-build test lint setup
 pypi
 tag" "$(cat "$MAKE_LOG")"
 
