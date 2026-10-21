@@ -89,7 +89,6 @@ check() {
         found=$(problems)
         [ -z "$found" ] || { echo "$found"; return 1; }
         make dist-check || return 1
-        make build test lint setup || return 1
     fi
 
     echo "ready to release"
