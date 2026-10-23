@@ -399,6 +399,64 @@ passes "wait_for finds it" wait_for pypi
 publish test 0.6.1
 passes "wait_for finds it on test" wait_for test
 
+# retry runs a command again until it works: pip sees an upload later than curl does, by minutes
+
+COUNT=$T/count
+flaky() { # fails the first FLAKY_FAILS times it's run, counting the runs
+    ran=$(cat "$COUNT" 2> /dev/null || echo 0)
+    echo $((ran + 1)) > "$COUNT"
+    [ "$ran" -ge "$FLAKY_FAILS" ]
+}
+
+rm -f "$COUNT"
+FLAKY_FAILS=0
+passes "retry passes when it works" retry flaky
+eq "retry runs it once when it works" 1 "$(cat "$COUNT")"
+
+rm -f "$COUNT"
+FLAKY_FAILS=1
+passes "retry tries again" retry flaky
+eq "retry ran it twice" 2 "$(cat "$COUNT")"
+
+rm -f "$COUNT"
+FLAKY_FAILS=5
+fails "retry gives up" retry flaky
+eq "retry gives up after WAIT_TRIES" 2 "$(cat "$COUNT")"
+has "retry says what it gave up on" "gave up on: flaky" "$OUT"
+
+# testpypi-verify installs the version from testpypi in a clean container, trying again if the index hasn't caught up
+
+printf '%s\n' '#!/bin/sh' 'echo "$*" >> "$DOCKER_LOG"' 'ran=$(wc -l < "$DOCKER_LOG")' '[ "$ran" -gt "$DOCKER_FAILS" ]' > "$T/bin/docker"
+chmod +x "$T/bin/docker"
+export DOCKER_LOG=$T/docker.log
+
+echo "== testpypi-verify"
+fresh
+
+: > "$DOCKER_LOG"
+export DOCKER_FAILS=0
+run sh scripts/testpypi-verify.sh
+eq "verify passes when pip finds it" 0 "$CODE"
+eq "verify installs once when pip finds it" 1 "$(wc -l < "$DOCKER_LOG")"
+has "verify installs the version" "pkg==0.6.1" "$(cat "$DOCKER_LOG")"
+has "verify installs from testpypi" "--index-url $TESTPYPI_URL/simple/" "$(cat "$DOCKER_LOG")"
+has "verify takes dependencies from pypi" "--extra-index-url https://pypi.org/simple/" "$(cat "$DOCKER_LOG")"
+has "verify doesn't trust pip's cache of the index" "--no-cache-dir" "$(cat "$DOCKER_LOG")"
+
+: > "$DOCKER_LOG"
+export DOCKER_FAILS=1
+run sh scripts/testpypi-verify.sh
+eq "verify passes when pip finds it the second time" 0 "$CODE"
+eq "verify installed twice" 2 "$(wc -l < "$DOCKER_LOG")"
+
+: > "$DOCKER_LOG"
+export DOCKER_FAILS=5
+run sh scripts/testpypi-verify.sh
+eq "verify fails when pip never finds it" 1 "$CODE"
+eq "verify tries WAIT_TRIES times" 2 "$(wc -l < "$DOCKER_LOG")"
+
+rm -f "$T/bin/docker"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

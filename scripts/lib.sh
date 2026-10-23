@@ -40,6 +40,19 @@ wait_for() {
     return 1
 }
 
+# retry command...: runs the command until it works, WAIT_TRIES times, WAIT_DELAY apart. What pip sees of an index
+# lags what curl sees of it, so a clean install right after wait_for may miss a version that is there.
+retry() {
+    tries=0
+    while [ "$tries" -lt "$WAIT_TRIES" ]; do
+        "$@" && return 0
+        tries=$((tries + 1))
+        [ "$tries" -lt "$WAIT_TRIES" ] && sleep "$WAIT_DELAY"
+    done
+    echo "gave up on: $*" >&2
+    return 1
+}
+
 # guard: makes sure we're on a clean main that's level with origin.
 guard() {
     git fetch -q origin
