@@ -126,7 +126,7 @@ fresh() {
     git init -q -b main
     git remote add origin "$T/origin.git"
     mkdir scripts
-    cp "$SCRIPTS"/lib.sh "$SCRIPTS"/new.sh "$SCRIPTS"/version.sh "$SCRIPTS"/release-check.sh "$SCRIPTS"/release.sh "$SCRIPTS"/testpypi-verify.sh scripts/
+    cp "$SCRIPTS"/lib.sh "$SCRIPTS"/new.sh "$SCRIPTS"/version.sh "$SCRIPTS"/release-check.sh "$SCRIPTS"/release.sh "$SCRIPTS"/testpypi-verify.sh "$SCRIPTS"/changelog-check.sh scripts/
     printf '0.6.1\n' > VERSION
     printf 'from setuptools import setup\nsetup(\n    name="pkg",\n    install_requires=[\n        '"'"'dep>=1.0.0'"'"'\n    ]\n)\n' > setup.py
     printf 'dep==1.0.0\n' > requirements.txt
@@ -456,6 +456,35 @@ eq "verify fails when pip never finds it" 1 "$CODE"
 eq "verify tries WAIT_TRIES times" 2 "$(wc -l < "$DOCKER_LOG")"
 
 rm -f "$T/bin/docker"
+
+# ---- changelog-check.sh
+
+echo "== changelog-check.sh"
+fresh
+run sh scripts/changelog-check.sh
+eq "changelog check passes with the dated section" 0 "$CODE"
+has "changelog check says what it found" "CHANGELOG.md has ## [0.6.1] - <date>" "$OUT"
+
+fresh
+printf '# Changelog\n\n## [Unreleased]\n\n### Added\n- thing\n\n## [0.6.0] - 2026-01-01\n' > CHANGELOG.md
+run sh scripts/changelog-check.sh
+eq "changelog check fails with the entry under Unreleased" 1 "$CODE"
+has "changelog check names the section" "CHANGELOG.md has no ## [0.6.1] - <date> section" "$OUT"
+
+fresh
+printf '# Changelog\n\n## [0.6.1] - \n\n### Added\n- thing\n' > CHANGELOG.md
+run sh scripts/changelog-check.sh
+eq "changelog check fails with no date" 1 "$CODE"
+
+fresh
+printf 'relations-dil @ git+https://github.com/relations-dil/python-relations@abc\n' > requirements.txt
+rm -rf "$FAKE_PYPI/simple/dep"
+run sh scripts/changelog-check.sh
+eq "changelog check leaves git pins and unpublished floors to the release" 0 "$CODE"
+
+fresh
+run sh scripts/release-check.sh
+has "release check still builds on the same check" "ready to release" "$OUT"
 
 echo
 echo "$PASS passed, $FAIL failed"

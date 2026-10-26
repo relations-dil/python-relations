@@ -5,6 +5,11 @@ All notable changes to python-relations are recorded here, newest first. Format 
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-26
+
+### Added
+- `make changelog-check` (`scripts/changelog-check.sh`) fails when `CHANGELOG.md` has no dated `## [<VERSION>] - <date>` section, and a `changelog` stage in the `Jenkinsfile` runs it on every branch build, so a PR with its entry still under Unreleased is caught before the merge and not by `make release` on main (relations-dil/python-relations#95). It's the same check as the release's, now `changelog_problem` in `scripts/lib.sh`, and only that check, so git pins and unpublished floors still wait for the release.
+
 ### Changed
 - `make release-check` and `make release` don't run `build`, `test`, `lint` and `setup` again: the Jenkins stages have just run them before the release stage, so it was the same work twice. Run them yourself before checking by hand, as `make release-check` is only the checks and `dist-check` now (relations-dil/python-relations#90).
 

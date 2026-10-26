@@ -76,9 +76,14 @@ state() {
     esac
 }
 
+# changelog_problem: says what's wrong if CHANGELOG.md has no dated section for the version, nothing if it has
+changelog_problem() {
+    grep -Eq "^## \[$(version)\] - [^ ]" CHANGELOG.md || echo "CHANGELOG.md has no ## [$(version)] - <date> section"
+}
+
 # problems: everything that would stop a release
 problems() {
-    grep -Eq "^## \[$(version)\] - [^ ]" CHANGELOG.md || echo "CHANGELOG.md has no ## [$(version)] - <date> section"
+    changelog_problem
     grep 'git+' requirements.txt | sed 's/^/requirements.txt has a git pin: /'
     sed -En "s/.*['\"]([A-Za-z0-9_.-]+)(>=|==)([0-9][^'\" ,]*)['\"].*/\\1 \\3/p" setup.py | while read -r name floor; do
         listed pypi "$floor" "$name" || echo "$name $floor (the floor in setup.py) isn't published yet"

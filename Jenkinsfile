@@ -27,6 +27,12 @@ pipeline {
                 sh 'make setup'
             }
         }
+        stage('changelog') {
+            // Every branch, so a missing section is caught on the PR and not by the release on main
+            steps {
+                sh 'make changelog-check'
+            }
+        }
         stage('release') {
             // Only main, and only a version that isn't released yet: release-check says "released, nothing to release" for the rest
             when {

@@ -21,7 +21,7 @@ PACKAGE=-v ${PWD}/lib:/opt/service/lib:ro \
 	-v ${PWD}/setup.py:/opt/service/setup.py:ro \
 	-v ${PWD}/VERSION:/opt/service/VERSION:ro
 
-.PHONY: build shell debug test lint setup tag untag testpypi pypi new version release-check release dist-check testpypi-verify test-release help
+.PHONY: build shell debug test lint setup tag untag testpypi pypi new version changelog-check release-check release dist-check testpypi-verify test-release help
 .DEFAULT_GOAL := help
 
 build: ## Builds the docker image
@@ -80,6 +80,9 @@ new: ## Starts a release: next version, branch, VERSION, changelog (V=+0.0.1|+0.
 
 version: ## Sets VERSION (V=+0.0.1|+0.1|+1|x.y.z)
 	@sh scripts/version.sh write "$(V)"
+
+changelog-check: ## Fails if CHANGELOG.md has no dated section for the version
+	@sh scripts/changelog-check.sh
 
 release-check: ## Says where the release is up to and what would stop it
 	@sh scripts/release-check.sh
