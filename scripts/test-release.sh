@@ -178,10 +178,17 @@ has "says VERSION is bad" "not x.y.z" "$OUT"
 # ---- new.sh
 
 echo "== new.sh"
-fresh
 
-passes "new on a clean main" sh scripts/new.sh
-eq "new branch" "gaf3/0.6.2" "$(git branch --show-current)"
+# ticket: a clean repo on a branch made from a ticket, the way work starts
+ticket() {
+    fresh
+    git switch -q -c 98-the-ticket
+}
+
+ticket
+passes "new on a ticket branch" sh scripts/new.sh
+eq "new stays on the ticket branch" "98-the-ticket" "$(git branch --show-current)"
+eq "new makes no branch" "2" "$(git branch --format='%(refname:short)' | wc -l | tr -d ' ')"
 eq "new VERSION" "0.6.2" "$(cat VERSION)"
 eq "new commit" "Version 0.6.2" "$(git log -1 --format=%s)"
 eq "new changelog section is above the newest" "## [0.6.2] - $(date +%F)" "$(grep -m1 '^## \[' CHANGELOG.md)"
@@ -189,63 +196,60 @@ has "new changelog has the section" "## [0.6.2] - $(date +%F)" "$(cat CHANGELOG.
 has "new changelog keeps the old" "## [0.6.1] - 2026-01-01" "$(cat CHANGELOG.md)"
 eq "new leaves the tree clean" "" "$(git status --porcelain)"
 
-fresh
-passes "new with a bump and a name" sh scripts/new.sh +0.1 my-thing
-eq "new named branch" "gaf3/my-thing" "$(git branch --show-current)"
+ticket
+passes "new with a bump" sh scripts/new.sh +0.1
 eq "new bumped" "0.7.0" "$(cat VERSION)"
+eq "new bump stays on the ticket branch" "98-the-ticket" "$(git branch --show-current)"
 
-fresh
-BRANCH_PREFIX=other sh scripts/new.sh +1 > /dev/null 2>&1
-eq "new honors BRANCH_PREFIX" "other/1.0.0" "$(git branch --show-current)"
-
-fresh
+ticket
 VERSION_FILES=setup.py sh scripts/new.sh > /dev/null 2>&1
 eq "new commits only VERSION and CHANGELOG.md when VERSION_FILES has nothing changed" "CHANGELOG.md
 VERSION" "$(git show --name-only --format= HEAD | sort)"
 
-fresh
+ticket
 printf '# Changelog\n\n## [Unreleased]\n\n### Added\n- soon\n\n## [0.6.1] - 2026-01-01\n' > CHANGELOG.md
-git commit -q -am unreleased && git push -q origin main
+git commit -q -am unreleased
 sh scripts/new.sh > /dev/null 2>&1
 has "new turns Unreleased into the section" "## [0.6.2] - $(date +%F)" "$(cat CHANGELOG.md)"
 lacks "new drops the Unreleased heading" "[Unreleased]" "$(cat CHANGELOG.md)"
 has "new keeps what was in Unreleased" "- soon" "$(cat CHANGELOG.md)"
 
-fresh
+ticket
 printf '# Changelog\n' > CHANGELOG.md
-git commit -q -am empty && git push -q origin main
+git commit -q -am empty
 sh scripts/new.sh > /dev/null 2>&1
 has "new appends to a changelog with no sections" "## [0.6.2] - $(date +%F)" "$(cat CHANGELOG.md)"
 
-fresh
+ticket
 printf '# Changelog\n\n## [0.6.2] - 2026-02-02\n\n## [0.6.1] - 2026-01-01\n' > CHANGELOG.md
-git commit -q -am has-it && git push -q origin main
+git commit -q -am has-it
 sh scripts/new.sh > /dev/null 2>&1
 eq "new doesn't duplicate a section" "1" "$(grep -c '^## \[0.6.2\]' CHANGELOG.md)"
 
 fresh
-git switch -q -c elsewhere
 run sh scripts/new.sh
-eq "new refuses off main" 1 "$CODE"
-has "new says not on main" "not on main" "$OUT"
+eq "new refuses on main" 1 "$CODE"
+has "new says to branch from the ticket" "ticket branch" "$OUT"
+eq "new on main leaves VERSION alone" "0.6.1" "$(cat VERSION)"
+eq "new on main makes no commit" "first" "$(git log -1 --format=%s)"
 
-fresh
+ticket
 echo dirty >> VERSION
 run sh scripts/new.sh
 eq "new refuses a dirty tree" 1 "$CODE"
 has "new says dirty" "isn't clean" "$OUT"
 
-fresh
-echo more > more.txt && git add more.txt && git commit -q -m local
+ticket
+git checkout -q --detach
 run sh scripts/new.sh
-eq "new refuses ahead of origin" 1 "$CODE"
-has "new says not level" "isn't level" "$OUT"
+eq "new refuses a detached head" 1 "$CODE"
+has "new says not on a branch" "not on a branch" "$OUT"
 
-fresh
+ticket
 publish pypi 0.6.2
 run sh scripts/new.sh
 eq "new refuses a published next version" 1 "$CODE"
-eq "new leaves no branch behind" "main" "$(git branch --show-current)"
+eq "new leaves the ticket branch as it was" "first" "$(git log -1 --format=%s)"
 
 # ---- state
 
