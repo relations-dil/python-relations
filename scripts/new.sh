@@ -1,21 +1,19 @@
 #!/bin/sh
-# new.sh [+0.0.1|+0.1|+1|x.y.z] [branch name]
-# Starts a release. From a clean main that's level with origin: works out the version, makes the branch (gaf3/name,
-# or gaf3/version), writes VERSION and the changelog section for it, and commits. VERSION_FILES adds files to the commit.
+# new.sh [+0.0.1|+0.1|+1|x.y.z]
+# Starts a release, on the ticket branch you're on (we branch from the ticket, so never on main): works out the version,
+# writes VERSION and the changelog section for it, and commits. VERSION_FILES adds files to the commit.
 
 . "$(dirname "$0")/lib.sh"
 
 spec=${1:-+0.0.1}
-name=$2
-prefix=${BRANCH_PREFIX:-gaf3}
 
-guard || exit 1
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+[ "$branch" != HEAD ] || { echo "not on a branch"; exit 1; }
+[ "$branch" != main ] || { echo "on main: make new works on a ticket branch, make it from the ticket first (gh issue develop <ticket> --checkout)"; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "the working tree isn't clean"; exit 1; }
 
 new=$(sh "$(dirname "$0")/version.sh" next "$spec") || exit 1
-
-branch="$prefix/${name:-$new}"
-
-git switch -q -c "$branch" || exit 1
 
 echo "$new" > VERSION
 
